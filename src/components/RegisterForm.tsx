@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
