@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
+import RegisterForm from './RegisterForm';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -14,6 +15,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -62,6 +64,19 @@ const LoginPage = () => {
     if (error) setError(null);
   };
 
+  const toggleForm = () => {
+    setShowRegisterForm(!showRegisterForm);
+    setError(null);
+  };
+
+  const handleRegistrationSuccess = () => {
+    setShowRegisterForm(false);
+    toast({
+      title: "Registration successful",
+      description: "You can now log in with your new account",
+    });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md">
@@ -72,90 +87,113 @@ const LoginPage = () => {
         
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl font-semibold text-center">Sign In</CardTitle>
+            <CardTitle className="text-2xl font-semibold text-center">
+              {showRegisterForm ? "Create Account" : "Sign In"}
+            </CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access your account
+              {showRegisterForm 
+                ? "Register to start using SysQuote" 
+                : "Enter your credentials to access your account"}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
+            {showRegisterForm ? (
+              <RegisterForm 
+                onSuccess={handleRegistrationSuccess}
+                onToggleForm={toggleForm}
+              />
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Mail className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        handleInputChange();
+                      }}
+                      placeholder="Email address"
+                      className="pl-10"
+                      autoComplete="email"
+                      required
+                    />
                   </div>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      handleInputChange();
-                    }}
-                    placeholder="Email address"
-                    className="pl-10"
-                    autoComplete="email"
-                    required
-                  />
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
+                
+                <div className="space-y-2">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        handleInputChange();
+                      }}
+                      placeholder="Password"
+                      className="pl-10 pr-10"
+                      autoComplete="current-password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      onClick={togglePasswordVisibility}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5 text-gray-400" />
+                      ) : (
+                        <Eye className="h-5 w-5 text-gray-400" />
+                      )}
+                    </button>
                   </div>
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      handleInputChange();
-                    }}
-                    placeholder="Password"
-                    className="pl-10 pr-10"
-                    autoComplete="current-password"
-                    required
-                  />
+                </div>
+                
+                {error && (
+                  <div className="text-sm text-red-600 bg-red-50 p-2 rounded-md">
+                    {error}
+                  </div>
+                )}
+                
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Signing in..." : "Sign In"}
+                </Button>
+                
+                <div className="text-center">
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                    onClick={togglePasswordVisibility}
+                    onClick={toggleForm}
+                    className="text-sm text-blue-600 hover:text-blue-800"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400" />
-                    )}
+                    Don't have an account? Register
                   </button>
                 </div>
-              </div>
-              
-              {error && (
-                <div className="text-sm text-red-600 bg-red-50 p-2 rounded-md">
-                  {error}
-                </div>
-              )}
-              
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? "Signing in..." : "Sign In"}
-              </Button>
-            </form>
+              </form>
+            )}
           </CardContent>
-          <CardFooter className="flex justify-center">
-            <button
-              type="button"
-              className="text-sm text-blue-600 hover:text-blue-800"
-              onClick={() => navigate('/forgot-password')}
-            >
-              Forgot your password?
-            </button>
-          </CardFooter>
+          {!showRegisterForm && (
+            <CardFooter className="flex justify-center">
+              <button
+                type="button"
+                className="text-sm text-blue-600 hover:text-blue-800"
+                onClick={() => navigate('/forgot-password')}
+              >
+                Forgot your password?
+              </button>
+            </CardFooter>
+          )}
         </Card>
       </div>
     </div>
