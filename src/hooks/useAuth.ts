@@ -1,5 +1,5 @@
 
-import { useAuth as useAuthContext } from "@/contexts/AuthContext";
+import { useAuth as useAuthContext } from "@/context/AuthContext";
 import { signIn, signOut, signUp, resetPasswordForEmail } from "@/services/auth";
 
 export const useAuth = () => {
