@@ -12,6 +12,7 @@ const Router = () => (
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/signup" element={<LoginPage />} /> {/* Temporarily pointing to LoginPage */}
       <Route path="/home" element={
         <PrivateRoute>
           <HomePage />
