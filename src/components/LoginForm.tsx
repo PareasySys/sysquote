@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useId } from "react";
@@ -69,20 +68,12 @@ const LoginForm = ({ onClose }: LoginFormProps) => {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div
-        className="flex size-11 shrink-0 items-center justify-center rounded-full border border-gray-700"
-        aria-hidden="true"
-      >
-        <svg
-          className="stroke-white"
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 32 32"
-          aria-hidden="true"
-        >
-          <circle cx="16" cy="16" r="12" fill="none" strokeWidth="8" />
-        </svg>
+      <div className="mb-2" aria-hidden="true">
+        <img 
+          src="/lovable-uploads/1088b42f-23e0-4e94-9322-c098b29a2bcd.png" 
+          alt="System Logistics" 
+          className="h-16 mx-auto" 
+        />
       </div>
       
       <div className="flex flex-col space-y-1.5 text-center">
