@@ -201,16 +201,18 @@ const HomePage = () => {
 
       <main className="flex-1 flex flex-col h-screen overflow-auto bg-slate-950">
         <div className="p-6 flex-1">
-          <h1 className="text-2xl font-bold mb-6 text-gray-100">Dashboard</h1>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-100">Dashboard</h1>
+            <Button 
+              onClick={handleOpenDialog}
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Create New Quote
+            </Button>
+          </div>
           
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mb-4"></div>
-                <p className="text-gray-400">Loading quotes...</p>
-              </div>
-            </div>
-          ) : error ? (
+          {error ? (
             <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
               <p className="text-red-300">{error}</p>
               <Button 
@@ -246,7 +248,7 @@ const HomePage = () => {
                 />
               ))}
               
-              {quotes.length === 0 && (
+              {quotes.length === 0 && !loading && (
                 <div className="col-span-full text-center py-10">
                   <FileText className="h-12 w-12 mx-auto text-gray-500 mb-3" />
                   <h3 className="text-lg font-medium text-gray-300 mb-1">No quotes yet</h3>
