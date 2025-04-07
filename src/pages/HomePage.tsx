@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -203,12 +202,12 @@ const HomePage = () => {
 
       <main className="flex-1 flex flex-col h-screen overflow-auto bg-slate-950">
         <div className="p-6 flex-1">
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex items-center">
             <h1 className="text-2xl font-bold text-gray-100">Dashboard</h1>
             {loading && (
-              <div className="mr-4">
+              <div className="pl-4 flex items-center">
                 <TextShimmerWave
-                  className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]"
+                  className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
                   duration={1}
                   spread={1}
                   zDistance={1}
