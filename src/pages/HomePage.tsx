@@ -7,6 +7,34 @@ import QuoteCard from "@/components/shared/QuoteCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { 
   Sidebar, 
   SidebarBody, 
   SidebarLink,
@@ -17,13 +45,30 @@ import { LayoutDashboard, Settings, LogOut, UserCog, Plus, FileText } from "luci
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 
+const formSchema = z.object({
+  quote_name: z.string().min(1, { message: "Quote name is required" }),
+  client_name: z.string().optional(),
+  geographic_area: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
 const HomePage = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
+  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const { quotes, loading, error, fetchQuotes } = useQuotes();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { profileData } = useUserProfile(user);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      quote_name: "",
+      client_name: "",
+      geographic_area: "",
+    },
+  });
 
   useEffect(() => {
     if (!user) {
@@ -38,16 +83,38 @@ const HomePage = () => {
     navigate("/");
   };
 
-  const handleStartNewQuote = () => {
-    setIsPopupOpen(true);
+  const handleOpenDialog = () => {
+    form.reset();
+    setDialogOpen(true);
   };
 
-  const handleClosePopup = () => {
-    setIsPopupOpen(false);
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
   };
 
-  const handleQuoteCreated = (newQuoteId: string) => {
-    navigate(`/quote/${newQuoteId}/input`);
+  const onSubmit = async (data: FormValues) => {
+    if (!user) return;
+    
+    try {
+      const { data: newQuote, error } = await supabase
+        .from("quotes")
+        .insert({
+          quote_name: data.quote_name,
+          client_name: data.client_name || null,
+          created_by_user_id: user.id,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      toast.success("Quote created successfully!");
+      setDialogOpen(false);
+      fetchQuotes();
+    } catch (error: any) {
+      console.error("Error creating quote:", error);
+      toast.error(error.message || "Failed to create quote");
+    }
   };
 
   if (!user) return null;
@@ -159,12 +226,11 @@ const HomePage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Create New Quote Card - Always visible */}
               <Card 
-                className="bg-slate-800/80 rounded-lg border border-white/5 shadow-sm hover:bg-slate-700/80 transition-all cursor-pointer h-[220px] flex flex-col items-center justify-center"
-                onClick={handleStartNewQuote}
+                className="bg-slate-800/80 p-6 rounded-lg border border-white/5 shadow-sm hover:shadow-md hover:bg-slate-700/80 transition-all cursor-pointer h-[220px] flex flex-col items-center justify-center"
+                onClick={handleOpenDialog}
               >
-                <div className="flex flex-col items-center justify-center gap-4 text-center p-6">
+                <div className="flex flex-col items-center justify-center gap-4 text-center">
                   <div className="w-16 h-16 rounded-full bg-slate-700/80 flex items-center justify-center">
                     <Plus className="h-8 w-8 text-gray-300" />
                   </div>
@@ -173,7 +239,6 @@ const HomePage = () => {
                 </div>
               </Card>
               
-              {/* Existing Quote Cards */}
               {quotes.map((quote) => (
                 <QuoteCard
                   key={quote.quote_id}
@@ -184,31 +249,106 @@ const HomePage = () => {
                 />
               ))}
               
-              {/* If quotes array is empty, don't show empty cards */}
+              {quotes.length === 0 && (
+                <div className="col-span-full text-center py-10">
+                  <FileText className="h-12 w-12 mx-auto text-gray-500 mb-3" />
+                  <h3 className="text-lg font-medium text-gray-300 mb-1">No quotes yet</h3>
+                  <p className="text-gray-400 mb-6">Create your first quote to get started</p>
+                </div>
+              )}
             </div>
           )}
         </div>
       </main>
 
-      {isPopupOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-slate-800 p-6 rounded-lg border border-white/10 shadow-lg max-w-md w-full">
-            <h2 className="text-xl font-semibold mb-4 text-gray-100">New Quote Info</h2>
-            <p className="text-gray-300 mb-4">This is a placeholder for the New Quote popup component.</p>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleClosePopup} className="border-gray-600 text-gray-300 hover:bg-gray-700">
-                Cancel
-              </Button>
-              <Button 
-                onClick={() => handleQuoteCreated("placeholder-id")}
-                className="bg-blue-700 hover:bg-blue-800 text-white"
-              >
-                Create (Demo)
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="bg-slate-800 border-gray-700 text-gray-200 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-gray-100">Create New Quote</DialogTitle>
+          </DialogHeader>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+              <FormField
+                control={form.control}
+                name="quote_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-300">Quote Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter a name for this quote" 
+                        {...field}
+                        className="bg-slate-700 border-gray-600 text-gray-200 placeholder:text-gray-500"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-red-400" />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="client_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-300">Customer Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter customer name" 
+                        {...field}
+                        className="bg-slate-700 border-gray-600 text-gray-200 placeholder:text-gray-500"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-red-400" />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="geographic_area"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-300">Geographic Area</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="bg-slate-700 border-gray-600 text-gray-200">
+                          <SelectValue placeholder="Select an area" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-slate-700 border-gray-600 text-gray-200">
+                        {/* Empty for now, will be connected to a database in the future */}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-red-400" />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter className="pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleCloseDialog}
+                  className="border-gray-600 hover:bg-gray-700 text-gray-300"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="bg-blue-700 hover:bg-blue-800 text-white"
+                >
+                  Save Quote
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
