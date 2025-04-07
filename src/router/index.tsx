@@ -8,29 +8,36 @@ import SettingsPage from "@/pages/SettingsPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import PrivateRoute from "./PrivateRoute";
+import PageTransition from "@/components/ui/page-transition";
 
 const Router = () => (
   <BrowserRouter>
     <Routes>
-      <Route path="/" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/" element={<PageTransition><LoginPage /></PageTransition>} />
+      <Route path="/signup" element={<PageTransition><SignupPage /></PageTransition>} />
+      <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
       <Route path="/home" element={
         <PrivateRoute>
-          <HomePage />
+          <PageTransition>
+            <HomePage />
+          </PageTransition>
         </PrivateRoute>
       } />
       <Route path="/profile" element={
         <PrivateRoute>
-          <ProfileSettingsPage />
+          <PageTransition>
+            <ProfileSettingsPage />
+          </PageTransition>
         </PrivateRoute>
       } />
       <Route path="/settings" element={
         <PrivateRoute>
-          <SettingsPage />
+          <PageTransition>
+            <SettingsPage />
+          </PageTransition>
         </PrivateRoute>
       } />
-      <Route path="*" element={<NotFoundPage />} />
+      <Route path="*" element={<PageTransition><NotFoundPage /></PageTransition>} />
     </Routes>
   </BrowserRouter>
 );
