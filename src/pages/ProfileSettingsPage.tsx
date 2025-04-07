@@ -18,7 +18,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { useId } from "react";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
+import { useUserProfile } from "@/hooks/use-user-profile";
 
 const ProfileSettingsPage = () => {
   const { user, signOut } = useAuth();
@@ -27,13 +28,26 @@ const ProfileSettingsPage = () => {
   const { toast } = useToast();
   const id = useId();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { profileData, updateProfile, isUpdating } = useUserProfile(user);
   
   const [formData, setFormData] = useState({
     email: user?.email || "",
-    firstName: user?.user_metadata?.first_name || "",
-    lastName: user?.user_metadata?.last_name || "",
-    avatar: user?.user_metadata?.avatar_url || ""
+    firstName: profileData.firstName || "",
+    lastName: profileData.lastName || "",
+    avatar: profileData.avatarUrl || ""
   });
+
+  // Update local form when profile data changes
+  useEffect(() => {
+    if (user && profileData) {
+      setFormData({
+        email: user.email || "",
+        firstName: profileData.firstName || "",
+        lastName: profileData.lastName || "",
+        avatar: profileData.avatarUrl || ""
+      });
+    }
+  }, [user, profileData]);
 
   // Check authentication status
   useEffect(() => {
@@ -55,40 +69,6 @@ const ProfileSettingsPage = () => {
     }));
   };
 
-  const uploadProfileImage = async (file: File): Promise<string | null> => {
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user!.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${fileName}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('profile_images')
-        .upload(filePath, file);
-        
-      if (uploadError) {
-        toast({
-          variant: "destructive",
-          title: "Error uploading image",
-          description: uploadError.message,
-        });
-        return null;
-      }
-      
-      const { data } = supabase.storage
-        .from('profile_images')
-        .getPublicUrl(filePath);
-        
-      return data.publicUrl;
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error uploading image",
-        description: error.message,
-      });
-      return null;
-    }
-  };
-
   const handleUpdateProfile = async () => {
     if (!user) return;
     
@@ -99,27 +79,20 @@ const ProfileSettingsPage = () => {
       
       // If there's a new file upload in the ProfileAvatar component
       if (fileInputRef.current?.files?.[0]) {
-        const file = fileInputRef.current.files[0];
-        const uploadedUrl = await uploadProfileImage(file);
-        if (uploadedUrl) {
-          avatarUrl = uploadedUrl;
-        }
+        // Let the uploadToStorage in useImageUpload handle it
+        // The previewUrl should already reflect the uploaded image URL
+        avatarUrl = previewUrl || avatarUrl;
       }
       
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          avatar_url: avatarUrl
-        },
+      const success = await updateProfile({
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        avatar_url: avatarUrl,
+        full_name: `${formData.firstName} ${formData.lastName}`.trim()
       });
       
-      if (error) throw error;
+      if (!success) throw new Error("Failed to update profile");
       
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been updated successfully.",
-      });
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -152,12 +125,13 @@ const ProfileSettingsPage = () => {
     }
   };
 
-  // Use the image upload hook
+  // Use the image upload hook with the current avatar URL
   const { 
     previewUrl, 
     fileInputRef, 
     handleThumbnailClick, 
-    handleFileChange 
+    handleFileChange,
+    isUploading 
   } = useImageUpload(formData.avatar);
 
   if (!user) return null; // Don't render anything if not authenticated
@@ -213,7 +187,7 @@ const ProfileSettingsPage = () => {
               {sidebarOpen && (
                 <>
                   <div>Welcome,</div>
-                  <div className="font-semibold truncate">{user.email}</div>
+                  <div className="font-semibold truncate">{profileData.firstName || user.email}</div>
                 </>
               )}
             </div>
@@ -237,6 +211,7 @@ const ProfileSettingsPage = () => {
                     fileInputRef={fileInputRef}
                     handleThumbnailClick={handleThumbnailClick}
                     handleFileChange={handleFileChange}
+                    isUploading={isUploading}
                   />
                 </div>
                 
@@ -301,15 +276,15 @@ const ProfileSettingsPage = () => {
                       variant="outline" 
                       onClick={() => navigate('/home')}
                       className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || isUpdating}
                     >
                       Cancel
                     </Button>
                     <Button 
                       type="submit" 
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || isUpdating}
                     >
-                      {isSubmitting ? 'Saving...' : 'Save changes'}
+                      {isSubmitting || isUpdating ? 'Saving...' : 'Save changes'}
                     </Button>
                   </div>
                 </form>
@@ -329,6 +304,7 @@ function ProfileAvatar({
   fileInputRef,
   handleThumbnailClick,
   handleFileChange,
+  isUploading = false,
   className = ""
 }: { 
   defaultImage?: string, 
@@ -336,6 +312,7 @@ function ProfileAvatar({
   fileInputRef?: React.RefObject<HTMLInputElement>,
   handleThumbnailClick?: () => void,
   handleFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void,
+  isUploading?: boolean,
   className?: string
 }) {
   return (
@@ -353,9 +330,14 @@ function ProfileAvatar({
             type="button"
             className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
             onClick={handleThumbnailClick}
+            disabled={isUploading}
             aria-label="Change profile picture"
           >
-            <ImagePlus size={16} />
+            {isUploading ? (
+              <span className="animate-spin">⟳</span>
+            ) : (
+              <ImagePlus size={16} />
+            )}
           </button>
           <input
             type="file"
