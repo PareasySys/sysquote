@@ -1,11 +1,10 @@
 
 import React, { useState } from "react";
 import { useTrainingPlans, TrainingPlan } from "@/hooks/useTrainingPlans";
-import { Button } from "@/components/ui/button";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import TrainingPlanCard from "@/components/training/TrainingPlanCard";
 import TrainingPlanModal from "@/components/training/TrainingPlanModal";
-import { PlusIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const TrainingPlansTab = () => {
   const { plans, loading, error, fetchPlans } = useTrainingPlans();
@@ -65,25 +64,16 @@ const TrainingPlansTab = () => {
         <h2 className="text-xl font-semibold text-gray-100">Training Plans</h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {/* Add New Card */}
-        <div 
-          className="bg-slate-700/50 rounded-lg cursor-pointer h-full flex flex-col items-center justify-center p-6 border border-slate-600/30 hover:border-blue-500/50 hover:bg-slate-700/80 transition-all min-h-[220px]"
-          onClick={handleAddNew}
-        >
-          <div className="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center mb-4">
-            <PlusIcon className="h-6 w-6 text-blue-400" />
-          </div>
-          <h3 className="text-sm font-semibold text-gray-200 mb-1">Add New Training Plan</h3>
-          <p className="text-xs text-gray-400 text-center">Click to add a new training plan</p>
-        </div>
+        <TrainingPlanCard isAddCard onAddNew={handleAddNew} />
         
         {/* Training Plan Cards */}
         {plans.map((plan) => (
           <TrainingPlanCard 
             key={plan.plan_id} 
             plan={plan} 
-            onEdit={handleEdit}
+            onEdit={() => handleEdit(plan)}
           />
         ))}
       </div>

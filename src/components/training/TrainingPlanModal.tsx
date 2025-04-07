@@ -24,7 +24,7 @@ import { TrainingPlan } from "@/hooks/useTrainingPlans";
 import { useTrainingIcons, TrainingIcon } from "@/hooks/useTrainingIcons";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -32,6 +32,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useStorageTrainingIcons } from "@/hooks/useStorageTrainingIcons";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 interface TrainingPlanModalProps {
   open: boolean;
@@ -53,7 +60,8 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const { icons, loading: loadingIcons } = useTrainingIcons();
+  const { icons, loading: loadingIcons, fetchIcons } = useTrainingIcons();
+  const { uploadIcon, uploading } = useStorageTrainingIcons();
   
   useEffect(() => {
     if (plan) {
@@ -144,6 +152,30 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
     }
   };
 
+  // Handle file upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'image/svg+xml') {
+      toast.error("Please upload an SVG file");
+      return;
+    }
+
+    try {
+      const iconPath = await uploadIcon(file);
+      if (iconPath) {
+        // Extract only the filename without extension as icon name
+        const fileName = file.name.replace('.svg', '').toLowerCase();
+        setIconName(fileName);
+        await fetchIcons(); // Refresh icons list
+      }
+    } catch (error) {
+      console.error("Error uploading icon:", error);
+      toast.error("Failed to upload icon");
+    }
+  };
+
   // Find the currently selected icon
   const selectedIcon = icons.find(icon => icon.name === iconName) || icons[0];
 
@@ -193,7 +225,35 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="iconName" className="text-white">Icon</Label>
+              <Label className="text-white flex justify-between items-center">
+                <span>Icon</span>
+                <div className="flex items-center">
+                  <input
+                    type="file"
+                    accept=".svg"
+                    id="icon-upload"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                  />
+                  <label htmlFor="icon-upload">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      disabled={uploading}
+                      className="cursor-pointer text-xs flex items-center gap-1 bg-slate-800 border-slate-700 hover:bg-slate-700"
+                    >
+                      {uploading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Upload className="h-3 w-3" />
+                      )}
+                      Upload SVG
+                    </Button>
+                  </label>
+                </div>
+              </Label>
               
               <div className="relative">
                 <Select 
