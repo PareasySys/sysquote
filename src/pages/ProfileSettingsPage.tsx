@@ -9,7 +9,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ImagePlus } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ImagePlus, KeyIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useId } from "react";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
 
 const ProfileSettingsPage = () => {
   const { user, signOut } = useAuth();
@@ -25,6 +26,7 @@ const ProfileSettingsPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const id = useId();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     email: user?.email || "",
@@ -53,13 +55,110 @@ const ProfileSettingsPage = () => {
     }));
   };
 
-  const handleUpdateProfile = () => {
-    // This is just a placeholder for now - would connect to an update profile API
-    toast({
-      title: "Profile Updated",
-      description: "Your profile has been updated successfully.",
-    });
+  const uploadProfileImage = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user!.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('profile_images')
+        .upload(filePath, file);
+        
+      if (uploadError) {
+        toast({
+          variant: "destructive",
+          title: "Error uploading image",
+          description: uploadError.message,
+        });
+        return null;
+      }
+      
+      const { data } = supabase.storage
+        .from('profile_images')
+        .getPublicUrl(filePath);
+        
+      return data.publicUrl;
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error uploading image",
+        description: error.message,
+      });
+      return null;
+    }
   };
+
+  const handleUpdateProfile = async () => {
+    if (!user) return;
+    
+    try {
+      setIsSubmitting(true);
+      
+      let avatarUrl = formData.avatar;
+      
+      // If there's a new file upload in the ProfileAvatar component
+      if (fileInputRef.current?.files?.[0]) {
+        const file = fileInputRef.current.files[0];
+        const uploadedUrl = await uploadProfileImage(file);
+        if (uploadedUrl) {
+          avatarUrl = uploadedUrl;
+        }
+      }
+      
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          avatar_url: avatarUrl
+        },
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: error.message,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user!.email!, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your email for a link to reset your password.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Password Reset Failed",
+        description: error.message,
+      });
+    }
+  };
+
+  // Use the image upload hook
+  const { 
+    previewUrl, 
+    fileInputRef, 
+    handleThumbnailClick, 
+    handleFileChange 
+  } = useImageUpload(formData.avatar);
 
   if (!user) return null; // Don't render anything if not authenticated
 
@@ -130,11 +229,16 @@ const ProfileSettingsPage = () => {
                 <h1 className="text-xl font-bold text-white mb-2">Edit Profile</h1>
                 <p className="text-gray-400 mb-8">Make changes to your profile details.</p>
                 
-                <ProfileAvatar 
-                  defaultImage={formData.avatar || "https://github.com/shadcn.png"} 
-                  editable={true}
-                  className="mb-8"
-                />
+                {/* Centered Profile Avatar */}
+                <div className="mb-8 flex justify-center">
+                  <ProfileAvatar 
+                    defaultImage={previewUrl || formData.avatar || "https://github.com/shadcn.png"} 
+                    editable={true}
+                    fileInputRef={fileInputRef}
+                    handleThumbnailClick={handleThumbnailClick}
+                    handleFileChange={handleFileChange}
+                  />
+                </div>
                 
                 <form className="w-full space-y-6" onSubmit={(e) => {
                   e.preventDefault();
@@ -178,16 +282,35 @@ const ProfileSettingsPage = () => {
                     />
                   </div>
                   
+                  {/* Change Password Button */}
+                  <div className="flex justify-center">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handlePasswordReset}
+                      className="border-gray-600 text-gray-300 hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <KeyIcon size={16} />
+                      Change Password
+                    </Button>
+                  </div>
+                  
                   <div className="flex justify-end gap-4 mt-8">
                     <Button 
                       type="button" 
                       variant="outline" 
                       onClick={() => navigate('/home')}
                       className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                      disabled={isSubmitting}
                     >
                       Cancel
                     </Button>
-                    <Button type="submit">Save changes</Button>
+                    <Button 
+                      type="submit" 
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? 'Saving...' : 'Save changes'}
+                    </Button>
                   </div>
                 </form>
               </div>
@@ -203,25 +326,28 @@ const ProfileSettingsPage = () => {
 function ProfileAvatar({ 
   defaultImage, 
   editable = false,
+  fileInputRef,
+  handleThumbnailClick,
+  handleFileChange,
   className = ""
 }: { 
   defaultImage?: string, 
   editable?: boolean,
+  fileInputRef?: React.RefObject<HTMLInputElement>,
+  handleThumbnailClick?: () => void,
+  handleFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void,
   className?: string
 }) {
-  const { previewUrl, fileInputRef, handleThumbnailClick, handleFileChange } = useImageUpload();
-  const currentImage = previewUrl || defaultImage;
-
   return (
     <div className={`relative ${className}`}>
       <Avatar className="w-24 h-24 border-4 border-gray-700">
-        <AvatarImage src={currentImage} />
+        <AvatarImage src={defaultImage} />
         <AvatarFallback className="bg-gray-600 text-gray-200 text-xl">
           {defaultImage ? "" : "U"}
         </AvatarFallback>
       </Avatar>
       
-      {editable && (
+      {editable && fileInputRef && handleThumbnailClick && handleFileChange && (
         <>
           <button
             type="button"

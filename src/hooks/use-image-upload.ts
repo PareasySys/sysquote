@@ -1,32 +1,33 @@
 
-import { useRef, useState } from "react";
+import { useState, useRef, useCallback } from "react";
 
-export function useImageUpload() {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+export function useImageUpload(initialImage?: string) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(initialImage || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleThumbnailClick = () => {
-    fileInputRef.current?.click();
-  };
+  const handleThumbnailClick = useCallback(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, []);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onload = () => {
         setPreviewUrl(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, []);
 
-  const handleRemove = () => {
+  const handleRemove = useCallback(() => {
     setPreviewUrl(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = '';
     }
-  };
+  }, []);
 
   return {
     previewUrl,
@@ -34,5 +35,6 @@ export function useImageUpload() {
     handleThumbnailClick,
     handleFileChange,
     handleRemove,
+    setPreviewUrl
   };
 }
