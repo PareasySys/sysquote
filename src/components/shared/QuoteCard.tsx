@@ -21,16 +21,16 @@ const QuoteCard = ({ quote_id, quote_name, client_name, created_at }: QuoteCardP
   return (
     <Card
       onClick={handleClick}
-      className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm 
+      className="bg-sidebar p-6 rounded-lg border border-white/10 shadow-sm 
                 hover:shadow-md transition-shadow cursor-pointer relative h-[250px] flex flex-col"
     >
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-gray-500" />
-          <span className="font-medium text-lg text-gray-800">{quote_name}</span>
+          <FileText className="h-5 w-5 text-gray-400" />
+          <span className="font-medium text-lg text-gray-200">{quote_name}</span>
         </div>
         <button 
-          className="p-1 h-auto text-gray-500"
+          className="p-1 h-auto text-gray-400 hover:text-gray-300"
           onClick={(e) => {
             e.stopPropagation();
             console.log("Delete quote", quote_id);
@@ -44,17 +44,17 @@ const QuoteCard = ({ quote_id, quote_name, client_name, created_at }: QuoteCardP
       
       <div className="space-y-3 flex-1">
         <div>
-          <p className="text-sm text-gray-500">Client</p>
-          <p className="font-medium">{client_name || "No client specified"}</p>
+          <p className="text-sm text-gray-400">Client</p>
+          <p className="font-medium text-gray-300">{client_name || "No client specified"}</p>
         </div>
         
         <div>
-          <p className="text-sm text-gray-500">Area</p>
-          <p className="font-medium">Europe</p>
+          <p className="text-sm text-gray-400">Area</p>
+          <p className="font-medium text-gray-300">Europe</p>
         </div>
       </div>
       
-      <div className="flex items-center mt-4 text-sm text-gray-500">
+      <div className="flex items-center mt-4 text-sm text-gray-400">
         <Calendar className="h-4 w-4 mr-1" />
         Created {formatDate(created_at)}
       </div>

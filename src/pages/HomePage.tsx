@@ -85,7 +85,7 @@ const HomePage = () => {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-900 text-gray-200">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
         <SidebarBody className="flex flex-col h-full justify-between">
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
@@ -132,90 +132,71 @@ const HomePage = () => {
         </SidebarBody>
       </Sidebar>
 
-      <main className="flex-1 flex flex-col h-screen overflow-auto">
+      <main className="flex-1 flex flex-col h-screen overflow-auto bg-slate-950">
         <div className="p-6 flex-1">
-          <h1 className="text-2xl font-bold mb-6 text-gray-800">Dashboard</h1>
+          <h1 className="text-2xl font-bold mb-6 text-gray-100">Dashboard</h1>
           
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                  <Skeleton className="h-6 w-3/4 mb-2" />
-                  <Skeleton className="h-4 w-1/2 mb-1" />
-                  <Skeleton className="h-4 w-1/3" />
+                <div key={i} className="bg-sidebar p-4 rounded-lg border border-white/10 shadow-sm">
+                  <Skeleton className="h-6 w-3/4 mb-2 bg-gray-700" />
+                  <Skeleton className="h-4 w-1/2 mb-1 bg-gray-700" />
+                  <Skeleton className="h-4 w-1/3 bg-gray-700" />
                 </div>
               ))}
             </div>
           ) : error ? (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-              <p className="text-red-600">{error}</p>
+            <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
+              <p className="text-red-300">{error}</p>
               <Button 
                 onClick={fetchQuotes} 
                 variant="outline" 
-                className="mt-2 text-blue-800"
+                className="mt-2 text-blue-300 border-blue-800 hover:bg-blue-900/50"
               >
                 Try Again
+              </Button>
+            </div>
+          ) : quotes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-10 text-center">
+              <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center mb-4">
+                <FileText className="h-8 w-8 text-gray-500" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-200 mb-2">No quotes yet</h3>
+              <p className="text-gray-400 mb-6 max-w-md">Create your first quote to get started with training quotes for your clients</p>
+              <Button 
+                onClick={handleStartNewQuote}
+                className="bg-blue-700 hover:bg-blue-800 text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Quote
               </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Create New Quote Card */}
               <Card 
-                className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex flex-col items-center justify-center cursor-pointer h-[250px]"
+                className="bg-sidebar p-6 rounded-lg border border-white/10 shadow-sm hover:shadow-md transition-shadow flex flex-col items-center justify-center cursor-pointer h-[250px]"
                 onClick={handleStartNewQuote}
               >
                 <div className="flex flex-col items-center justify-center gap-4 h-full">
-                  <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-                    <Plus className="h-8 w-8 text-gray-500" />
+                  <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center">
+                    <Plus className="h-8 w-8 text-gray-400" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-800">Create New Quote</h3>
-                  <p className="text-gray-500 text-center">Start a new training quote for your client</p>
+                  <h3 className="text-xl font-semibold text-gray-200">Create New Quote</h3>
+                  <p className="text-gray-400 text-center">Start a new training quote for your client</p>
                 </div>
               </Card>
               
               {/* Existing Quote Cards */}
               {quotes.map((quote) => (
-                <Card 
+                <QuoteCard
                   key={quote.quote_id}
-                  className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow relative h-[250px] flex flex-col"
-                >
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-gray-500" />
-                      <span className="font-medium text-lg text-gray-800">{quote.quote_name}</span>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      className="p-1 h-auto" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Delete functionality would go here
-                        console.log("Delete quote", quote.quote_id);
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-3 flex-1">
-                    <div>
-                      <p className="text-sm text-gray-500">Client</p>
-                      <p className="font-medium">{quote.client_name || "No client specified"}</p>
-                    </div>
-                    
-                    <div>
-                      <p className="text-sm text-gray-500">Area</p>
-                      <p className="font-medium">Europe</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center mt-4 text-sm text-gray-500">
-                    <Calendar className="h-4 w-4 mr-1" />
-                    Created {new Date(quote.created_at).toLocaleDateString()}
-                  </div>
-                </Card>
+                  quote_id={quote.quote_id}
+                  quote_name={quote.quote_name}
+                  client_name={quote.client_name}
+                  created_at={quote.created_at}
+                />
               ))}
             </div>
           )}
@@ -223,12 +204,12 @@ const HomePage = () => {
       </main>
 
       {isPopupOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-lg max-w-md w-full">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">New Quote Info</h2>
-            <p className="text-gray-600 mb-4">This is a placeholder for the New Quote popup component.</p>
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-slate-800 p-6 rounded-lg border border-white/10 shadow-lg max-w-md w-full">
+            <h2 className="text-xl font-semibold mb-4 text-gray-100">New Quote Info</h2>
+            <p className="text-gray-300 mb-4">This is a placeholder for the New Quote popup component.</p>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleClosePopup}>
+              <Button variant="outline" onClick={handleClosePopup} className="border-gray-600 text-gray-300 hover:bg-gray-700">
                 Cancel
               </Button>
               <Button 
