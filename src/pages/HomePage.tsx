@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -201,15 +200,8 @@ const HomePage = () => {
 
       <main className="flex-1 flex flex-col h-screen overflow-auto bg-slate-950">
         <div className="p-6 flex-1">
-          <div className="flex justify-between items-center mb-6">
+          <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-100">Dashboard</h1>
-            <Button 
-              onClick={handleOpenDialog}
-              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Create New Quote
-            </Button>
           </div>
           
           {error ? (
