@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +8,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ImagePlus, KeyIcon } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ImagePlus, KeyIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +28,7 @@ const ProfileSettingsPage = () => {
   const id = useId();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { profileData, updateProfile, isUpdating } = useUserProfile(user);
+  const [showPassword, setShowPassword] = useState(false);
   
   const [formData, setFormData] = useState({
     email: user?.email || "",
@@ -37,7 +37,6 @@ const ProfileSettingsPage = () => {
     avatar: profileData.avatarUrl || ""
   });
 
-  // Update local form when profile data changes
   useEffect(() => {
     if (user && profileData) {
       setFormData({
@@ -49,7 +48,6 @@ const ProfileSettingsPage = () => {
     }
   }, [user, profileData]);
 
-  // Check authentication status
   useEffect(() => {
     if (!user) {
       navigate("/");
@@ -77,10 +75,7 @@ const ProfileSettingsPage = () => {
       
       let avatarUrl = formData.avatar;
       
-      // If there's a new file upload in the ProfileAvatar component
       if (fileInputRef.current?.files?.[0]) {
-        // Let the uploadToStorage in useImageUpload handle it
-        // The previewUrl should already reflect the uploaded image URL
         avatarUrl = previewUrl || avatarUrl;
       }
       
@@ -125,7 +120,6 @@ const ProfileSettingsPage = () => {
     }
   };
 
-  // Use the image upload hook with the current avatar URL
   const { 
     previewUrl, 
     fileInputRef, 
@@ -134,7 +128,7 @@ const ProfileSettingsPage = () => {
     isUploading 
   } = useImageUpload(formData.avatar);
 
-  if (!user) return null; // Don't render anything if not authenticated
+  if (!user) return null;
 
   const sidebarLinks = [
     {
@@ -167,6 +161,10 @@ const ProfileSettingsPage = () => {
       onClick: handleSignOut
     },
   ];
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   return (
     <div className="flex h-screen bg-gray-900">
@@ -203,7 +201,6 @@ const ProfileSettingsPage = () => {
                 <h1 className="text-xl font-bold text-white mb-2">Edit Profile</h1>
                 <p className="text-gray-400 mb-8">Make changes to your profile details.</p>
                 
-                {/* Centered Profile Avatar */}
                 <div className="mb-8 flex justify-center">
                   <ProfileAvatar 
                     defaultImage={previewUrl || formData.avatar || "https://github.com/shadcn.png"} 
@@ -257,17 +254,41 @@ const ProfileSettingsPage = () => {
                     />
                   </div>
                   
-                  {/* Change Password Button */}
-                  <div className="flex justify-center">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handlePasswordReset}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700 flex items-center gap-2"
-                    >
-                      <KeyIcon size={16} />
-                      Change Password
-                    </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor={`${id}-password`} className="text-gray-300">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id={`${id}-password`}
+                        type={showPassword ? "text" : "password"}
+                        value="••••••••"
+                        className="bg-gray-700 border-gray-600 text-gray-200 pr-28"
+                        readOnly
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center">
+                        <button
+                          type="button"
+                          onClick={togglePasswordVisibility}
+                          className="p-2 focus:outline-none text-gray-400 hover:text-gray-300"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? (
+                            <EyeOffIcon className="h-4 w-4" />
+                          ) : (
+                            <EyeIcon className="h-4 w-4" />
+                          )}
+                        </button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handlePasswordReset}
+                          className="mr-1 border-gray-600 text-gray-300 hover:bg-gray-700 flex items-center gap-1 h-8"
+                        >
+                          <KeyIcon size={14} />
+                          Change
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="flex justify-end gap-4 mt-8">
@@ -297,7 +318,6 @@ const ProfileSettingsPage = () => {
   );
 };
 
-// Profile Avatar component with optional edit functionality
 function ProfileAvatar({ 
   defaultImage, 
   editable = false,
