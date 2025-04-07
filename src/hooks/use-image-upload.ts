@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { v4 as uuidv4 } from "uuid";
 
-export function useImageUpload(initialImage?: string) {
+export function useImageUpload(initialImage?: string | null) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialImage || null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -21,8 +21,8 @@ export function useImageUpload(initialImage?: string) {
       const fileName = `${uuidv4()}.${fileExt}`;
       const filePath = `${fileName}`;
       
-      const { error: uploadError, data } = await supabase.storage
-        .from('profile_images')
+      const { error: uploadError } = await supabase.storage
+        .from('machine_images')
         .upload(filePath, file);
         
       if (uploadError) {
@@ -31,7 +31,7 @@ export function useImageUpload(initialImage?: string) {
       }
       
       const { data: urlData } = supabase.storage
-        .from('profile_images')
+        .from('machine_images')
         .getPublicUrl(filePath);
         
       return urlData.publicUrl;
