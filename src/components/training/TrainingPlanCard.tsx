@@ -80,7 +80,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
               <img 
                 src={iconUrl} 
                 alt={plan?.name || "Training plan icon"} 
-                className="w-24 h-24 object-contain"
+                className="w-full h-full object-contain p-8"
               />
             ) : (
               <span className="text-slate-500 text-sm">No Icon</span>
@@ -89,8 +89,8 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
           
           <div className="absolute bottom-0 left-0 right-0 p-2 z-20">
             <h3 className="text-sm font-semibold text-white mb-1">{plan?.name}</h3>
-            {plan?.display_order !== null && (
-              <div className="text-xs text-gray-400">Order: {plan?.display_order}</div>
+            {plan?.description && (
+              <div className="text-xs text-gray-400 truncate">{plan.description}</div>
             )}
           </div>
           

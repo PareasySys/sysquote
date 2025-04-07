@@ -24,15 +24,8 @@ import { TrainingPlan } from "@/hooks/useTrainingPlans";
 import { useTrainingIcons, TrainingIcon } from "@/hooks/useTrainingIcons";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Loader2, Upload } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useStorageTrainingIcons } from "@/hooks/useStorageTrainingIcons";
 
 interface TrainingPlanModalProps {
@@ -50,7 +43,6 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [displayOrder, setDisplayOrder] = useState<number | null>(null);
   const [iconName, setIconName] = useState("skill-level-basic");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -58,18 +50,15 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
   const { icons, loading: loadingIcons, fetchIcons } = useTrainingIcons();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { uploadIcon, uploading } = useStorageTrainingIcons();
-  const [iconPopoverOpen, setIconPopoverOpen] = useState(false);
   
   useEffect(() => {
     if (plan) {
       setName(plan.name || "");
       setDescription(plan.description || "");
-      setDisplayOrder(plan.display_order);
       setIconName(plan.icon_name || "skill-level-basic");
     } else {
       setName("");
       setDescription("");
-      setDisplayOrder(null);
       setIconName("skill-level-basic");
     }
   }, [plan]);
@@ -100,7 +89,6 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
           .update({
             name,
             description,
-            display_order: displayOrder,
             icon_name: iconName,
           })
           .eq("plan_id", plan.plan_id);
@@ -114,7 +102,6 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
         const { error } = await supabase.from("training_plans").insert({
           name,
           description,
-          display_order: displayOrder,
           icon_name: iconName,
         });
 
@@ -179,16 +166,12 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
         const fileName = file.name.replace('.svg', '').toLowerCase().replace(/[^a-z0-9_.]/g, '-');
         setIconName(fileName);
         await fetchIcons(); // Refresh icons list
-        setIconPopoverOpen(false); // Close the popover after upload
       }
     } catch (error) {
       console.error("Error uploading icon:", error);
       toast.error("Failed to upload icon");
     }
   };
-
-  // Find the currently selected icon
-  const selectedIcon = icons.find(icon => icon.name === iconName) || icons[0];
 
   return (
     <>
@@ -224,113 +207,54 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="displayOrder" className="text-white">Display Order</Label>
-              <Input
-                id="displayOrder"
-                type="number"
-                value={displayOrder === null ? '' : displayOrder}
-                onChange={(e) => setDisplayOrder(e.target.value === '' ? null : parseInt(e.target.value))}
-                className="bg-slate-800 border-slate-700 text-slate-100"
-                placeholder="Enter display order (optional)"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label className="text-white">Icon</Label>
-              <Popover open={iconPopoverOpen} onOpenChange={setIconPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button 
-                    className="w-full justify-between bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-700"
-                    variant="outline"
-                  >
-                    <div className="flex items-center gap-2">
-                      {!loadingIcons && selectedIcon && (
+              <div className="flex justify-between items-center">
+                <Label className="text-white">Icon</Label>
+                <label className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer">
+                  Upload new SVG
+                  <input 
+                    type="file"
+                    accept=".svg"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+              
+              {loadingIcons ? (
+                <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <Skeleton 
+                      key={i}
+                      className="aspect-square rounded-md h-16"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
+                  {icons.map((icon) => (
+                    <button
+                      key={icon.name}
+                      type="button"
+                      onClick={() => setIconName(icon.name)}
+                      className={`cursor-pointer rounded-md p-2 hover:bg-slate-700 flex flex-col items-center justify-center transition-all ${
+                        iconName === icon.name ? 'ring-2 ring-blue-500 bg-slate-700' : 'bg-slate-800'
+                      }`}
+                      title={icon.name}
+                    >
+                      <div className="h-10 w-10 flex items-center justify-center">
                         <img 
-                          src={selectedIcon.url} 
-                          alt={selectedIcon.name}
-                          className="h-5 w-5"
+                          src={icon.url} 
+                          alt={icon.name}
+                          className="max-h-full max-w-full"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.src = "/training-plan-icons/skill-level-basic.svg";
                           }}
                         />
-                      )}
-                      <span>{selectedIcon?.name || "Select an icon"}</span>
-                    </div>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent 
-                  className="w-72 p-0 bg-slate-800 border-slate-700 text-slate-100" 
-                  align="start"
-                  side="bottom"
-                >
-                  {loadingIcons ? (
-                    <div className="p-4 flex justify-center">
-                      <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-                    </div>
-                  ) : (
-                    <>
-                      <div className="p-2 border-b border-slate-700">
-                        <label className="flex justify-center cursor-pointer p-2 bg-slate-700 hover:bg-slate-600 rounded-md transition-colors">
-                          <span className="text-sm font-medium">Upload new SVG</span>
-                          <input 
-                            type="file"
-                            accept=".svg"
-                            className="hidden"
-                            onChange={handleFileChange}
-                            disabled={uploading}
-                          />
-                        </label>
                       </div>
-                      <div className="max-h-[300px] overflow-y-auto p-2">
-                        <div className="grid grid-cols-3 gap-2">
-                          {icons.map((icon) => (
-                            <button
-                              key={icon.name}
-                              onClick={() => {
-                                setIconName(icon.name);
-                                setIconPopoverOpen(false);
-                              }}
-                              className={`cursor-pointer rounded-md p-2 hover:bg-slate-700 flex flex-col items-center justify-center ${
-                                iconName === icon.name ? 'bg-slate-700 ring-2 ring-blue-500' : ''
-                              }`}
-                            >
-                              <div className="h-12 w-12 flex items-center justify-center mb-1">
-                                <img 
-                                  src={icon.url} 
-                                  alt={icon.name}
-                                  className="max-h-full max-w-full"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = "/training-plan-icons/skill-level-basic.svg";
-                                  }}
-                                />
-                              </div>
-                              <span className="text-xs text-center truncate max-w-full">
-                                {icon.name}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="mt-2 flex justify-center">
-              {!loadingIcons && selectedIcon && (
-                <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700/50">
-                  <img 
-                    src={selectedIcon.url} 
-                    alt={selectedIcon.name} 
-                    className="h-16 w-16"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = "/training-plan-icons/skill-level-basic.svg";
-                    }}
-                  />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
