@@ -1,142 +1,49 @@
+
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
 import { TrainingPlan } from "@/hooks/useTrainingPlans";
+import { useTrainingIcons } from "@/hooks/useTrainingIcons";
 
 interface TrainingPlanCardProps {
-  plan?: TrainingPlan;
-  isAddCard?: boolean;
-  onEdit?: (plan: TrainingPlan) => void;
-  onAddNew?: () => void;
+  plan: TrainingPlan;
+  onEdit: (plan: TrainingPlan) => void;
 }
 
 const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
   plan,
-  isAddCard = false,
-  onEdit,
-  onAddNew
+  onEdit
 }) => {
-  const handleClick = () => {
-    if (isAddCard && onAddNew) {
-      onAddNew();
-    }
-  };
+  const { icons } = useTrainingIcons();
+  
+  // Find the icon that matches the plan's icon_name
+  const iconUrl = icons.find(icon => icon.name === plan.icon_name)?.url || 
+                  icons.find(icon => icon.name === "skill-level-basic")?.url || 
+                  "/training-plan-icons/skill-level-basic.svg";
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (plan && onEdit) {
-      onEdit(plan);
-    }
+    onEdit(plan);
   };
-
-  // SVG mapping based on icon_name
-  const renderIcon = () => {
-    if (!plan?.icon_name) return null;
-    
-    switch (plan.icon_name) {
-      case "skill-level-basic":
-        return (
-          <svg fill="#ffffff" viewBox="0 0 32 32" id="icon" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-12 h-12">
-            <g>
-              <defs>
-                <style>{`.cls-1 { fill: none; }`}</style>
-              </defs>
-              <title>skill-level-basic</title>
-              <path d="M30,30H22V4h8Zm-6-2h4V6H24Z"></path>
-              <path d="M20,30H12V12h8Zm-6-2h4V14H14Z"></path>
-              <path d="M10,30H2V18h8Z"></path>
-              <rect className="cls-1" width="32" height="32"></rect>
-            </g>
-          </svg>
-        );
-      case "skill-level-intermediate":
-        return (
-          <svg fill="#ffffff" viewBox="0 0 32 32" id="icon" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-12 h-12">
-            <g>
-              <defs>
-                <style>{`.cls-1 { fill: none; }`}</style>
-              </defs>
-              <title>skill-level-intermediate</title>
-              <path d="M30,30H22V4h8Zm-6-2h4V6H24Z"></path>
-              <path d="M20,30H12V12h8Z"></path>
-              <path d="M10,30H2V18h8Z"></path>
-              <rect className="cls-1" width="32" height="32"></rect>
-            </g>
-          </svg>
-        );
-      case "skill-level-advanced":
-        return (
-          <svg fill="#ffffff" viewBox="0 0 32 32" id="icon" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-12 h-12">
-            <g>
-              <defs>
-                <style>{`.cls-1 { fill: none; }`}</style>
-              </defs>
-              <title>skill-level-advanced</title>
-              <path d="M30,30H22V4h8Z"></path>
-              <path d="M20,30H12V12h8Z"></path>
-              <path d="M10,30H2V18h8Z"></path>
-              <rect className="cls-1" width="32" height="32"></rect>
-            </g>
-          </svg>
-        );
-      case "team-training":
-        return (
-          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-12 h-12">
-            <g>
-              <path d="M8 3.5C8 4.88071 6.88071 6 5.5 6C4.11929 6 3 4.88071 3 3.5C3 2.11929 4.11929 1 5.5 1C6.88071 1 8 2.11929 8 3.5Z" fill="#ffffff"></path>
-              <path d="M3 8C1.34315 8 0 9.34315 0 11V15H8V8H3Z" fill="#ffffff"></path>
-              <path d="M13 8H10V15H16V11C16 9.34315 14.6569 8 13 8Z" fill="#ffffff"></path>
-              <path d="M12 6C13.1046 6 14 5.10457 14 4C14 2.89543 13.1046 2 12 2C10.8954 2 10 2.89543 10 4C10 5.10457 10.8954 6 12 6Z" fill="#ffffff"></path>
-            </g>
-          </svg>
-        );
-      default:
-        return null;
-    }
-  };
-
-  if (isAddCard) {
-    return (
-      <div className="w-full">
-        <AspectRatio ratio={3/4} className="w-full">
-          <Card 
-            onClick={handleClick}
-            className="group cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-xl bg-gradient-to-br from-slate-700/70 to-slate-900/70 border-dashed border-slate-600/50 flex flex-col items-center justify-center h-full w-full"
-          >
-            <div className="p-4 text-center flex flex-col items-center">
-              <svg 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="w-12 h-12 mb-3 mx-auto"
-              >
-                <g>
-                  <path fillRule="evenodd" clipRule="evenodd" d="M3.75 4.5L4.5 3.75H10.5L11.25 4.5V10.5L10.5 11.25H4.5L3.75 10.5V4.5ZM5.25 5.25V9.75H9.75V5.25H5.25ZM13.5 3.75L12.75 4.5V10.5L13.5 11.25H19.5L20.25 10.5V4.5L19.5 3.75H13.5ZM14.25 9.75V5.25H18.75V9.75H14.25ZM17.25 20.25H15.75V17.25H12.75V15.75H15.75V12.75H17.25V15.75H20.25V17.25H17.25V20.25ZM4.5 12.75L3.75 13.5V19.5L4.5 20.25H10.5L11.25 19.5V13.5L10.5 12.75H4.5ZM5.25 18.75V14.25H9.75V18.75H5.25Z" fill="#ffffff"></path>
-                </g>
-              </svg>
-              <h3 className="text-sm font-medium text-gray-200 mb-1">Add New Training Plan</h3>
-              <p className="text-gray-400 text-xs">Click to add a new training plan</p>
-            </div>
-          </Card>
-        </AspectRatio>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full">
       <AspectRatio ratio={3/4} className="w-full">
-        <Card className="relative overflow-hidden h-full cursor-default w-full border-0 bg-slate-800 flex flex-col">
+        <Card className="relative overflow-hidden h-full cursor-pointer w-full border-0 bg-slate-800 flex flex-col">
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
           
           <div className="flex-1 flex items-center justify-center p-4">
-            {renderIcon()}
+            <img 
+              src={iconUrl}
+              alt={plan.name}
+              className="w-12 h-12 object-contain"
+            />
           </div>
           
           <div className="absolute bottom-0 left-0 right-0 p-2 z-20">
-            <h3 className="text-sm font-semibold text-white mb-1">{plan?.name}</h3>
-            {plan?.display_order !== null && (
+            <h3 className="text-sm font-semibold text-white mb-1">{plan.name}</h3>
+            {plan.display_order !== null && (
               <div className="text-xs text-gray-500">Order: {plan.display_order}</div>
             )}
           </div>
