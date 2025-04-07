@@ -23,9 +23,8 @@ export const useQuotes = () => {
     setError(null);
     
     try {
-      // Use type assertion to bypass TypeScript constraints
-      // since we know these tables will be created in Supabase later
-      const { data, error } = await supabase
+      // We need to cast the entire query operation to any to bypass TypeScript constraints
+      const result = await (supabase
         .from("quotes" as any)
         .select(`
           quote_id,
@@ -36,11 +35,12 @@ export const useQuotes = () => {
           )
         `)
         .eq("created_by_user_id", user.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }) as any);
+      
+      const { data, error } = result;
 
       if (error) throw error;
 
-      // For now, we'll use type assertions to handle the data
       // Transform the data to match our expected Quote type
       const formattedQuotes = data ? data.map((item: any) => ({
         quote_id: item.quote_id,
