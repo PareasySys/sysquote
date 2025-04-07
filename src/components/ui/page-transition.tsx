@@ -14,23 +14,40 @@ export const PageTransition = ({
 }: PageTransitionProps) => {
   const location = useLocation();
   const [displayLocation, setDisplayLocation] = useState(location);
-  const [transitionStage, setTransitionStage] = useState("fadeInUp");
+  const [transitionStage, setTransitionStage] = useState("fadeOut");
+  const [isVisible, setIsVisible] = useState(false);
   
   useEffect(() => {
-    if (location.pathname !== displayLocation.pathname) {
-      setTransitionStage("fadeOut");
+    // Initially hide content, then start animation after a brief delay
+    setIsVisible(false);
+    setTransitionStage("fadeOut");
+    
+    const showTimer = setTimeout(() => {
+      setDisplayLocation(location);
+      setTransitionStage("fadeInUp");
+      setIsVisible(true);
+    }, 50);
+    
+    return () => {
+      clearTimeout(showTimer);
+    };
+  }, [location]);
+
+  useEffect(() => {
+    // Initial load - start with fadeOut then transition to fadeInUp
+    if (transitionStage === "fadeOut") {
       setTimeout(() => {
-        setDisplayLocation(location);
         setTransitionStage("fadeInUp");
-      }, 300); // This should match the CSS transition time
+        setIsVisible(true);
+      }, 50);
     }
-  }, [location, displayLocation]);
+  }, []);
   
   return (
     <div
       className={cn(
         "transition-all duration-300 ease-in-out",
-        transitionStage === "fadeInUp" ? "fadeInUp-animation" : "opacity-0",
+        isVisible ? (transitionStage === "fadeInUp" ? "fadeInUp-animation" : "opacity-0") : "opacity-0",
         className
       )}
     >
