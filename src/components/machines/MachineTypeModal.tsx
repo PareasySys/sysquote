@@ -24,7 +24,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Loader2, Trash2, XCircle } from "lucide-react";
+import { Loader2, XCircle } from "lucide-react";
 
 interface MachineTypeModalProps {
   open: boolean;
@@ -44,7 +44,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [isPhotoDeleting, setIsPhotoDeleting] = useState(false);
   
   const { 
     previewUrl, 
@@ -72,8 +71,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     if (!machine?.photo_url) return;
 
     try {
-      setIsPhotoDeleting(true);
-      
       // Extract filename from URL
       const fileName = machine.photo_url.split('/').pop();
       
@@ -107,8 +104,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     } catch (error: any) {
       console.error("Error deleting photo:", error);
       toast.error(error.message || "Failed to delete photo");
-    } finally {
-      setIsPhotoDeleting(false);
     }
   };
 
@@ -249,20 +244,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
                       >
                         <XCircle className="h-5 w-5 text-white" />
                       </button>
-                      {machine?.photo_url && previewUrl === machine.photo_url && (
-                        <button
-                          type="button"
-                          onClick={handleDeletePhoto}
-                          disabled={isPhotoDeleting}
-                          className="absolute top-2 left-2 bg-red-900/80 p-1 rounded-full hover:bg-red-800 transition-colors"
-                        >
-                          {isPhotoDeleting ? (
-                            <Loader2 className="h-5 w-5 text-white animate-spin" />
-                          ) : (
-                            <Trash2 className="h-5 w-5 text-white" />
-                          )}
-                        </button>
-                      )}
                     </>
                   ) : (
                     <div
@@ -309,7 +290,11 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
                 )}
               </Button>
             )}
-            <Button variant="outline" onClick={onClose}>
+            <Button 
+              variant="outline" 
+              onClick={onClose}
+              className="text-white border-slate-700 hover:bg-slate-800 hover:text-white"
+            >
               Cancel
             </Button>
             <Button
@@ -340,7 +325,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-800 text-slate-100 border-slate-700">
+            <AlertDialogCancel className="bg-slate-800 text-white border-slate-700 hover:bg-slate-700 hover:text-white">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
