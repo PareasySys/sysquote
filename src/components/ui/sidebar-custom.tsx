@@ -189,7 +189,7 @@ export const Logo = () => {
       className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20"
     >
       <img 
-        src="/lovable-uploads/4f73447f-82f1-401a-a806-6bbee3f25a58.png" 
+        src="/lovable-uploads/03c6954a-3fd6-436b-bdc6-8fefcbe25833.png" 
         alt="SysQuote Logo" 
         className="h-7 w-7"
       />
@@ -207,7 +207,7 @@ export const LogoIcon = () => {
       className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20"
     >
       <img 
-        src="/lovable-uploads/4f73447f-82f1-401a-a806-6bbee3f25a58.png" 
+        src="/lovable-uploads/03c6954a-3fd6-436b-bdc6-8fefcbe25833.png" 
         alt="SysQuote Logo" 
         className="h-7 w-7"
       />
