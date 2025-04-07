@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -5,7 +6,6 @@ import { useQuotes } from "@/hooks/useQuotes";
 import { useGeographicAreas } from "@/hooks/useGeographicAreas";
 import { Button } from "@/components/ui/button";
 import QuoteCard from "@/components/shared/QuoteCard";
-import AnimatedLoadingSkeleton from "@/components/ui/animated-loading-skeleton";
 import { Card } from "@/components/ui/card";
 import { 
   Dialog,
@@ -45,6 +45,7 @@ import {
 import { LayoutDashboard, Settings, LogOut, UserCog, Plus, FileText } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
+import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 
 const formSchema = z.object({
   quote_name: z.string().min(1, { message: "Quote name is required" }),
@@ -202,8 +203,22 @@ const HomePage = () => {
 
       <main className="flex-1 flex flex-col h-screen overflow-auto bg-slate-950">
         <div className="p-6 flex-1">
-          <div className="mb-6">
+          <div className="mb-6 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-100">Dashboard</h1>
+            {loading && (
+              <div className="mr-4">
+                <TextShimmerWave
+                  className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]"
+                  duration={1}
+                  spread={1}
+                  zDistance={1}
+                  scaleDistance={1.1}
+                  rotateYDistance={10}
+                >
+                  Loading Quotes
+                </TextShimmerWave>
+              </div>
+            )}
           </div>
           
           {error ? (
@@ -252,7 +267,9 @@ const HomePage = () => {
               )}
               
               {loading && (
-                <AnimatedLoadingSkeleton numCards={3} />
+                <div className="col-span-full flex justify-center py-10">
+                  {/* We've removed the animated loading skeleton here as it's now shown near the title */}
+                </div>
               )}
             </div>
           )}
