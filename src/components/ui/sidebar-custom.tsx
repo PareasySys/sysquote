@@ -1,3 +1,4 @@
+
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import React, { useState, createContext, useContext } from "react";
@@ -188,9 +189,9 @@ export const Logo = () => {
       className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20"
     >
       <img 
-        src="/lovable-uploads/03c6954a-3fd6-436b-bdc6-8fefcbe25833.png" 
+        src="/lovable-uploads/4ae70efa-d7c2-4c56-b454-cee99d4017ad.png" 
         alt="SysQuote Logo" 
-        className="h-7 w-[9.87px]"
+        className="h-7 w-7"
       />
       <span className="font-medium text-white whitespace-pre">
         SysQuote
@@ -206,9 +207,9 @@ export const LogoIcon = () => {
       className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20"
     >
       <img 
-        src="/lovable-uploads/03c6954a-3fd6-436b-bdc6-8fefcbe25833.png" 
+        src="/lovable-uploads/4ae70efa-d7c2-4c56-b454-cee99d4017ad.png" 
         alt="SysQuote Logo" 
-        className="h-7 w-[9.87px]"
+        className="h-7 w-7"
       />
     </Link>
   );
