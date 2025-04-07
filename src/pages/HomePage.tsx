@@ -1,10 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuotes } from "@/hooks/useQuotes";
 import { Button } from "@/components/ui/button";
 import QuoteCard from "@/components/shared/QuoteCard";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { 
   Dialog,
@@ -204,14 +204,11 @@ const HomePage = () => {
           <h1 className="text-2xl font-bold mb-6 text-gray-100">Dashboard</h1>
           
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-slate-800/80 p-4 rounded-lg border border-white/5 shadow-sm h-[220px]">
-                  <Skeleton className="h-6 w-3/4 mb-2 bg-gray-700" />
-                  <Skeleton className="h-4 w-1/2 mb-1 bg-gray-700" />
-                  <Skeleton className="h-4 w-1/3 bg-gray-700" />
-                </div>
-              ))}
+            <div className="flex justify-center items-center py-12">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mb-4"></div>
+                <p className="text-gray-400">Loading quotes...</p>
+              </div>
             </div>
           ) : error ? (
             <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
