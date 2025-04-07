@@ -105,23 +105,6 @@ const AnimatedLoadingSkeleton = ({ numCards = 1 }: AnimatedLoadingSkeletonProps)
         })
     };
 
-    // Glow effect variants for the search icon
-    const glowVariants = {
-        animate: {
-            boxShadow: [
-                "0 0 20px rgba(59, 130, 246, 0.2)",
-                "0 0 35px rgba(59, 130, 246, 0.4)",
-                "0 0 20px rgba(59, 130, 246, 0.2)"
-            ],
-            scale: [1, 1.1, 1], // Pulsating effect
-            transition: {
-                duration: 1,
-                repeat: Infinity,
-                ease: "easeInOut" // Smooth pulsation
-            }
-        }
-    };
-
     const config = getGridConfig(windowWidth); // Get current grid configuration
 
     return (
@@ -132,33 +115,6 @@ const AnimatedLoadingSkeleton = ({ numCards = 1 }: AnimatedLoadingSkeletonProps)
             animate="visible"
         >
             <div className="relative overflow-hidden rounded-lg bg-slate-800/50 p-6">
-                {/* Search icon with animation */}
-                <motion.div
-                    className="absolute z-10 pointer-events-none"
-                    animate={controls}
-                    style={{ left: 24, top: 24 }}
-                >
-                    <motion.div
-                        className="bg-blue-500/20 p-3 rounded-full backdrop-blur-sm"
-                        variants={glowVariants}
-                        animate="animate"
-                    >
-                        <svg
-                            className="w-6 h-6 text-blue-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                            />
-                        </svg>
-                    </motion.div>
-                </motion.div>
-
                 {/* Grid of animated cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[...Array(config.numCards)].map((_, i) => (

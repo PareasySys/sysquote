@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -252,7 +253,7 @@ const HomePage = () => {
               )}
               
               {loading && (
-                <div className="col-span-2">
+                <div className="col-span-1">
                   <AnimatedLoadingSkeleton numCards={1} />
                 </div>
               )}
