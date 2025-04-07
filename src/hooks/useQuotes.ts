@@ -22,11 +22,10 @@ export const useQuotes = () => {
   const retryTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCount = useRef<number>(0);
   const maxRetries = 3;
-  // Remove the initialized ref as it's causing the issue
   const isMounted = useRef<boolean>(true);
 
   const fetchQuotes = async () => {
-    // Prevent multiple simultaneous fetches
+    // Check if we should fetch quotes
     if (fetchInProgress.current || !user || !isMounted.current) return;
     
     // Clear any existing retry timeouts
@@ -40,7 +39,8 @@ export const useQuotes = () => {
     fetchInProgress.current = true;
     
     try {
-      console.log("Fetching quotes...");
+      console.log("Fetching quotes for user:", user.id);
+      
       const { data, error } = await supabase
         .from("quotes")
         .select(`
@@ -55,6 +55,8 @@ export const useQuotes = () => {
         .order("created_at", { ascending: false });
       
       if (error) throw error;
+
+      console.log("Received quotes data:", data);
 
       // Only update state if component is still mounted
       if (isMounted.current) {
@@ -71,6 +73,7 @@ export const useQuotes = () => {
           created_at: item.created_at
         })) : [];
 
+        console.log("Formatted quotes:", formattedQuotes);
         setQuotes(formattedQuotes);
       }
     } catch (err: any) {
@@ -84,6 +87,8 @@ export const useQuotes = () => {
         if (retryCount.current < maxRetries) {
           const backoffTime = Math.pow(2, retryCount.current) * 1000;
           retryCount.current++;
+          
+          console.log(`Retrying in ${backoffTime}ms (Attempt ${retryCount.current}/${maxRetries})`);
           
           retryTimeout.current = setTimeout(() => {
             if (isMounted.current) {
@@ -109,13 +114,19 @@ export const useQuotes = () => {
   };
 
   useEffect(() => {
+    // Reset mount state on component mount
+    isMounted.current = true;
+    
     // Always fetch quotes when user is available
     if (user) {
+      console.log("User available, fetching quotes");
+      fetchInProgress.current = false; // Reset this flag to ensure fetch can proceed
       fetchQuotes();
     }
     
     // Cleanup function
     return () => {
+      console.log("Component unmounting, cleaning up");
       isMounted.current = false;
       if (retryTimeout.current) {
         clearTimeout(retryTimeout.current);

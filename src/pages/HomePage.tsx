@@ -75,8 +75,10 @@ const HomePage = () => {
   useEffect(() => {
     if (!user) {
       navigate("/");
+    } else {
+      console.log("User is authenticated, displaying quotes", quotes.length);
     }
-  }, [user, navigate]);
+  }, [user, navigate, quotes.length]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -111,7 +113,9 @@ const HomePage = () => {
       
       toast.success("Quote created successfully!");
       setDialogOpen(false);
-      fetchQuotes();
+      
+      console.log("Created new quote, fetching updated quotes");
+      fetchQuotes(); // Refresh quotes after creating a new one
     } catch (error: any) {
       console.error("Error creating quote:", error);
       toast.error(error.message || "Failed to create quote");
@@ -224,7 +228,10 @@ const HomePage = () => {
             <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
               <p className="text-red-300">{error}</p>
               <Button 
-                onClick={fetchQuotes} 
+                onClick={() => {
+                  console.log("Manual retry of fetchQuotes");
+                  fetchQuotes();
+                }} 
                 variant="outline" 
                 className="mt-2 text-blue-300 border-blue-800 hover:bg-blue-900/50"
               >
@@ -246,7 +253,7 @@ const HomePage = () => {
                 </div>
               </Card>
               
-              {quotes.map((quote) => (
+              {quotes.length > 0 && quotes.map((quote) => (
                 <QuoteCard
                   key={quote.quote_id}
                   quote_id={quote.quote_id}
@@ -262,12 +269,6 @@ const HomePage = () => {
                   <FileText className="h-12 w-12 mx-auto text-gray-500 mb-3" />
                   <h3 className="text-lg font-medium text-gray-300 mb-1">No quotes yet</h3>
                   <p className="text-gray-400 mb-6">Create your first quote to get started</p>
-                </div>
-              )}
-              
-              {loading && (
-                <div className="col-span-full flex justify-center py-10">
-                  {/* We've removed the animated loading skeleton here as it's now shown near the title */}
                 </div>
               )}
             </div>
