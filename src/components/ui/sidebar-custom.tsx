@@ -188,7 +188,11 @@ export const Logo = () => {
       to="#"
       className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20"
     >
-      <div className="h-5 w-6 bg-blue-500 rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+      <img 
+        src="/lovable-uploads/4f73447f-82f1-401a-a806-6bbee3f25a58.png" 
+        alt="SysQuote Logo" 
+        className="h-7 w-7"
+      />
       <span className="font-medium text-white whitespace-pre">
         SysQuote
       </span>
@@ -202,7 +206,11 @@ export const LogoIcon = () => {
       to="#"
       className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20"
     >
-      <div className="h-5 w-6 bg-blue-500 rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+      <img 
+        src="/lovable-uploads/4f73447f-82f1-401a-a806-6bbee3f25a58.png" 
+        alt="SysQuote Logo" 
+        className="h-7 w-7"
+      />
     </Link>
   );
 };
