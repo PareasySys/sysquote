@@ -88,8 +88,8 @@ export const DesktopSidebar = ({
   return (
     <div
       className={cn(
-        "h-full px-4 py-4 hidden md:flex md:flex-col bg-gray-800 flex-shrink-0 transition-all duration-300",
-        open ? "w-[300px]" : "w-[60px]",
+        "h-full px-4 py-4 hidden md:flex md:flex-col bg-gray-800 flex-shrink-0 transition-all duration-300 fixed z-20",
+        open ? "w-[300px] left-0" : "w-[60px] left-0",
         className
       )}
       onMouseEnter={() => setOpen(true)}

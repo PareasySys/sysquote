@@ -216,8 +216,8 @@ const HomePage = () => {
         </SidebarBody>
       </Sidebar>
 
-      <main className="flex-1 flex flex-col h-screen overflow-auto bg-slate-950">
-        <div className="p-6 flex-1">
+      <main className={`fixed inset-0 transition-all duration-300 bg-slate-950 overflow-auto ${sidebarOpen ? 'md:left-[300px]' : 'md:left-[60px]'}`}>
+        <div className="p-6 min-h-screen">
           <div className="mb-6 flex items-center">
             <h1 className="text-2xl font-bold text-gray-100">Dashboard</h1>
             {loading && (
