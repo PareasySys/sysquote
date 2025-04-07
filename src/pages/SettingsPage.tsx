@@ -144,7 +144,7 @@ const SettingsPage = () => {
             <h1 className="text-2xl font-bold text-gray-100">Settings</h1>
           </div>
           
-          <Card className="bg-slate-800/80 border border-white/5">
+          <Card className="bg-slate-800/80 border border-white/5 h-[calc(100vh-140px)]">
             <div className="p-4 border-b border-slate-700/50">
               <Tabs 
                 tabs={tabs} 
@@ -152,7 +152,7 @@ const SettingsPage = () => {
                 className="mb-2"
               />
             </div>
-            <div className="min-h-[400px]">
+            <div className="h-full overflow-auto">
               {renderTabContent()}
             </div>
           </Card>

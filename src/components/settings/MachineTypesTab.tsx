@@ -63,7 +63,7 @@ const MachineTypesTab = () => {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-6 h-full">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-100">Machine Types</h2>
       </div>
