@@ -8,7 +8,7 @@ export interface MachineType {
   name: string;
   description: string | null;
   photo_url: string | null;
-  is_active: boolean;
+  is_active?: boolean;
   created_at: string;
 }
 

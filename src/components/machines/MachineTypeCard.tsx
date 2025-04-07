@@ -81,9 +81,6 @@ const MachineTypeCard: React.FC<MachineTypeCardProps> = ({
           
           <div className="absolute bottom-0 left-0 right-0 p-2 z-20">
             <h3 className="text-sm font-semibold text-white mb-1">{machine?.name}</h3>
-            <div className={`px-1.5 py-0.5 rounded text-xs inline-block ${machine?.is_active ? 'bg-green-900/70 text-green-300' : 'bg-red-900/70 text-red-300'}`}>
-              {machine?.is_active ? 'Active' : 'Inactive'}
-            </div>
           </div>
           
           <Button

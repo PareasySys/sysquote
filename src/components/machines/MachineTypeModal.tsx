@@ -16,7 +16,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -25,7 +24,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Loader2, XCircle } from "lucide-react";
+import { Loader2, Trash2, XCircle } from "lucide-react";
 
 interface MachineTypeModalProps {
   open: boolean;
@@ -42,10 +41,10 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [isPhotoDeleting, setIsPhotoDeleting] = useState(false);
   
   const { 
     previewUrl, 
@@ -53,6 +52,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     handleThumbnailClick, 
     handleFileChange,
     handleRemove,
+    setPreviewUrl,
     isUploading 
   } = useImageUpload(machine?.photo_url);
 
@@ -60,13 +60,57 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     if (machine) {
       setName(machine.name || "");
       setDescription(machine.description || "");
-      setIsActive(machine.is_active);
+      setPreviewUrl(machine.photo_url);
     } else {
       setName("");
       setDescription("");
-      setIsActive(true);
+      setPreviewUrl(null);
     }
-  }, [machine]);
+  }, [machine, setPreviewUrl]);
+
+  const handleDeletePhoto = async () => {
+    if (!machine?.photo_url) return;
+
+    try {
+      setIsPhotoDeleting(true);
+      
+      // Extract filename from URL
+      const fileName = machine.photo_url.split('/').pop();
+      
+      if (fileName) {
+        // Delete from storage
+        const { error: deleteError } = await supabase.storage
+          .from('machine_images')
+          .remove([fileName]);
+          
+        if (deleteError) {
+          console.error("Error deleting image from storage:", deleteError);
+          throw deleteError;
+        }
+      }
+      
+      // Update machine record to remove photo_url
+      const { error: updateError } = await supabase
+        .from('machine_types')
+        .update({ photo_url: null })
+        .eq('machine_type_id', machine.machine_type_id);
+        
+      if (updateError) {
+        console.error("Error updating machine record:", updateError);
+        throw updateError;
+      }
+      
+      // Clear preview
+      setPreviewUrl(null);
+      toast.success("Photo deleted successfully");
+      
+    } catch (error: any) {
+      console.error("Error deleting photo:", error);
+      toast.error(error.message || "Failed to delete photo");
+    } finally {
+      setIsPhotoDeleting(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -84,7 +128,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
           .update({
             name,
             description,
-            is_active: isActive,
             photo_url: previewUrl,
           })
           .eq("machine_type_id", machine.machine_type_id);
@@ -99,7 +142,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
         const { error } = await supabase.from("machine_types").insert({
           name,
           description,
-          is_active: isActive,
           photo_url: previewUrl,
         });
 
@@ -190,20 +232,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
             </div>
 
             <div className="grid gap-2">
-              <Label className="text-white">Status</Label>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="is-active"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="h-4 w-4 accent-blue-500"
-                />
-                <Label htmlFor="is-active" className="text-sm">Active</Label>
-              </div>
-            </div>
-
-            <div className="grid gap-2">
               <Label className="text-white">Machine Photo</Label>
               <div className="relative">
                 <AspectRatio ratio={1} className="bg-slate-800 border-2 border-dashed border-slate-700 rounded-md overflow-hidden">
@@ -221,6 +249,20 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
                       >
                         <XCircle className="h-5 w-5 text-white" />
                       </button>
+                      {machine?.photo_url && previewUrl === machine.photo_url && (
+                        <button
+                          type="button"
+                          onClick={handleDeletePhoto}
+                          disabled={isPhotoDeleting}
+                          className="absolute top-2 left-2 bg-red-900/80 p-1 rounded-full hover:bg-red-800 transition-colors"
+                        >
+                          {isPhotoDeleting ? (
+                            <Loader2 className="h-5 w-5 text-white animate-spin" />
+                          ) : (
+                            <Trash2 className="h-5 w-5 text-white" />
+                          )}
+                        </button>
+                      )}
                     </>
                   ) : (
                     <div
