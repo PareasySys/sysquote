@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import QuoteCard from "@/components/shared/QuoteCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Sidebar, 
+  SidebarBody, 
+  SidebarLink,
+  Logo,
+  LogoIcon
+} from "@/components/ui/sidebar-custom";
+import { LayoutDashboard, UserCog, Settings, LogOut } from "lucide-react";
 
 const HomePage = () => {
   const { user, signOut } = useAuth();
@@ -14,6 +22,7 @@ const HomePage = () => {
   const [activeTab, setActiveTab] = useState<string>("create");
   const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
   const { quotes, loading, error, fetchQuotes } = useQuotes();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Check authentication status
   useEffect(() => {
@@ -48,23 +57,57 @@ const HomePage = () => {
 
   if (!user) return null; // Don't render anything if not authenticated
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-gray-200">
-      <header className="bg-gray-800 shadow-md">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">SysQuote Dashboard</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-400">
-              Welcome, {user.email}
-            </span>
-            <Button variant="outline" onClick={handleSignOut}>
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
+  const sidebarLinks = [
+    {
+      label: "Dashboard",
+      href: "/home",
+      icon: (
+        <LayoutDashboard className="text-gray-300 h-5 w-5 flex-shrink-0" />
+      ),
+    },
+    {
+      label: "Settings",
+      href: "#",
+      icon: (
+        <Settings className="text-gray-300 h-5 w-5 flex-shrink-0" />
+      ),
+    },
+    {
+      label: "Sign Out",
+      href: "#",
+      icon: (
+        <LogOut className="text-gray-300 h-5 w-5 flex-shrink-0" />
+      ),
+      onClick: handleSignOut
+    },
+  ];
 
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+  return (
+    <div className="min-h-screen bg-gray-900 flex">
+      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
+        <SidebarBody className="justify-between gap-10">
+          <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+            {sidebarOpen ? <Logo /> : <LogoIcon />}
+            <div className="mt-8 flex flex-col gap-2">
+              {sidebarLinks.map((link, idx) => (
+                <SidebarLink key={idx} link={link} />
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-400 px-2">
+              {sidebarOpen && (
+                <>
+                  <div>Welcome,</div>
+                  <div className="font-semibold truncate">{user.email}</div>
+                </>
+              )}
+            </div>
+          </div>
+        </SidebarBody>
+      </Sidebar>
+
+      <main className="flex-1 p-6">
         <Tabs
           defaultValue="create"
           value={activeTab}
@@ -82,7 +125,7 @@ const HomePage = () => {
 
           <TabsContent value="create" className="mt-4">
             <div className="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg border border-gray-700">
-              <h2 className="text-xl font-semibold mb-4">Start Creating a New Quote</h2>
+              <h2 className="text-xl font-semibold mb-4 text-white">Start Creating a New Quote</h2>
               <p className="text-gray-400 mb-6 text-center">
                 Create a new quote for your client and start calculating costs for training plans.
               </p>
@@ -148,7 +191,7 @@ const HomePage = () => {
       {isPopupOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 max-w-md w-full">
-            <h2 className="text-xl font-semibold mb-4">New Quote Info</h2>
+            <h2 className="text-xl font-semibold mb-4 text-white">New Quote Info</h2>
             <p className="text-gray-400 mb-4">This is a placeholder for the New Quote popup component.</p>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={handleClosePopup}>
