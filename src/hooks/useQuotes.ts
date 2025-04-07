@@ -23,29 +23,24 @@ export const useQuotes = () => {
     setError(null);
     
     try {
-      // We need to cast the entire query operation to any to bypass TypeScript constraints
-      const result = await (supabase
-        .from("quotes" as any)
+      const { data, error } = await supabase
+        .from("quotes")
         .select(`
           quote_id,
           quote_name,
-          created_at,
-          clients (
-            name
-          )
+          client_name,
+          created_at
         `)
         .eq("created_by_user_id", user.id)
-        .order("created_at", { ascending: false }) as any);
+        .order("created_at", { ascending: false });
       
-      const { data, error } = result;
-
       if (error) throw error;
 
       // Transform the data to match our expected Quote type
-      const formattedQuotes = data ? data.map((item: any) => ({
+      const formattedQuotes = data ? data.map((item) => ({
         quote_id: item.quote_id,
         quote_name: item.quote_name,
-        client_name: item.clients?.name,
+        client_name: item.client_name,
         created_at: item.created_at
       })) : [];
 
