@@ -9,8 +9,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      geographic_areas: {
+        Row: {
+          area_id: number
+          created_at: string | null
+          name: string
+        }
+        Insert: {
+          area_id?: number
+          created_at?: string | null
+          name: string
+        }
+        Update: {
+          area_id?: number
+          created_at?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
       quotes: {
         Row: {
+          area_id: number | null
           client_name: string | null
           created_at: string
           created_by_user_id: string
@@ -18,6 +37,7 @@ export type Database = {
           quote_name: string
         }
         Insert: {
+          area_id?: number | null
           client_name?: string | null
           created_at?: string
           created_by_user_id: string
@@ -25,13 +45,22 @@ export type Database = {
           quote_name: string
         }
         Update: {
+          area_id?: number | null
           client_name?: string | null
           created_at?: string
           created_by_user_id?: string
           quote_id?: string
           quote_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quotes_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "geographic_areas"
+            referencedColumns: ["area_id"]
+          },
+        ]
       }
     }
     Views: {

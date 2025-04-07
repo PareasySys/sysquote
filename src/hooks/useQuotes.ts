@@ -2,12 +2,14 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export type Quote = {
   quote_id: string;
   quote_name: string;
   client_name?: string;
+  area_id?: number;
+  area_name?: string;
   created_at: string;
 };
 
@@ -47,7 +49,9 @@ export const useQuotes = () => {
           quote_id,
           quote_name,
           client_name,
-          created_at
+          created_at,
+          area_id,
+          geographic_areas(name)
         `)
         .eq("created_by_user_id", user.id)
         .order("created_at", { ascending: false });
@@ -64,6 +68,8 @@ export const useQuotes = () => {
           quote_id: item.quote_id,
           quote_name: item.quote_name,
           client_name: item.client_name,
+          area_id: item.area_id,
+          area_name: item.geographic_areas?.name,
           created_at: item.created_at
         })) : [];
 

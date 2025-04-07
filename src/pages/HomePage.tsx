@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuotes } from "@/hooks/useQuotes";
+import { useGeographicAreas } from "@/hooks/useGeographicAreas";
 import { Button } from "@/components/ui/button";
 import QuoteCard from "@/components/shared/QuoteCard";
 import { Card } from "@/components/ui/card";
@@ -47,7 +49,7 @@ import { useUserProfile } from "@/hooks/use-user-profile";
 const formSchema = z.object({
   quote_name: z.string().min(1, { message: "Quote name is required" }),
   client_name: z.string().optional(),
-  geographic_area: z.string().optional(),
+  geographic_area: z.string().min(1, { message: "Geographic area is required" }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -57,6 +59,7 @@ const HomePage = () => {
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const { quotes, loading, error, fetchQuotes } = useQuotes();
+  const { areas, loading: areasLoading } = useGeographicAreas();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { profileData } = useUserProfile(user);
 
@@ -101,6 +104,7 @@ const HomePage = () => {
           quote_name: data.quote_name,
           client_name: data.client_name || null,
           created_by_user_id: user.id,
+          area_id: parseInt(data.geographic_area, 10)
         })
         .select()
         .single();
@@ -312,7 +316,13 @@ const HomePage = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="bg-slate-700 border-gray-600 text-gray-200">
-                        {/* Empty for now, will be connected to a database in the future */}
+                        {areasLoading ? (
+                          <div className="p-2 text-gray-400">Loading areas...</div>
+                        ) : areas.map((area) => (
+                          <SelectItem key={area.area_id} value={area.area_id.toString()}>
+                            {area.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage className="text-red-400" />

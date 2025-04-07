@@ -1,17 +1,18 @@
 
 import { useNavigate } from "react-router-dom";
 import { formatDate } from "@/utils/formatters";
-import { FileText, Calendar, Trash2 } from "lucide-react";
+import { FileText, Calendar, Trash2, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 type QuoteCardProps = {
   quote_id: string;
   quote_name: string;
   client_name?: string;
+  area_name?: string;
   created_at: string;
 };
 
-const QuoteCard = ({ quote_id, quote_name, client_name, created_at }: QuoteCardProps) => {
+const QuoteCard = ({ quote_id, quote_name, client_name, area_name, created_at }: QuoteCardProps) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
@@ -48,7 +49,14 @@ const QuoteCard = ({ quote_id, quote_name, client_name, created_at }: QuoteCardP
         
         <div>
           <p className="text-sm text-gray-400">Area</p>
-          <p className="font-medium text-gray-300">Europe</p>
+          <p className="font-medium text-gray-300 flex items-center gap-1">
+            {area_name ? (
+              <>
+                <MapPin className="h-3 w-3" /> 
+                {area_name}
+              </>
+            ) : "Not specified"}
+          </p>
         </div>
       </div>
       
