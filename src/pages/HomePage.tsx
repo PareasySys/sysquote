@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -120,6 +121,11 @@ const HomePage = () => {
       console.error("Error creating quote:", error);
       toast.error(error.message || "Failed to create quote");
     }
+  };
+
+  const handleQuoteDeleted = () => {
+    // Refresh quotes when a quote is deleted
+    fetchQuotes();
   };
 
   if (!user) return null;
@@ -261,6 +267,7 @@ const HomePage = () => {
                   client_name={quote.client_name}
                   area_name={quote.area_name}
                   created_at={quote.created_at}
+                  onDelete={handleQuoteDeleted}
                 />
               ))}
               
