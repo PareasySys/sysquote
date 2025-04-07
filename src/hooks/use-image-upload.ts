@@ -22,7 +22,7 @@ export function useImageUpload(initialImage?: string | null) {
       const filePath = `${fileName}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('machine_images')
+        .from('software_images')
         .upload(filePath, file);
         
       if (uploadError) {
@@ -31,7 +31,7 @@ export function useImageUpload(initialImage?: string | null) {
       }
       
       const { data: urlData } = supabase.storage
-        .from('machine_images')
+        .from('software_images')
         .getPublicUrl(filePath);
         
       return urlData.publicUrl;
