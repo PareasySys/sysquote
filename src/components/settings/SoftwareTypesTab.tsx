@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import SoftwareTypeCard from "@/components/software/SoftwareTypeCard";
 import SoftwareTypeModal from "@/components/software/SoftwareTypeModal";
-import { Plus } from "lucide-react";
 
 const SoftwareTypesTab = () => {
   const { software, loading, error, fetchSoftware } = useSoftwareTypes();
@@ -67,10 +66,6 @@ const SoftwareTypesTab = () => {
     <div className="p-6 h-full">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-100">Software Types</h2>
-        <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={handleAddNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Software Type
-        </Button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
