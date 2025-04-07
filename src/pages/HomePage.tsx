@@ -14,7 +14,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, UserCog, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut } from "lucide-react";
 
 const HomePage = () => {
   const { user, signOut } = useAuth();
@@ -83,18 +83,20 @@ const HomePage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-900 flex">
+    <div className="flex h-screen bg-gray-900">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
-        <SidebarBody className="justify-between gap-10">
+        <SidebarBody className="flex flex-col h-full justify-between">
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            {sidebarOpen ? <Logo /> : <LogoIcon />}
+            <div className="py-2">
+              {sidebarOpen ? <Logo /> : <LogoIcon />}
+            </div>
             <div className="mt-8 flex flex-col gap-2">
               {sidebarLinks.map((link, idx) => (
                 <SidebarLink key={idx} link={link} />
               ))}
             </div>
           </div>
-          <div>
+          <div className="py-4">
             <div className="text-sm text-gray-400 px-2">
               {sidebarOpen && (
                 <>
@@ -107,84 +109,86 @@ const HomePage = () => {
         </SidebarBody>
       </Sidebar>
 
-      <main className="flex-1 p-6">
-        <Tabs
-          defaultValue="create"
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="w-full"
-        >
-          <TabsList className="bg-gray-800 border-b border-gray-700 w-full justify-start mb-6">
-            <TabsTrigger value="create" className="text-gray-300 data-[state=active]:bg-gray-700 data-[state=active]:text-blue-400">
-              Create New Quote
-            </TabsTrigger>
-            <TabsTrigger value="existing" className="text-gray-300 data-[state=active]:bg-gray-700 data-[state=active]:text-blue-400">
-              Existing Quotes
-            </TabsTrigger>
-          </TabsList>
+      <main className="flex-1 flex flex-col h-screen overflow-auto">
+        <div className="p-6 flex-1">
+          <Tabs
+            defaultValue="create"
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <TabsList className="bg-gray-800 border-b border-gray-700 w-full justify-start mb-6">
+              <TabsTrigger value="create" className="text-gray-300 data-[state=active]:bg-gray-700 data-[state=active]:text-blue-400">
+                Create New Quote
+              </TabsTrigger>
+              <TabsTrigger value="existing" className="text-gray-300 data-[state=active]:bg-gray-700 data-[state=active]:text-blue-400">
+                Existing Quotes
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="create" className="mt-4">
-            <div className="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg border border-gray-700">
-              <h2 className="text-xl font-semibold mb-4 text-white">Start Creating a New Quote</h2>
-              <p className="text-gray-400 mb-6 text-center">
-                Create a new quote for your client and start calculating costs for training plans.
-              </p>
-              <Button 
-                onClick={handleStartNewQuote}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6"
-              >
-                Start New Quote
-              </Button>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="existing" className="mt-4">
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <Skeleton className="h-6 w-3/4 mb-2" />
-                    <Skeleton className="h-4 w-1/2 mb-1" />
-                    <Skeleton className="h-4 w-1/3" />
-                  </div>
-                ))}
-              </div>
-            ) : error ? (
-              <div className="p-4 bg-red-900/20 border border-red-700 rounded-lg text-center">
-                <p className="text-red-400">{error}</p>
+            <TabsContent value="create" className="mt-4">
+              <div className="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg border border-gray-700">
+                <h2 className="text-xl font-semibold mb-4 text-white">Start Creating a New Quote</h2>
+                <p className="text-gray-400 mb-6 text-center">
+                  Create a new quote for your client and start calculating costs for training plans.
+                </p>
                 <Button 
-                  onClick={fetchQuotes} 
-                  variant="outline" 
-                  className="mt-2"
+                  onClick={handleStartNewQuote}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6"
                 >
-                  Try Again
+                  Start New Quote
                 </Button>
               </div>
-            ) : quotes.length === 0 ? (
-              <div className="p-8 bg-gray-800 rounded-lg border border-gray-700 text-center">
-                <p className="text-gray-400 mb-4">You haven't created any quotes yet.</p>
-                <Button 
-                  onClick={() => setActiveTab("create")}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Create Your First Quote
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {quotes.map((quote) => (
-                  <QuoteCard
-                    key={quote.quote_id}
-                    quote_id={quote.quote_id}
-                    quote_name={quote.quote_name}
-                    client_name={quote.client_name}
-                    created_at={quote.created_at}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
+
+            <TabsContent value="existing" className="mt-4">
+              {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                      <Skeleton className="h-6 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-1/2 mb-1" />
+                      <Skeleton className="h-4 w-1/3" />
+                    </div>
+                  ))}
+                </div>
+              ) : error ? (
+                <div className="p-4 bg-red-900/20 border border-red-700 rounded-lg text-center">
+                  <p className="text-red-400">{error}</p>
+                  <Button 
+                    onClick={fetchQuotes} 
+                    variant="outline" 
+                    className="mt-2"
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              ) : quotes.length === 0 ? (
+                <div className="p-8 bg-gray-800 rounded-lg border border-gray-700 text-center">
+                  <p className="text-gray-400 mb-4">You haven't created any quotes yet.</p>
+                  <Button 
+                    onClick={() => setActiveTab("create")}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Create Your First Quote
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {quotes.map((quote) => (
+                    <QuoteCard
+                      key={quote.quote_id}
+                      quote_id={quote.quote_id}
+                      quote_name={quote.quote_name}
+                      client_name={quote.client_name}
+                      created_at={quote.created_at}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
       </main>
 
       {/* Placeholder for the New Quote popup */}
