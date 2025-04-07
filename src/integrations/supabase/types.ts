@@ -9,6 +9,53 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      area_costs: {
+        Row: {
+          area_cost_id: number
+          area_id: number
+          created_at: string
+          daily_accommodation_food_cost: number
+          daily_allowance: number
+          daily_car_rental_cost: number | null
+          daily_pocket_money: number
+          daily_taxi_cost: number | null
+          travel_cost_flight: number | null
+          updated_at: string
+        }
+        Insert: {
+          area_cost_id?: number
+          area_id: number
+          created_at?: string
+          daily_accommodation_food_cost: number
+          daily_allowance: number
+          daily_car_rental_cost?: number | null
+          daily_pocket_money: number
+          daily_taxi_cost?: number | null
+          travel_cost_flight?: number | null
+          updated_at?: string
+        }
+        Update: {
+          area_cost_id?: number
+          area_id?: number
+          created_at?: string
+          daily_accommodation_food_cost?: number
+          daily_allowance?: number
+          daily_car_rental_cost?: number | null
+          daily_pocket_money?: number
+          daily_taxi_cost?: number | null
+          travel_cost_flight?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "area_costs_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: true
+            referencedRelation: "geographic_areas"
+            referencedColumns: ["area_id"]
+          },
+        ]
+      }
       geographic_areas: {
         Row: {
           area_id: number
@@ -26,6 +73,65 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      machine_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          is_active: boolean
+          machine_type_id: number
+          name: string
+          photo_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          machine_type_id?: number
+          name: string
+          photo_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          machine_type_id?: number
+          name?: string
+          photo_url?: string | null
+        }
+        Relationships: []
+      }
+      plan_specific_costs: {
+        Row: {
+          cost_type: string
+          cost_value: number
+          created_at: string
+          plan_cost_id: number
+          plan_id: number
+        }
+        Insert: {
+          cost_type: string
+          cost_value: number
+          created_at?: string
+          plan_cost_id?: number
+          plan_id: number
+        }
+        Update: {
+          cost_type?: string
+          cost_value?: number
+          created_at?: string
+          plan_cost_id?: number
+          plan_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_specific_costs_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["plan_id"]
+          },
+        ]
       }
       quotes: {
         Row: {
@@ -59,6 +165,129 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "geographic_areas"
             referencedColumns: ["area_id"]
+          },
+        ]
+      }
+      resources: {
+        Row: {
+          created_at: string
+          hourly_rate: number
+          is_active: boolean
+          name: string
+          resource_id: number
+        }
+        Insert: {
+          created_at?: string
+          hourly_rate: number
+          is_active?: boolean
+          name: string
+          resource_id?: number
+        }
+        Update: {
+          created_at?: string
+          hourly_rate?: number
+          is_active?: boolean
+          name?: string
+          resource_id?: number
+        }
+        Relationships: []
+      }
+      software_types: {
+        Row: {
+          always_included: boolean
+          created_at: string
+          description: string | null
+          is_active: boolean
+          name: string
+          software_type_id: number
+        }
+        Insert: {
+          always_included?: boolean
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          name: string
+          software_type_id?: number
+        }
+        Update: {
+          always_included?: boolean
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          name?: string
+          software_type_id?: number
+        }
+        Relationships: []
+      }
+      training_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number | null
+          name: string
+          plan_id: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          name: string
+          plan_id?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          name?: string
+          plan_id?: number
+        }
+        Relationships: []
+      }
+      training_requirements: {
+        Row: {
+          created_at: string
+          item_id: number
+          item_type: string
+          lesson_details: string | null
+          plan_id: number
+          required_resource_id: number
+          requirement_id: number
+          training_hours: number
+        }
+        Insert: {
+          created_at?: string
+          item_id: number
+          item_type: string
+          lesson_details?: string | null
+          plan_id: number
+          required_resource_id: number
+          requirement_id?: number
+          training_hours: number
+        }
+        Update: {
+          created_at?: string
+          item_id?: number
+          item_type?: string
+          lesson_details?: string | null
+          plan_id?: number
+          required_resource_id?: number
+          requirement_id?: number
+          training_hours?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_requirements_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "training_requirements_required_resource_id_fkey"
+            columns: ["required_resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["resource_id"]
           },
         ]
       }

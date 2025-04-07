@@ -4,6 +4,7 @@ import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import HomePage from "@/pages/HomePage";
 import ProfileSettingsPage from "@/pages/ProfileSettingsPage";
+import SettingsPage from "@/pages/SettingsPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import PrivateRoute from "./PrivateRoute";
@@ -22,6 +23,11 @@ const Router = () => (
       <Route path="/profile" element={
         <PrivateRoute>
           <ProfileSettingsPage />
+        </PrivateRoute>
+      } />
+      <Route path="/settings" element={
+        <PrivateRoute>
+          <SettingsPage />
         </PrivateRoute>
       } />
       <Route path="*" element={<NotFoundPage />} />
