@@ -172,6 +172,7 @@ export type Database = {
         Row: {
           created_at: string
           hourly_rate: number
+          icon_name: string | null
           is_active: boolean
           name: string
           resource_id: number
@@ -179,6 +180,7 @@ export type Database = {
         Insert: {
           created_at?: string
           hourly_rate: number
+          icon_name?: string | null
           is_active?: boolean
           name: string
           resource_id?: number
@@ -186,6 +188,7 @@ export type Database = {
         Update: {
           created_at?: string
           hourly_rate?: number
+          icon_name?: string | null
           is_active?: boolean
           name?: string
           resource_id?: number

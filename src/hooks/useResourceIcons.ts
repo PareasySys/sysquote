@@ -42,7 +42,7 @@ export const useResourceIcons = () => {
         iconsList = data
           .filter(file => file.name.endsWith('.svg') || file.name.endsWith('.png'))
           .map(file => ({
-            name: file.name.replace(/\.(svg|png)$/, ''),
+            name: file.name,
             url: `${supabase.storage.from('resource_icons').getPublicUrl(file.name).data.publicUrl}`,
             source: "storage" as const
           }));

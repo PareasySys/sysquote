@@ -26,7 +26,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 
 interface ResourceModalProps {
   open: boolean;
@@ -43,7 +42,6 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [hourlyRate, setHourlyRate] = useState<number>(0);
-  const [isActive, setIsActive] = useState(true);
   const [iconName, setIconName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -54,12 +52,10 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
     if (resource) {
       setName(resource.name || "");
       setHourlyRate(resource.hourly_rate || 0);
-      setIsActive(resource.is_active);
       setIconName(resource.icon_name || "");
     } else {
       setName("");
       setHourlyRate(0);
-      setIsActive(true);
       setIconName("");
     }
   }, [resource]);
@@ -84,7 +80,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
           .update({
             name,
             hourly_rate: hourlyRate,
-            is_active: isActive,
+            is_active: true, // Always set to true since we're removing the switch
             icon_name: iconName,
           })
           .eq("resource_id", resource.resource_id);
@@ -98,7 +94,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
         const { error } = await supabase.from("resources").insert({
           name,
           hourly_rate: hourlyRate,
-          is_active: isActive,
+          is_active: true, // Always set to true since we're removing the switch
           icon_name: iconName,
         });
 
@@ -182,15 +178,6 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
                 className="bg-slate-800 border-slate-700 text-slate-100"
                 placeholder="Enter hourly rate"
               />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="isActive" 
-                checked={isActive} 
-                onCheckedChange={setIsActive}
-              />
-              <Label htmlFor="isActive" className="text-white cursor-pointer">Active</Label>
             </div>
 
             <div className="grid gap-2">

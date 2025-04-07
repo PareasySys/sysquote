@@ -65,7 +65,7 @@ const ResourcesTab = () => {
     
     return supabase.storage
       .from('resource_icons')
-      .getPublicUrl(`${iconName}.svg`).data.publicUrl;
+      .getPublicUrl(`${iconName}`).data.publicUrl;
   };
 
   return (
@@ -122,9 +122,6 @@ const ResourcesTab = () => {
                     </div>
                   )}
                   
-                  <div className={`px-2 py-1 rounded text-xs mb-3 ${resource.is_active ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
-                    {resource.is_active ? 'Active' : 'Inactive'}
-                  </div>
                   <div className="text-xl font-bold text-center text-gray-200">${resource.hourly_rate.toFixed(2)}</div>
                   <div className="text-xs text-gray-400 mt-1">hourly rate</div>
                 </div>
