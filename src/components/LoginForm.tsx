@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useId } from "react";
@@ -70,7 +71,7 @@ const LoginForm = ({ onClose }: LoginFormProps) => {
     <div className="flex flex-col items-center gap-2">
       <div className="mb-2" aria-hidden="true">
         <img 
-          src="/lovable-uploads/1088b42f-23e0-4e94-9322-c098b29a2bcd.png" 
+          src="/lovable-uploads/0030e030-2a27-4c19-852c-d1df796aed6b.png" 
           alt="System Logistics" 
           className="h-16 mx-auto" 
         />
