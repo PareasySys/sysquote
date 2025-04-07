@@ -6,7 +6,7 @@ import { toast } from "sonner";
 export interface TrainingIcon {
   name: string;
   url: string;
-  source: "storage" | "local";
+  source: "storage";
 }
 
 export const useTrainingIcons = () => {

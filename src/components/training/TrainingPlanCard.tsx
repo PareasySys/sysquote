@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { TrainingPlan } from "@/hooks/useTrainingPlans";
 import { useTrainingIcons } from "@/hooks/useTrainingIcons";
 import { Edit, Plus, Layout } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
 
 interface TrainingPlanCardProps {
   plan?: TrainingPlan;
@@ -38,7 +37,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
 
   // Find the icon from storage bucket that matches the plan's icon_name
   const iconUrl = !isAddCard && plan?.icon_name 
-    ? icons.find(icon => icon.name === plan.icon_name)?.url || "/placeholder.svg"
+    ? icons.find(icon => icon.name === plan.icon_name)?.url || null
     : null;
 
   if (isAddCard) {
@@ -74,6 +73,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
                 onError={(e) => {
                   console.error(`Error loading icon: ${iconUrl}`);
                   const target = e.target as HTMLImageElement;
+                  // Don't fallback to any local SVG, just show placeholder
                   target.src = "/placeholder.svg";
                 }}
               />
