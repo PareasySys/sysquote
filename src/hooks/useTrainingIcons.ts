@@ -46,7 +46,7 @@ export const useTrainingIcons = () => {
       // Try to fetch icons from storage bucket if available
       const { data, error } = await supabase
         .storage
-        .from('training-icons')
+        .from('training_plan_icons')
         .list('', {
           sortBy: { column: 'name', order: 'asc' },
         });
@@ -61,7 +61,7 @@ export const useTrainingIcons = () => {
           .filter(file => file.name.endsWith('.svg'))
           .map(file => ({
             name: file.name.replace('.svg', ''),
-            url: `${supabase.storage.from('training-icons').getPublicUrl(file.name).data.publicUrl}`
+            url: `${supabase.storage.from('training_plan_icons').getPublicUrl(file.name).data.publicUrl}`
           }));
         
         // Add storage icons to our list, avoiding duplicates

@@ -21,7 +21,7 @@ export const useStorageTrainingIcons = () => {
         .replace(/[^a-z0-9_.]/g, '-');
 
       const { data, error } = await supabase.storage
-        .from("training-icons")
+        .from("training_plan_icons")
         .upload(fileName, file, {
           upsert: true,
           contentType: "image/svg+xml",
@@ -34,7 +34,7 @@ export const useStorageTrainingIcons = () => {
       }
 
       const publicUrl = supabase.storage
-        .from("training-icons")
+        .from("training_plan_icons")
         .getPublicUrl(data.path).data.publicUrl;
       
       toast.success("Icon uploaded successfully");
@@ -52,7 +52,7 @@ export const useStorageTrainingIcons = () => {
     try {
       setUploading(true);
       const { error } = await supabase.storage
-        .from("training-icons")
+        .from("training_plan_icons")
         .remove([path]);
 
       if (error) {
