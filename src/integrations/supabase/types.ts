@@ -199,6 +199,7 @@ export type Database = {
           description: string | null
           is_active: boolean
           name: string
+          photo_url: string | null
           software_type_id: number
         }
         Insert: {
@@ -207,6 +208,7 @@ export type Database = {
           description?: string | null
           is_active?: boolean
           name: string
+          photo_url?: string | null
           software_type_id?: number
         }
         Update: {
@@ -215,6 +217,7 @@ export type Database = {
           description?: string | null
           is_active?: boolean
           name?: string
+          photo_url?: string | null
           software_type_id?: number
         }
         Relationships: []

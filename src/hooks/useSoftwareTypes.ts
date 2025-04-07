@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 
 export interface SoftwareType {
@@ -9,6 +9,7 @@ export interface SoftwareType {
   description: string | null;
   is_active: boolean;
   always_included: boolean;
+  photo_url: string | null;
   created_at: string;
 }
 
