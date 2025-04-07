@@ -5,13 +5,27 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import ResourceModal from "@/components/resources/ResourceModal";
+import { supabase } from "@/lib/supabaseClient";
 
 const ResourcesTab = () => {
   const { resources, loading, error, fetchResources } = useResources();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
 
   const handleAddNew = () => {
-    // Handle adding new resource (to be implemented)
-    console.log("Add new resource clicked");
+    setSelectedResource(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (resource: Resource) => {
+    setSelectedResource(resource);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedResource(null);
   };
 
   if (loading) {
@@ -46,6 +60,14 @@ const ResourcesTab = () => {
     );
   }
 
+  const getIconUrl = (iconName?: string) => {
+    if (!iconName) return null;
+    
+    return supabase.storage
+      .from('resource_icons')
+      .getPublicUrl(`${iconName}.svg`).data.publicUrl;
+  };
+
   return (
     <div className="p-6 h-full">
       <div className="flex justify-between items-center mb-6">
@@ -61,7 +83,6 @@ const ResourcesTab = () => {
               className="group cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-xl bg-gradient-to-br from-slate-700/70 to-slate-900/70 border-dashed border-slate-600/50 flex flex-col items-center justify-center h-full w-full"
             >
               <div className="p-4 text-center flex flex-col items-center">
-                {/* Same SVG icon as in SoftwareTypeCard */}
                 <svg 
                   viewBox="0 0 24 24" 
                   fill="none" 
@@ -87,6 +108,20 @@ const ResourcesTab = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
                 
                 <div className="p-4 flex flex-col items-center justify-center h-full">
+                  {resource.icon_name && (
+                    <div className="mb-3">
+                      <img 
+                        src={getIconUrl(resource.icon_name) || "/placeholder.svg"} 
+                        alt={resource.name}
+                        className="w-12 h-12 object-contain"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/placeholder.svg";
+                        }}
+                      />
+                    </div>
+                  )}
+                  
                   <div className={`px-2 py-1 rounded text-xs mb-3 ${resource.is_active ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
                     {resource.is_active ? 'Active' : 'Inactive'}
                   </div>
@@ -102,6 +137,7 @@ const ResourcesTab = () => {
                   size="icon"
                   variant="ghost"
                   className="absolute top-1 right-1 bg-slate-800/60 hover:bg-slate-700 z-20 h-8 w-8"
+                  onClick={() => handleEdit(resource)}
                 >
                   <svg 
                     viewBox="0 0 24 24" 
@@ -131,6 +167,14 @@ const ResourcesTab = () => {
           <p className="text-gray-400">No resources available. Add your first one to get started.</p>
         </div>
       )}
+
+      {/* Modal for adding/editing resources */}
+      <ResourceModal
+        open={isModalOpen}
+        onClose={handleCloseModal}
+        resource={selectedResource}
+        onSave={fetchResources}
+      />
     </div>
   );
 };

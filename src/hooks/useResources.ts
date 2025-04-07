@@ -8,6 +8,7 @@ export interface Resource {
   name: string;
   hourly_rate: number;
   is_active: boolean;
+  icon_name?: string;
   created_at: string;
 }
 
