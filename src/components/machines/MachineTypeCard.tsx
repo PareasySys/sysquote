@@ -48,7 +48,10 @@ const MachineTypeCard: React.FC<MachineTypeCardProps> = ({
                 stroke="#ffffff"
                 className="w-10 h-10 mb-3 mx-auto"
               >
-                <g id="SVGRepo_iconCarrier"> 
+                <g id="SVGRepo_iconCarrier">
+                  <circle 
+                    cx="12" cy="12" r="10" stroke="#ffffff" stroke-width="1.5">
+                  </circle>
                   <path 
                     fill-rule="evenodd" 
                     clip-rule="evenodd" 
