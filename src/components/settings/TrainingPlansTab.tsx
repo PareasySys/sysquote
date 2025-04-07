@@ -63,35 +63,32 @@ const TrainingPlansTab = () => {
     <div className="p-6 h-full">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-100">Training Plans</h2>
-        <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={handleAddNew}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add New
-        </Button>
       </div>
 
-      {plans.length === 0 ? (
-        <div className="text-center py-10">
-          <p className="text-gray-400 mb-6">No training plans available. Add your first one to get started.</p>
-          <Button 
-            className="bg-blue-700 hover:bg-blue-800 text-white" 
-            onClick={handleAddNew}
-          >
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Create First Training Plan
-          </Button>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {/* Add New Card */}
+        <div 
+          className="bg-slate-700/50 rounded-lg cursor-pointer h-full flex flex-col items-center justify-center p-6 border border-slate-600/30 hover:border-blue-500/50 hover:bg-slate-700/80 transition-all min-h-[220px]"
+          onClick={handleAddNew}
+        >
+          <div className="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center mb-4">
+            <PlusIcon className="h-6 w-6 text-blue-400" />
+          </div>
+          <h3 className="text-sm font-semibold text-gray-200 mb-1">Add New Training Plan</h3>
+          <p className="text-xs text-gray-400 text-center">Click to add a new training plan</p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {plans.map((plan) => (
-            <TrainingPlanCard 
-              key={plan.plan_id} 
-              plan={plan} 
-              onEdit={() => handleEdit(plan)}
-            />
-          ))}
-        </div>
-      )}
+        
+        {/* Training Plan Cards */}
+        {plans.map((plan) => (
+          <TrainingPlanCard 
+            key={plan.plan_id} 
+            plan={plan} 
+            onEdit={handleEdit}
+          />
+        ))}
+      </div>
 
+      {/* Modal for adding/editing training plans */}
       <TrainingPlanModal
         open={isModalOpen}
         onClose={handleCloseModal}
