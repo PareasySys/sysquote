@@ -22,11 +22,12 @@ export const useQuotes = () => {
   const maxRetries = 3;
   // Add initialized ref to prevent multiple initial fetches
   const initialized = useRef<boolean>(false);
+  // Add a ref for checking if the component is still mounted
+  const isMounted = useRef<boolean>(true);
 
   const fetchQuotes = async () => {
     // Prevent multiple simultaneous fetches
-    if (fetchInProgress.current) return;
-    if (!user) return;
+    if (fetchInProgress.current || !user || !isMounted.current) return;
     
     // Clear any existing retry timeouts
     if (retryTimeout.current) {
@@ -53,44 +54,57 @@ export const useQuotes = () => {
       
       if (error) throw error;
 
-      // Reset retry count on success
-      retryCount.current = 0;
+      // Only update state if component is still mounted
+      if (isMounted.current) {
+        // Reset retry count on success
+        retryCount.current = 0;
 
-      // Transform the data to match our expected Quote type
-      const formattedQuotes = data ? data.map((item: any) => ({
-        quote_id: item.quote_id,
-        quote_name: item.quote_name,
-        client_name: item.client_name,
-        created_at: item.created_at
-      })) : [];
+        // Transform the data to match our expected Quote type
+        const formattedQuotes = data ? data.map((item: any) => ({
+          quote_id: item.quote_id,
+          quote_name: item.quote_name,
+          client_name: item.client_name,
+          created_at: item.created_at
+        })) : [];
 
-      setQuotes(formattedQuotes);
+        setQuotes(formattedQuotes);
+      }
     } catch (err: any) {
       console.error("Error fetching quotes:", err);
-      setError(err.message || "Failed to load quotes");
       
-      // Implement retry with exponential backoff
-      if (retryCount.current < maxRetries) {
-        const backoffTime = Math.pow(2, retryCount.current) * 1000;
-        retryCount.current++;
+      // Only update state if component is still mounted
+      if (isMounted.current) {
+        setError(err.message || "Failed to load quotes");
         
-        retryTimeout.current = setTimeout(() => {
-          fetchInProgress.current = false;
-          fetchQuotes();
-        }, backoffTime);
-      } else {
-        toast({
-          title: "Error loading quotes",
-          description: "Please refresh the page and try again",
-          variant: "destructive",
-        });
+        // Implement retry with exponential backoff
+        if (retryCount.current < maxRetries) {
+          const backoffTime = Math.pow(2, retryCount.current) * 1000;
+          retryCount.current++;
+          
+          retryTimeout.current = setTimeout(() => {
+            if (isMounted.current) {
+              fetchInProgress.current = false;
+              fetchQuotes();
+            }
+          }, backoffTime);
+        } else {
+          toast({
+            title: "Error loading quotes",
+            description: "Please refresh the page and try again",
+            variant: "destructive",
+          });
+        }
       }
     } finally {
-      // Only reset fetchInProgress if we're not scheduling a retry
-      if (!retryTimeout.current) {
+      // Only reset fetchInProgress if we're not scheduling a retry and component is mounted
+      if (!retryTimeout.current && isMounted.current) {
         fetchInProgress.current = false;
       }
-      setLoading(false);
+      
+      // Only update loading state if component is still mounted
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -98,11 +112,19 @@ export const useQuotes = () => {
     // Only fetch quotes if the component hasn't been initialized yet
     if (user && !initialized.current) {
       initialized.current = true;
-      fetchQuotes();
+      // Add a small delay to prevent immediate fetching which can cause issues
+      const initTimer = setTimeout(() => {
+        if (isMounted.current) {
+          fetchQuotes();
+        }
+      }, 100);
+      
+      return () => clearTimeout(initTimer);
     }
     
-    // Cleanup function to cancel any pending retries
+    // Cleanup function
     return () => {
+      isMounted.current = false;
       if (retryTimeout.current) {
         clearTimeout(retryTimeout.current);
       }
