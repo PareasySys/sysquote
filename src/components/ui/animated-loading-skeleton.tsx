@@ -1,159 +1,95 @@
 
 import React, { useEffect, useState } from 'react';
-import { motion, useAnimation } from 'framer-motion';
-
-// Interface for grid configuration structure
-interface GridConfig {
-    numCards: number; // Total number of cards to display
-    cols: number; // Number of columns in the grid
-    xBase: number; // Base x-coordinate for positioning
-    yBase: number; // Base y-coordinate for positioning
-    xStep: number; // Horizontal step between cards
-    yStep: number; // Vertical step between cards
-}
+import { motion } from 'framer-motion';
+import { Card } from "@/components/ui/card";
 
 interface AnimatedLoadingSkeletonProps {
     numCards?: number;
 }
 
 const AnimatedLoadingSkeleton = ({ numCards = 1 }: AnimatedLoadingSkeletonProps) => {
-    const [windowWidth, setWindowWidth] = useState(0); // State to store window width for responsiveness
-    const controls = useAnimation(); // Controls for Framer Motion animations
-
-    // Dynamically calculates grid configuration based on window width
-    const getGridConfig = (width: number): GridConfig => {
-        const cols = width >= 1024 ? 3 : width >= 640 ? 2 : 1; // Set columns based on screen width
-        return {
-            numCards,
-            cols,
-            xBase: 40, // Starting x-coordinate
-            yBase: 60, // Starting y-coordinate
-            xStep: 210, // Horizontal spacing
-            yStep: 230, // Vertical spacing
-        };
-    };
-
-    // Generates random animation paths for the search icon
-    const generateSearchPath = (config: GridConfig) => {
-        const { numCards, cols, xBase, yBase, xStep, yStep } = config;
-        const rows = Math.ceil(numCards / cols); // Calculate rows based on cards and columns
-        let allPositions = [];
-
-        // Generate grid positions for cards
-        for (let row = 0; row < rows; row++) {
-            for (let col = 0; col < cols; col++) {
-                if (row * cols + col < numCards) {
-                    allPositions.push({
-                        x: xBase + col * xStep,
-                        y: yBase + row * yStep
-                    });
-                }
-            }
-        }
-
-        // Shuffle positions to create random animations
-        const numRandomCards = Math.min(4, numCards);
-        const shuffledPositions = allPositions
-            .sort(() => Math.random() - 0.5)
-            .slice(0, numRandomCards);
-
-        // Ensure loop completion by adding the starting position
-        if (shuffledPositions.length > 0) {
-            shuffledPositions.push(shuffledPositions[0]);
-        }
-
-        return {
-            x: shuffledPositions.map(pos => pos.x),
-            y: shuffledPositions.map(pos => pos.y),
-            scale: Array(shuffledPositions.length).fill(1.2),
-            transition: {
-                duration: shuffledPositions.length * 2,
-                repeat: Infinity, // Loop animation infinitely
-                ease: [0.4, 0, 0.2, 1], // Ease function for smooth animation
-                times: shuffledPositions.map((_, i) => i / (shuffledPositions.length - 1))
-            }
-        };
-    };
-
-    // Handles window resize events and updates the window width
-    useEffect(() => {
-        setWindowWidth(window.innerWidth);
-        const handleResize = () => setWindowWidth(window.innerWidth);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    // Updates animation path whenever the window width changes
-    useEffect(() => {
-        const config = getGridConfig(windowWidth);
-        controls.start(generateSearchPath(config));
-    }, [windowWidth, controls, numCards]);
-
-    // Variants for frame animations
-    const frameVariants = {
-        hidden: { opacity: 0, scale: 0.95 }, // Initial state (hidden)
-        visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } } // Transition to visible state
-    };
-
-    // Variants for individual card animations
+    // Variants for card animations
     const cardVariants = {
-        hidden: { y: 20, opacity: 0 }, // Initial state (off-screen)
-        visible: (i: number) => ({ // Animate based on card index
+        hidden: { y: 20, opacity: 0 },
+        visible: (i: number) => ({
             y: 0,
             opacity: 1,
-            transition: { delay: i * 0.1, duration: 0.4 } // Staggered animation
+            transition: { delay: i * 0.1, duration: 0.4 }
         })
     };
 
-    const config = getGridConfig(windowWidth); // Get current grid configuration
-
     return (
-        <motion.div
-            className="w-full mx-auto"
-            variants={frameVariants}
-            initial="hidden"
-            animate="visible"
-        >
-            <div className="relative overflow-hidden rounded-lg bg-slate-800/50 p-6">
-                {/* Grid of animated cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[...Array(config.numCards)].map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(numCards)].map((_, i) => (
+                <Card
+                    key={i}
+                    className="bg-slate-800/80 border border-white/5 shadow-sm h-[220px] flex flex-col"
+                >
+                    <motion.div
+                        variants={cardVariants}
+                        initial="hidden"
+                        animate="visible"
+                        custom={i}
+                        className="p-6 h-full flex flex-col"
+                    >
+                        {/* Card content */}
+                        <div className="flex justify-between items-center mb-4">
+                            <motion.div
+                                className="h-5 w-32 bg-slate-700/80 rounded"
+                                animate={{
+                                    background: ["#334155", "#475569", "#334155"],
+                                }}
+                                transition={{ duration: 1.5, repeat: Infinity }}
+                            />
+                        </div>
+                        
+                        <div className="space-y-4 flex-1">
+                            <div>
+                                <motion.div
+                                    className="h-3 w-16 bg-slate-700/80 rounded mb-2"
+                                    animate={{
+                                        background: ["#334155", "#475569", "#334155"],
+                                    }}
+                                    transition={{ duration: 1.5, repeat: Infinity }}
+                                />
+                                <motion.div
+                                    className="h-5 w-3/4 bg-slate-700/80 rounded"
+                                    animate={{
+                                        background: ["#334155", "#475569", "#334155"],
+                                    }}
+                                    transition={{ duration: 1.5, repeat: Infinity }}
+                                />
+                            </div>
+                            
+                            <div>
+                                <motion.div
+                                    className="h-3 w-16 bg-slate-700/80 rounded mb-2"
+                                    animate={{
+                                        background: ["#334155", "#475569", "#334155"],
+                                    }}
+                                    transition={{ duration: 1.5, repeat: Infinity }}
+                                />
+                                <motion.div
+                                    className="h-5 w-1/2 bg-slate-700/80 rounded"
+                                    animate={{
+                                        background: ["#334155", "#475569", "#334155"],
+                                    }}
+                                    transition={{ duration: 1.5, repeat: Infinity }}
+                                />
+                            </div>
+                        </div>
+                        
                         <motion.div
-                            key={i}
-                            variants={cardVariants}
-                            initial="hidden"
-                            animate="visible"
-                            custom={i} // Index-based animation delay
-                            whileHover={{ scale: 1.02 }} // Slight scale on hover
-                            className="bg-slate-700/80 rounded-lg shadow-sm p-4 h-[180px]"
-                        >
-                            {/* Card placeholders */}
-                            <motion.div
-                                className="h-32 bg-slate-600/80 rounded-md mb-3"
-                                animate={{
-                                    background: ["#334155", "#475569", "#334155"],
-                                }}
-                                transition={{ duration: 1.5, repeat: Infinity }}
-                            />
-                            <motion.div
-                                className="h-3 w-3/4 bg-slate-600/80 rounded mb-2"
-                                animate={{
-                                    background: ["#334155", "#475569", "#334155"],
-                                }}
-                                transition={{ duration: 1.5, repeat: Infinity }}
-                            />
-                            <motion.div
-                                className="h-3 w-1/2 bg-slate-600/80 rounded"
-                                animate={{
-                                    background: ["#334155", "#475569", "#334155"],
-                                }}
-                                transition={{ duration: 1.5, repeat: Infinity }}
-                            />
-                        </motion.div>
-                    ))}
-                </div>
-            </div>
-        </motion.div>
+                            className="h-4 w-32 bg-slate-700/80 rounded mt-4"
+                            animate={{
+                                background: ["#334155", "#475569", "#334155"],
+                            }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                        />
+                    </motion.div>
+                </Card>
+            ))}
+        </div>
     );
 };
 
