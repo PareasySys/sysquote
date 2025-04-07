@@ -13,7 +13,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, Plus, FileText, Calendar } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, Plus, FileText } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 
@@ -85,7 +85,7 @@ const HomePage = () => {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-200">
+    <div className="flex h-screen bg-slate-950 text-gray-200">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
         <SidebarBody className="flex flex-col h-full justify-between">
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
@@ -139,7 +139,7 @@ const HomePage = () => {
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-sidebar p-4 rounded-lg border border-white/10 shadow-sm">
+                <div key={i} className="bg-slate-800/80 p-4 rounded-lg border border-white/5 shadow-sm h-[220px]">
                   <Skeleton className="h-6 w-3/4 mb-2 bg-gray-700" />
                   <Skeleton className="h-4 w-1/2 mb-1 bg-gray-700" />
                   <Skeleton className="h-4 w-1/3 bg-gray-700" />
@@ -157,31 +157,16 @@ const HomePage = () => {
                 Try Again
               </Button>
             </div>
-          ) : quotes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-10 text-center">
-              <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center mb-4">
-                <FileText className="h-8 w-8 text-gray-500" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-200 mb-2">No quotes yet</h3>
-              <p className="text-gray-400 mb-6 max-w-md">Create your first quote to get started with training quotes for your clients</p>
-              <Button 
-                onClick={handleStartNewQuote}
-                className="bg-blue-700 hover:bg-blue-800 text-white"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Create New Quote
-              </Button>
-            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Create New Quote Card */}
+              {/* Create New Quote Card - Always visible */}
               <Card 
-                className="bg-sidebar p-6 rounded-lg border border-white/10 shadow-sm hover:shadow-md transition-shadow flex flex-col items-center justify-center cursor-pointer h-[250px]"
+                className="bg-slate-800/80 rounded-lg border border-white/5 shadow-sm hover:bg-slate-700/80 transition-all cursor-pointer h-[220px] flex flex-col items-center justify-center"
                 onClick={handleStartNewQuote}
               >
-                <div className="flex flex-col items-center justify-center gap-4 h-full">
-                  <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center">
-                    <Plus className="h-8 w-8 text-gray-400" />
+                <div className="flex flex-col items-center justify-center gap-4 text-center p-6">
+                  <div className="w-16 h-16 rounded-full bg-slate-700/80 flex items-center justify-center">
+                    <Plus className="h-8 w-8 text-gray-300" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-200">Create New Quote</h3>
                   <p className="text-gray-400 text-center">Start a new training quote for your client</p>
@@ -198,6 +183,8 @@ const HomePage = () => {
                   created_at={quote.created_at}
                 />
               ))}
+              
+              {/* If quotes array is empty, don't show empty cards */}
             </div>
           )}
         </div>

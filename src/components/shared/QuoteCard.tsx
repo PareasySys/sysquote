@@ -1,7 +1,7 @@
 
 import { useNavigate } from "react-router-dom";
 import { formatDate } from "@/utils/formatters";
-import { FileText, Calendar } from "lucide-react";
+import { FileText, Calendar, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 type QuoteCardProps = {
@@ -21,8 +21,8 @@ const QuoteCard = ({ quote_id, quote_name, client_name, created_at }: QuoteCardP
   return (
     <Card
       onClick={handleClick}
-      className="bg-sidebar p-6 rounded-lg border border-white/10 shadow-sm 
-                hover:shadow-md transition-shadow cursor-pointer relative h-[250px] flex flex-col"
+      className="bg-slate-800/80 p-6 rounded-lg border border-white/5 shadow-sm 
+                hover:shadow-md hover:bg-slate-700/80 transition-all cursor-pointer relative h-[220px] flex flex-col"
     >
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
@@ -30,15 +30,13 @@ const QuoteCard = ({ quote_id, quote_name, client_name, created_at }: QuoteCardP
           <span className="font-medium text-lg text-gray-200">{quote_name}</span>
         </div>
         <button 
-          className="p-1 h-auto text-gray-400 hover:text-gray-300"
+          className="p-1 h-auto text-gray-400 hover:text-red-400 transition-colors"
           onClick={(e) => {
             e.stopPropagation();
             console.log("Delete quote", quote_id);
           }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
+          <Trash2 className="h-4 w-4" />
         </button>
       </div>
       
