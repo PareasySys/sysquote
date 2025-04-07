@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -71,11 +70,9 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     if (!machine?.photo_url) return;
 
     try {
-      // Extract filename from URL
       const fileName = machine.photo_url.split('/').pop();
       
       if (fileName) {
-        // Delete from storage
         const { error: deleteError } = await supabase.storage
           .from('machine_images')
           .remove([fileName]);
@@ -86,7 +83,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
         }
       }
       
-      // Update machine record to remove photo_url
       const { error: updateError } = await supabase
         .from('machine_types')
         .update({ photo_url: null })
@@ -97,7 +93,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
         throw updateError;
       }
       
-      // Clear preview
       setPreviewUrl(null);
       toast.success("Photo deleted successfully");
       
@@ -117,7 +112,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
       setIsSaving(true);
 
       if (machine) {
-        // Update existing machine
         const { error } = await supabase
           .from("machine_types")
           .update({
@@ -133,7 +127,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
         }
         toast.success("Machine type updated successfully");
       } else {
-        // Create new machine
         const { error } = await supabase.from("machine_types").insert({
           name,
           description,
@@ -163,7 +156,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     try {
       setIsDeleting(true);
 
-      // Delete the machine type
       const { error } = await supabase
         .from("machine_types")
         .delete()
@@ -171,7 +163,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
 
       if (error) throw error;
 
-      // Delete the image from storage if it exists
       if (machine.photo_url) {
         const fileName = machine.photo_url.split("/").pop();
         if (fileName) {
@@ -293,7 +284,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
             <Button 
               variant="outline" 
               onClick={onClose}
-              className="text-white border-slate-700 hover:bg-slate-800 hover:text-white"
+              className="text-blue-700 border-slate-700 hover:bg-slate-800 hover:text-white"
             >
               Cancel
             </Button>
@@ -325,7 +316,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-800 text-white border-slate-700 hover:bg-slate-700 hover:text-white">
+            <AlertDialogCancel className="bg-slate-800 text-blue-700 border-slate-700 hover:bg-slate-700 hover:text-white">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
