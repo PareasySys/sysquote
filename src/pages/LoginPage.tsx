@@ -18,7 +18,7 @@ const LoginPage = () => {
 
   return (
     <AuthLayout>
-      <div className="bg-white shadow-lg rounded-lg border border-gray-100 p-8">
+      <div className="bg-gray-800 shadow-lg rounded-lg border border-gray-700 p-8">
         <LoginForm />
       </div>
     </AuthLayout>

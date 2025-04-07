@@ -70,11 +70,11 @@ const LoginForm = ({ onClose }: LoginFormProps) => {
   return (
     <div className="flex flex-col items-center gap-2">
       <div
-        className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border"
+        className="flex size-11 shrink-0 items-center justify-center rounded-full border border-gray-700"
         aria-hidden="true"
       >
         <svg
-          className="stroke-primary dark:stroke-primary"
+          className="stroke-white"
           xmlns="http://www.w3.org/2000/svg"
           width="20"
           height="20"
@@ -86,8 +86,8 @@ const LoginForm = ({ onClose }: LoginFormProps) => {
       </div>
       
       <div className="flex flex-col space-y-1.5 text-center">
-        <h2 className="text-lg font-semibold tracking-tight">Welcome to SysQuote</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-lg font-semibold tracking-tight text-white">Welcome to SysQuote</h2>
+        <p className="text-sm text-gray-400">
           Enter your credentials to login to your account.
         </p>
       </div>
@@ -95,24 +95,26 @@ const LoginForm = ({ onClose }: LoginFormProps) => {
       <form className="space-y-5 w-full mt-4" onSubmit={handleSubmit}>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor={`${id}-email`}>Email</Label>
+            <Label htmlFor={`${id}-email`} className="text-gray-300">Email</Label>
             <Input 
               id={`${id}-email`} 
               placeholder="email@example.com" 
               type="email" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
               required 
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor={`${id}-password`}>Password</Label>
+            <Label htmlFor={`${id}-password`} className="text-gray-300">Password</Label>
             <Input
               id={`${id}-password`}
               placeholder="Enter your password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
               required
             />
           </div>
@@ -124,25 +126,26 @@ const LoginForm = ({ onClose }: LoginFormProps) => {
               id={`${id}-remember`} 
               checked={rememberMe} 
               onCheckedChange={(checked) => setRememberMe(checked === true)}
+              className="border-gray-500 data-[state=checked]:bg-blue-500"
             />
-            <Label htmlFor={`${id}-remember`} className="font-normal text-muted-foreground">
+            <Label htmlFor={`${id}-remember`} className="font-normal text-gray-400">
               Remember me
             </Label>
           </div>
-          <Link to="/forgot-password" className="text-sm text-primary underline hover:no-underline">
+          <Link to="/forgot-password" className="text-sm text-blue-400 underline hover:no-underline">
             Forgot password?
           </Link>
         </div>
         
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" className="w-full bg-blue-500 hover:bg-blue-600" disabled={isLoading}>
           {isLoading ? "Logging in..." : "Sign in"}
         </Button>
 
-        <div className="flex items-center gap-3 before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
-          <span className="text-xs text-muted-foreground">Or</span>
+        <div className="flex items-center gap-3 before:h-px before:flex-1 before:bg-gray-700 after:h-px after:flex-1 after:bg-gray-700">
+          <span className="text-xs text-gray-400">Or</span>
         </div>
 
-        <Button variant="outline" className="w-full" type="button" onClick={() => navigate("/signup")}>
+        <Button variant="outline" className="w-full border-gray-600 text-gray-300 hover:bg-gray-700" type="button" onClick={() => navigate("/signup")}>
           Create an account
         </Button>
       </form>
