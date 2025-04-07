@@ -89,7 +89,10 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
           })
           .eq("machine_type_id", machine.machine_type_id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error updating machine type:", error);
+          throw error;
+        }
         toast.success("Machine type updated successfully");
       } else {
         // Create new machine
@@ -100,7 +103,10 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
           photo_url: previewUrl,
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error creating machine type:", error);
+          throw error;
+        }
         toast.success("Machine type created successfully");
       }
 
@@ -266,7 +272,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || isUploading}
               className="bg-blue-700 hover:bg-blue-800"
             >
               {isSaving ? (
