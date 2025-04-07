@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -25,7 +24,7 @@ import { toast } from "sonner";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Loader2, XCircle } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface SoftwareTypeModalProps {
   open: boolean;
@@ -229,23 +228,14 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
               />
             </div>
 
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="isActive" className="text-white">Active</Label>
-                <Switch
-                  id="isActive"
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="alwaysIncluded" className="text-white">Always Included</Label>
-                <Switch
-                  id="alwaysIncluded"
-                  checked={alwaysIncluded}
-                  onCheckedChange={setAlwaysIncluded}
-                />
-              </div>
+            <div className="flex items-center gap-2 py-2">
+              <Checkbox 
+                id="alwaysIncluded" 
+                checked={alwaysIncluded}
+                onCheckedChange={(checked) => setAlwaysIncluded(checked === true)}
+                className="data-[state=checked]:bg-blue-600"
+              />
+              <Label htmlFor="alwaysIncluded" className="text-white cursor-pointer">Always Included</Label>
             </div>
 
             <div className="grid gap-2">
