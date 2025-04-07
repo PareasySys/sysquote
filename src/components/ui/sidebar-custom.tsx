@@ -88,7 +88,7 @@ export const DesktopSidebar = ({
   return (
     <div
       className={cn(
-        "h-full px-4 py-4 hidden md:flex md:flex-col bg-gray-800 flex-shrink-0 transition-all duration-300 fixed z-20",
+        "h-screen px-4 py-4 hidden md:flex md:flex-col bg-gray-800 flex-shrink-0 transition-all duration-300 fixed z-50",
         open ? "w-[300px] left-0" : "w-[60px] left-0",
         className
       )}
@@ -111,7 +111,7 @@ export const MobileSidebar = ({
     <>
       <div
         className={cn(
-          "h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-gray-800 w-full"
+          "h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-gray-800 w-full fixed top-0 left-0 z-50"
         )}
         {...props}
       >
