@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +13,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog } from "lucide-react";
 
 const HomePage = () => {
   const { user, signOut } = useAuth();
@@ -63,6 +62,13 @@ const HomePage = () => {
       href: "/home",
       icon: (
         <LayoutDashboard className="text-gray-300 h-5 w-5 flex-shrink-0" />
+      ),
+    },
+    {
+      label: "Profile",
+      href: "/profile",
+      icon: (
+        <UserCog className="text-gray-300 h-5 w-5 flex-shrink-0" />
       ),
     },
     {
