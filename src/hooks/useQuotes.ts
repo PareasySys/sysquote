@@ -94,11 +94,7 @@ export const useQuotes = () => {
             }
           }, backoffTime);
         } else {
-          toast({
-            title: "Error loading quotes",
-            description: "Please refresh the page and try again",
-            variant: "destructive",
-          });
+          toast.error("Error loading quotes. Please refresh the page and try again.");
         }
       }
     } finally {
