@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -80,6 +79,12 @@ const HomePage = () => {
       console.log("User is authenticated, displaying quotes", quotes.length);
     }
   }, [user, navigate, quotes.length]);
+
+  useEffect(() => {
+    if (!areasLoading && areas.length > 0) {
+      console.log("Geographic areas loaded:", areas);
+    }
+  }, [areasLoading, areas]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -342,14 +347,22 @@ const HomePage = () => {
                           <SelectValue placeholder="Select an area" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="bg-slate-700 border-gray-600 text-gray-200">
+                      <SelectContent className="bg-slate-700 border-gray-600 text-gray-200 z-[200]">
                         {areasLoading ? (
                           <div className="p-2 text-gray-400">Loading areas...</div>
-                        ) : areas.map((area) => (
-                          <SelectItem key={area.area_id} value={area.area_id.toString()}>
-                            {area.name}
-                          </SelectItem>
-                        ))}
+                        ) : areas.length === 0 ? (
+                          <div className="p-2 text-gray-400">No areas available</div>
+                        ) : (
+                          areas.map((area) => (
+                            <SelectItem 
+                              key={area.area_id} 
+                              value={area.area_id.toString()}
+                              className="text-gray-200 focus:bg-slate-600 focus:text-white hover:bg-slate-600"
+                            >
+                              {area.name}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage className="text-red-400" />

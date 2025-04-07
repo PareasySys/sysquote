@@ -18,6 +18,8 @@ export const useGeographicAreas = () => {
       setLoading(true);
       setError(null);
       
+      console.log("Fetching geographic areas...");
+      
       const { data, error } = await supabase
         .from("geographic_areas")
         .select("area_id, name")
@@ -25,6 +27,7 @@ export const useGeographicAreas = () => {
       
       if (error) throw error;
       
+      console.log("Geographic areas fetched:", data);
       setAreas(data || []);
     } catch (err: any) {
       console.error("Error fetching geographic areas:", err);
