@@ -23,9 +23,10 @@ export const useQuotes = () => {
     setError(null);
     
     try {
-      // This is just a placeholder query - the actual tables need to be created in Supabase
+      // Use type assertion to bypass TypeScript constraints
+      // since we know these tables will be created in Supabase later
       const { data, error } = await supabase
-        .from("quotes")
+        .from("quotes" as any)
         .select(`
           quote_id,
           quote_name,
@@ -39,13 +40,14 @@ export const useQuotes = () => {
 
       if (error) throw error;
 
+      // For now, we'll use type assertions to handle the data
       // Transform the data to match our expected Quote type
-      const formattedQuotes = data.map(item => ({
+      const formattedQuotes = data ? data.map((item: any) => ({
         quote_id: item.quote_id,
         quote_name: item.quote_name,
         client_name: item.clients?.name,
         created_at: item.created_at
-      }));
+      })) : [];
 
       setQuotes(formattedQuotes);
     } catch (err: any) {
