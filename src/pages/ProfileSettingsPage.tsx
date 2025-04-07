@@ -176,15 +176,36 @@ const ProfileSettingsPage = () => {
               ))}
             </div>
           </div>
-          <div className="py-4">
-            <div className="text-sm text-gray-400 px-2">
-              {sidebarOpen && (
-                <>
-                  <div>Welcome,</div>
-                  <div className="font-semibold truncate">{profileData.firstName || user.email}</div>
-                </>
-              )}
-            </div>
+          <div className="py-4 flex items-center">
+            {sidebarOpen ? (
+              <div className="flex items-center gap-3 px-2">
+                <Avatar className="w-8 h-8 border-2 border-gray-700">
+                  <AvatarImage src={previewUrl || profileData.avatarUrl || ""} />
+                  <AvatarFallback className="bg-gray-600 text-gray-200 text-xs">
+                    {profileData.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <div className="text-sm text-gray-200 font-semibold truncate max-w-[140px]">
+                    {(profileData.firstName && profileData.lastName) 
+                      ? `${profileData.firstName} ${profileData.lastName}`
+                      : user.email?.split('@')[0]}
+                  </div>
+                  <div className="text-xs text-gray-400 truncate max-w-[140px]">
+                    {user.email}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mx-auto">
+                <Avatar className="w-8 h-8 border-2 border-gray-700">
+                  <AvatarImage src={previewUrl || profileData.avatarUrl || ""} />
+                  <AvatarFallback className="bg-gray-600 text-gray-200 text-xs">
+                    {profileData.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            )}
           </div>
         </SidebarBody>
       </Sidebar>

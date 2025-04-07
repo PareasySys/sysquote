@@ -14,6 +14,8 @@ import {
   LogoIcon
 } from "@/components/ui/sidebar-custom";
 import { LayoutDashboard, Settings, LogOut, UserCog } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUserProfile } from "@/hooks/use-user-profile";
 
 const HomePage = () => {
   const { user, signOut } = useAuth();
@@ -22,15 +24,14 @@ const HomePage = () => {
   const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
   const { quotes, loading, error, fetchQuotes } = useQuotes();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { profileData } = useUserProfile(user);
 
-  // Check authentication status
   useEffect(() => {
     if (!user) {
       navigate("/");
     }
   }, [user, navigate]);
 
-  // Fetch quotes when the "existing" tab becomes active
   useEffect(() => {
     if (activeTab === "existing") {
       fetchQuotes();
@@ -54,7 +55,7 @@ const HomePage = () => {
     navigate(`/quote/${newQuoteId}/input`);
   };
 
-  if (!user) return null; // Don't render anything if not authenticated
+  if (!user) return null;
 
   const sidebarLinks = [
     {
@@ -102,15 +103,36 @@ const HomePage = () => {
               ))}
             </div>
           </div>
-          <div className="py-4">
-            <div className="text-sm text-gray-400 px-2">
-              {sidebarOpen && (
-                <>
-                  <div>Welcome,</div>
-                  <div className="font-semibold truncate">{user.email}</div>
-                </>
-              )}
-            </div>
+          <div className="py-4 flex items-center">
+            {sidebarOpen ? (
+              <div className="flex items-center gap-3 px-2">
+                <Avatar className="w-8 h-8 border-2 border-gray-700">
+                  <AvatarImage src={profileData.avatarUrl || ""} />
+                  <AvatarFallback className="bg-gray-600 text-gray-200 text-xs">
+                    {profileData.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <div className="text-sm text-gray-200 font-semibold truncate max-w-[140px]">
+                    {(profileData.firstName && profileData.lastName) 
+                      ? `${profileData.firstName} ${profileData.lastName}`
+                      : user.email?.split('@')[0]}
+                  </div>
+                  <div className="text-xs text-gray-400 truncate max-w-[140px]">
+                    {user.email}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mx-auto">
+                <Avatar className="w-8 h-8 border-2 border-gray-700">
+                  <AvatarImage src={profileData.avatarUrl || ""} />
+                  <AvatarFallback className="bg-gray-600 text-gray-200 text-xs">
+                    {profileData.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            )}
           </div>
         </SidebarBody>
       </Sidebar>
@@ -197,7 +219,6 @@ const HomePage = () => {
         </div>
       </main>
 
-      {/* Placeholder for the New Quote popup */}
       {isPopupOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 max-w-md w-full">
