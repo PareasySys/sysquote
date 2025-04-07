@@ -72,13 +72,12 @@ const HomePage = () => {
     },
   });
 
+  // Remove the unnecessary fetchQuotes call here since it's already handled in the hook
   useEffect(() => {
     if (!user) {
       navigate("/");
-    } else {
-      fetchQuotes();
     }
-  }, [user, navigate, fetchQuotes]);
+  }, [user, navigate]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -240,6 +239,7 @@ const HomePage = () => {
                   quote_id={quote.quote_id}
                   quote_name={quote.quote_name}
                   client_name={quote.client_name}
+                  area_name={quote.area_name}
                   created_at={quote.created_at}
                 />
               ))}
@@ -249,6 +249,16 @@ const HomePage = () => {
                   <FileText className="h-12 w-12 mx-auto text-gray-500 mb-3" />
                   <h3 className="text-lg font-medium text-gray-300 mb-1">No quotes yet</h3>
                   <p className="text-gray-400 mb-6">Create your first quote to get started</p>
+                </div>
+              )}
+              
+              {loading && (
+                <div className="col-span-full text-center py-10">
+                  <div className="animate-pulse flex flex-col items-center">
+                    <div className="h-12 w-12 bg-slate-700 rounded-full mb-3"></div>
+                    <div className="h-4 bg-slate-700 rounded w-[150px] mb-2"></div>
+                    <div className="h-3 bg-slate-700 rounded w-[200px]"></div>
+                  </div>
                 </div>
               )}
             </div>

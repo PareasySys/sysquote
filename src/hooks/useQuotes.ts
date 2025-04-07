@@ -22,9 +22,7 @@ export const useQuotes = () => {
   const retryTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCount = useRef<number>(0);
   const maxRetries = 3;
-  // Add initialized ref to prevent multiple initial fetches
-  const initialized = useRef<boolean>(false);
-  // Add a ref for checking if the component is still mounted
+  // Remove the initialized ref as it's causing the issue
   const isMounted = useRef<boolean>(true);
 
   const fetchQuotes = async () => {
@@ -111,17 +109,9 @@ export const useQuotes = () => {
   };
 
   useEffect(() => {
-    // Only fetch quotes if the component hasn't been initialized yet
-    if (user && !initialized.current) {
-      initialized.current = true;
-      // Add a small delay to prevent immediate fetching which can cause issues
-      const initTimer = setTimeout(() => {
-        if (isMounted.current) {
-          fetchQuotes();
-        }
-      }, 100);
-      
-      return () => clearTimeout(initTimer);
+    // Always fetch quotes when user is available
+    if (user) {
+      fetchQuotes();
     }
     
     // Cleanup function
