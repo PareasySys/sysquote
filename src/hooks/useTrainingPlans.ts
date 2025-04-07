@@ -32,7 +32,14 @@ export const useTrainingPlans = () => {
       if (error) throw error;
       
       console.log("Training plans fetched:", data);
-      setPlans(data || []);
+      
+      // Ensure icon_name is defined for all plans
+      const plansWithIcons = data?.map((plan) => ({
+        ...plan,
+        icon_name: plan.icon_name || "skill-level-basic"
+      })) || [];
+      
+      setPlans(plansWithIcons);
     } catch (err: any) {
       console.error("Error fetching training plans:", err);
       setError(err.message || "Failed to load training plans");
