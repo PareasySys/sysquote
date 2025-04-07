@@ -1,6 +1,7 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "@/pages/LoginPage";
+import SignupPage from "@/pages/SignupPage";
 import HomePage from "@/pages/HomePage";
 import ProfileSettingsPage from "@/pages/ProfileSettingsPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
@@ -11,8 +12,8 @@ const Router = () => (
   <BrowserRouter>
     <Routes>
       <Route path="/" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/signup" element={<LoginPage />} /> {/* Temporarily pointing to LoginPage */}
       <Route path="/home" element={
         <PrivateRoute>
           <HomePage />

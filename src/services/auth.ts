@@ -6,8 +6,15 @@ export interface LoginCredentials {
   password: string;
 }
 
-export interface RegisterCredentials extends LoginCredentials {
-  confirmPassword?: string;
+export interface RegisterCredentials {
+  email: string;
+  password: string;
+  options?: {
+    data?: {
+      first_name?: string;
+      last_name?: string;
+    }
+  }
 }
 
 export const signIn = async ({ email, password }: LoginCredentials) => {
@@ -20,10 +27,11 @@ export const signIn = async ({ email, password }: LoginCredentials) => {
   return data;
 };
 
-export const signUp = async ({ email, password }: RegisterCredentials) => {
+export const signUp = async ({ email, password, options }: RegisterCredentials) => {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options
   });
   
   if (error) throw error;
