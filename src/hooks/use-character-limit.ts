@@ -10,7 +10,7 @@ export function useCharacterLimit({ maxLength, initialValue = "" }: UseCharacter
   const [value, setValue] = useState(initialValue);
   const characterCount = value.length;
 
-  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     const newValue = e.target.value;
     if (newValue.length <= maxLength) {
       setValue(newValue);

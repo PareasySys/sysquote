@@ -11,12 +11,10 @@ import {
 } from "@/components/ui/sidebar-custom";
 import { LayoutDashboard, Settings, LogOut, UserCog, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useId } from "react";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,8 +28,8 @@ const ProfileSettingsPage = () => {
   
   const [formData, setFormData] = useState({
     email: user?.email || "",
-    firstName: user?.user_metadata?.name?.split(" ")[0] || "",
-    lastName: user?.user_metadata?.name?.split(" ")[1] || "",
+    firstName: user?.user_metadata?.first_name || "",
+    lastName: user?.user_metadata?.last_name || "",
     avatar: user?.user_metadata?.avatar_url || ""
   });
 
@@ -124,118 +122,77 @@ const ProfileSettingsPage = () => {
         </SidebarBody>
       </Sidebar>
 
-      <main className="flex-1 flex flex-col h-screen overflow-auto">
-        <div className="p-6 flex-1">
-          <div className="max-w-3xl mx-auto">
-            <h1 className="text-2xl font-bold text-white mb-6">Profile Settings</h1>
-            
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-white">Your Profile</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Manage your account details and preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-center mb-6">
-                  <ProfileAvatar defaultImage={formData.avatar || "https://github.com/shadcn.png"} />
-                </div>
-              
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-gray-300">Email</Label>
-                  <Input 
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    readOnly
-                    className="bg-gray-700 border-gray-600 text-gray-200"
-                  />
-                  <p className="text-sm text-gray-400">Your email address cannot be changed</p>
-                </div>
+      <main className="flex-1 flex flex-col h-screen overflow-auto p-6">
+        <div className="max-w-md mx-auto w-full mt-10">
+          <Card className="bg-gray-800 border-gray-700">
+            <CardContent className="p-6">
+              <div className="flex flex-col items-center">
+                <h1 className="text-xl font-bold text-white mb-2">Edit Profile</h1>
+                <p className="text-gray-400 mb-8">Make changes to your profile details.</p>
                 
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full">Edit Profile Details</Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-gray-800 border-gray-700 text-white">
-                    <DialogHeader>
-                      <DialogTitle>Edit Profile</DialogTitle>
-                      <DialogDescription className="text-gray-400">
-                        Make changes to your profile details.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="flex justify-center mb-6">
-                        <ProfileAvatar 
-                          defaultImage={formData.avatar || "https://github.com/shadcn.png"} 
-                          editable
-                        />
-                      </div>
-                      <div className="flex flex-col gap-4 sm:flex-row">
-                        <div className="flex-1 space-y-2">
-                          <Label htmlFor={`${id}-first-name`} className="text-gray-300">First name</Label>
-                          <Input
-                            id={`${id}-first-name`}
-                            name="firstName"
-                            placeholder="Your first name"
-                            defaultValue={formData.firstName}
-                            type="text"
-                            className="bg-gray-700 border-gray-600 text-gray-200"
-                            required
-                          />
-                        </div>
-                        <div className="flex-1 space-y-2">
-                          <Label htmlFor={`${id}-last-name`} className="text-gray-300">Last name</Label>
-                          <Input
-                            id={`${id}-last-name`}
-                            name="lastName"
-                            placeholder="Your last name"
-                            defaultValue={formData.lastName}
-                            type="text"
-                            className="bg-gray-700 border-gray-600 text-gray-200"
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`${id}-email`} className="text-gray-300">Email</Label>
-                        <Input
-                          id={`${id}-email`}
-                          name="email"
-                          value={formData.email}
-                          className="bg-gray-700 border-gray-600 text-gray-200"
-                          disabled
-                        />
-                      </div>
+                <ProfileAvatar 
+                  defaultImage={formData.avatar || "https://github.com/shadcn.png"} 
+                  editable={true}
+                  className="mb-8"
+                />
+                
+                <form className="w-full space-y-6" onSubmit={(e) => {
+                  e.preventDefault();
+                  handleUpdateProfile();
+                }}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`${id}-first-name`} className="text-gray-300">First name</Label>
+                      <Input
+                        id={`${id}-first-name`}
+                        name="firstName"
+                        placeholder="Your first name"
+                        value={formData.firstName}
+                        onChange={handleInputChange}
+                        className="bg-gray-700 border-gray-600 text-gray-200"
+                        required
+                      />
                     </div>
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
-                      </DialogClose>
-                      <Button type="submit" onClick={handleUpdateProfile}>Save changes</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardContent>
-            </Card>
-            
-            <Separator className="my-8 bg-gray-700" />
-            
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-white">Security</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Manage your password and account security
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full">
-                  Change Password
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`${id}-last-name`} className="text-gray-300">Last name</Label>
+                      <Input
+                        id={`${id}-last-name`}
+                        name="lastName"
+                        placeholder="Your last name"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        className="bg-gray-700 border-gray-600 text-gray-200"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor={`${id}-email`} className="text-gray-300">Email</Label>
+                    <Input
+                      id={`${id}-email`}
+                      name="email"
+                      value={formData.email}
+                      className="bg-gray-700 border-gray-600 text-gray-200"
+                      readOnly
+                    />
+                  </div>
+                  
+                  <div className="flex justify-end gap-4 mt-8">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => navigate('/home')}
+                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit">Save changes</Button>
+                  </div>
+                </form>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
@@ -243,12 +200,20 @@ const ProfileSettingsPage = () => {
 };
 
 // Profile Avatar component with optional edit functionality
-function ProfileAvatar({ defaultImage, editable = false }: { defaultImage?: string, editable?: boolean }) {
+function ProfileAvatar({ 
+  defaultImage, 
+  editable = false,
+  className = ""
+}: { 
+  defaultImage?: string, 
+  editable?: boolean,
+  className?: string
+}) {
   const { previewUrl, fileInputRef, handleThumbnailClick, handleFileChange } = useImageUpload();
   const currentImage = previewUrl || defaultImage;
 
   return (
-    <div className="relative">
+    <div className={`relative ${className}`}>
       <Avatar className="w-24 h-24 border-4 border-gray-700">
         <AvatarImage src={currentImage} />
         <AvatarFallback className="bg-gray-600 text-gray-200 text-xl">
