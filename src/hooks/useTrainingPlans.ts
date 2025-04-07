@@ -9,6 +9,7 @@ export interface TrainingPlan {
   description: string | null;
   display_order: number | null;
   created_at: string;
+  icon_name: string | null;
 }
 
 export const useTrainingPlans = () => {

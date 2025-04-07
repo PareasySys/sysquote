@@ -227,6 +227,7 @@ export type Database = {
           created_at: string
           description: string | null
           display_order: number | null
+          icon_name: string | null
           name: string
           plan_id: number
         }
@@ -234,6 +235,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number | null
+          icon_name?: string | null
           name: string
           plan_id?: number
         }
@@ -241,6 +243,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number | null
+          icon_name?: string | null
           name?: string
           plan_id?: number
         }

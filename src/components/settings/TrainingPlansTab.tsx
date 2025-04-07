@@ -1,13 +1,31 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { useTrainingPlans, TrainingPlan } from "@/hooks/useTrainingPlans";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
+import TrainingPlanCard from "@/components/training/TrainingPlanCard";
+import TrainingPlanModal from "@/components/training/TrainingPlanModal";
 import { Plus } from "lucide-react";
 
 const TrainingPlansTab = () => {
   const { plans, loading, error, fetchPlans } = useTrainingPlans();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<TrainingPlan | null>(null);
+
+  const handleAddNew = () => {
+    setSelectedPlan(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (plan: TrainingPlan) => {
+    setSelectedPlan(plan);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedPlan(null);
+  };
 
   if (loading) {
     return (
@@ -42,10 +60,10 @@ const TrainingPlansTab = () => {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-6 h-full">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-100">Training Plans</h2>
-        <Button className="bg-blue-700 hover:bg-blue-800 text-white">
+        <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={handleAddNew}>
           <Plus className="h-4 w-4 mr-2" />
           Add New Training Plan
         </Button>
@@ -56,18 +74,24 @@ const TrainingPlansTab = () => {
           <p className="text-gray-400 mb-6">No training plans available. Add your first one to get started.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <TrainingPlanCard isAddCard onAddNew={handleAddNew} />
           {plans.map((plan) => (
-            <Card key={plan.plan_id} className="p-4 bg-slate-800/80 border border-white/5">
-              <h3 className="font-semibold text-gray-200">{plan.name}</h3>
-              <p className="text-gray-400 text-sm my-2">{plan.description || 'No description available'}</p>
-              {plan.display_order !== null && (
-                <div className="text-xs text-gray-500">Display Order: {plan.display_order}</div>
-              )}
-            </Card>
+            <TrainingPlanCard 
+              key={plan.plan_id} 
+              plan={plan} 
+              onEdit={() => handleEdit(plan)}
+            />
           ))}
         </div>
       )}
+
+      <TrainingPlanModal
+        open={isModalOpen}
+        onClose={handleCloseModal}
+        plan={selectedPlan}
+        onSave={fetchPlans}
+      />
     </div>
   );
 };
