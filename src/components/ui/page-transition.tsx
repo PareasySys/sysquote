@@ -14,14 +14,14 @@ export const PageTransition = ({
 }: PageTransitionProps) => {
   const location = useLocation();
   const [displayLocation, setDisplayLocation] = useState(location);
-  const [transitionStage, setTransistionStage] = useState("fadeIn");
+  const [transitionStage, setTransitionStage] = useState("fadeInUp");
   
   useEffect(() => {
     if (location.pathname !== displayLocation.pathname) {
-      setTransistionStage("fadeOut");
+      setTransitionStage("fadeOut");
       setTimeout(() => {
         setDisplayLocation(location);
-        setTransistionStage("fadeIn");
+        setTransitionStage("fadeInUp");
       }, 300); // This should match the CSS transition time
     }
   }, [location, displayLocation]);
@@ -29,8 +29,8 @@ export const PageTransition = ({
   return (
     <div
       className={cn(
-        "transition-opacity duration-300 ease-in-out",
-        transitionStage === "fadeIn" ? "opacity-100" : "opacity-0",
+        "transition-all duration-300 ease-in-out",
+        transitionStage === "fadeInUp" ? "fadeInUp-animation" : "opacity-0",
         className
       )}
     >
