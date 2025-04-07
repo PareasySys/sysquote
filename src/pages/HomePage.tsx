@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,6 +5,7 @@ import { useQuotes } from "@/hooks/useQuotes";
 import { useGeographicAreas } from "@/hooks/useGeographicAreas";
 import { Button } from "@/components/ui/button";
 import QuoteCard from "@/components/shared/QuoteCard";
+import AnimatedLoadingSkeleton from "@/components/ui/animated-loading-skeleton";
 import { Card } from "@/components/ui/card";
 import { 
   Dialog,
@@ -72,7 +72,6 @@ const HomePage = () => {
     },
   });
 
-  // Remove the unnecessary fetchQuotes call here since it's already handled in the hook
   useEffect(() => {
     if (!user) {
       navigate("/");
@@ -253,12 +252,8 @@ const HomePage = () => {
               )}
               
               {loading && (
-                <div className="col-span-full text-center py-10">
-                  <div className="animate-pulse flex flex-col items-center">
-                    <div className="h-12 w-12 bg-slate-700 rounded-full mb-3"></div>
-                    <div className="h-4 bg-slate-700 rounded w-[150px] mb-2"></div>
-                    <div className="h-3 bg-slate-700 rounded w-[200px]"></div>
-                  </div>
+                <div className="col-span-2">
+                  <AnimatedLoadingSkeleton numCards={1} />
                 </div>
               )}
             </div>
