@@ -21,10 +21,17 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { TrainingPlan } from "@/hooks/useTrainingPlans";
+import { useTrainingIcons, TrainingIcon } from "@/hooks/useTrainingIcons";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface TrainingPlanModalProps {
   open: boolean;
@@ -32,13 +39,6 @@ interface TrainingPlanModalProps {
   plan?: TrainingPlan | null;
   onSave: () => void;
 }
-
-const iconOptions = [
-  { value: "skill-level-basic", label: "Basic" },
-  { value: "skill-level-intermediate", label: "Intermediate" },
-  { value: "skill-level-advanced", label: "Advanced" },
-  { value: "team-training", label: "Team Training" }
-];
 
 const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
   open,
@@ -53,6 +53,7 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const { icons, loading: loadingIcons } = useTrainingIcons();
   
   useEffect(() => {
     if (plan) {
@@ -67,70 +68,6 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
       setIconName("skill-level-basic");
     }
   }, [plan]);
-
-  // Render SVG based on selected icon
-  const renderSelectedIcon = () => {
-    switch (iconName) {
-      case "skill-level-basic":
-        return (
-          <svg fill="#ffffff" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-10 h-10">
-            <g>
-              <defs>
-                <style>{`.cls-1 { fill: none; }`}</style>
-              </defs>
-              <title>skill-level-basic</title>
-              <path d="M30,30H22V4h8Zm-6-2h4V6H24Z"></path>
-              <path d="M20,30H12V12h8Zm-6-2h4V14H14Z"></path>
-              <path d="M10,30H2V18h8Z"></path>
-              <rect className="cls-1" width="32" height="32"></rect>
-            </g>
-          </svg>
-        );
-      case "skill-level-intermediate":
-        return (
-          <svg fill="#ffffff" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-10 h-10">
-            <g>
-              <defs>
-                <style>{`.cls-1 { fill: none; }`}</style>
-              </defs>
-              <title>skill-level-intermediate</title>
-              <path d="M30,30H22V4h8Zm-6-2h4V6H24Z"></path>
-              <path d="M20,30H12V12h8Z"></path>
-              <path d="M10,30H2V18h8Z"></path>
-              <rect className="cls-1" width="32" height="32"></rect>
-            </g>
-          </svg>
-        );
-      case "skill-level-advanced":
-        return (
-          <svg fill="#ffffff" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-10 h-10">
-            <g>
-              <defs>
-                <style>{`.cls-1 { fill: none; }`}</style>
-              </defs>
-              <title>skill-level-advanced</title>
-              <path d="M30,30H22V4h8Z"></path>
-              <path d="M20,30H12V12h8Z"></path>
-              <path d="M10,30H2V18h8Z"></path>
-              <rect className="cls-1" width="32" height="32"></rect>
-            </g>
-          </svg>
-        );
-      case "team-training":
-        return (
-          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-10 h-10">
-            <g>
-              <path d="M8 3.5C8 4.88071 6.88071 6 5.5 6C4.11929 6 3 4.88071 3 3.5C3 2.11929 4.11929 1 5.5 1C6.88071 1 8 2.11929 8 3.5Z" fill="#ffffff"></path>
-              <path d="M3 8C1.34315 8 0 9.34315 0 11V15H8V8H3Z" fill="#ffffff"></path>
-              <path d="M13 8H10V15H16V11C16 9.34315 14.6569 8 13 8Z" fill="#ffffff"></path>
-              <path d="M12 6C13.1046 6 14 5.10457 14 4C14 2.89543 13.1046 2 12 2C10.8954 2 10 2.89543 10 4C10 5.10457 10.8954 6 12 6Z" fill="#ffffff"></path>
-            </g>
-          </svg>
-        );
-      default:
-        return null;
-    }
-  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -207,6 +144,9 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
     }
   };
 
+  // Find the currently selected icon
+  const selectedIcon = icons.find(icon => icon.name === iconName) || icons[0];
+
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
@@ -253,76 +193,68 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
             </div>
 
             <div className="grid gap-2">
-              <Label className="text-white">Icon</Label>
-              <RadioGroup 
-                value={iconName} 
-                onValueChange={setIconName}
-                className="grid grid-cols-2 gap-4"
-              >
-                {iconOptions.map((option) => (
-                  <div key={option.value} className="flex items-center space-x-2">
-                    <RadioGroupItem 
-                      value={option.value} 
-                      id={option.value}
-                      className="sr-only"
-                    />
-                    <Label
-                      htmlFor={option.value}
-                      className={`flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer border ${iconName === option.value ? 'bg-blue-800/40 border-blue-500' : 'bg-slate-800 border-slate-700 hover:bg-slate-700/60'}`}
-                    >
-                      {iconName === option.value && (
-                        <div className="absolute top-2 right-2 w-3 h-3 bg-blue-500 rounded-full"></div>
+              <Label htmlFor="iconName" className="text-white">Icon</Label>
+              
+              <div className="relative">
+                <Select 
+                  value={iconName} 
+                  onValueChange={setIconName}
+                >
+                  <SelectTrigger className="w-full bg-slate-800 border-slate-700 text-slate-100">
+                    <div className="flex items-center gap-2">
+                      {!loadingIcons && selectedIcon && (
+                        <img 
+                          src={selectedIcon.url} 
+                          alt={selectedIcon.name}
+                          className="h-5 w-5"
+                        />
                       )}
-                      <div className="mb-2">
-                        {option.value === "skill-level-basic" && (
-                          <svg fill="#ffffff" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-8 h-8">
-                            <g>
-                              <defs><style>{`.cls-1 { fill: none; }`}</style></defs>
-                              <path d="M30,30H22V4h8Zm-6-2h4V6H24Z"></path>
-                              <path d="M20,30H12V12h8Zm-6-2h4V14H14Z"></path>
-                              <path d="M10,30H2V18h8Z"></path>
-                              <rect className="cls-1" width="32" height="32"></rect>
-                            </g>
-                          </svg>
-                        )}
-                        {option.value === "skill-level-intermediate" && (
-                          <svg fill="#ffffff" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-8 h-8">
-                            <g>
-                              <defs><style>{`.cls-1 { fill: none; }`}</style></defs>
-                              <path d="M30,30H22V4h8Zm-6-2h4V6H24Z"></path>
-                              <path d="M20,30H12V12h8Z"></path>
-                              <path d="M10,30H2V18h8Z"></path>
-                              <rect className="cls-1" width="32" height="32"></rect>
-                            </g>
-                          </svg>
-                        )}
-                        {option.value === "skill-level-advanced" && (
-                          <svg fill="#ffffff" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-8 h-8">
-                            <g>
-                              <defs><style>{`.cls-1 { fill: none; }`}</style></defs>
-                              <path d="M30,30H22V4h8Z"></path>
-                              <path d="M20,30H12V12h8Z"></path>
-                              <path d="M10,30H2V18h8Z"></path>
-                              <rect className="cls-1" width="32" height="32"></rect>
-                            </g>
-                          </svg>
-                        )}
-                        {option.value === "team-training" && (
-                          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" className="w-8 h-8">
-                            <g>
-                              <path d="M8 3.5C8 4.88071 6.88071 6 5.5 6C4.11929 6 3 4.88071 3 3.5C3 2.11929 4.11929 1 5.5 1C6.88071 1 8 2.11929 8 3.5Z" fill="#ffffff"></path>
-                              <path d="M3 8C1.34315 8 0 9.34315 0 11V15H8V8H3Z" fill="#ffffff"></path>
-                              <path d="M13 8H10V15H16V11C16 9.34315 14.6569 8 13 8Z" fill="#ffffff"></path>
-                              <path d="M12 6C13.1046 6 14 5.10457 14 4C14 2.89543 13.1046 2 12 2C10.8954 2 10 2.89543 10 4C10 5.10457 10.8954 6 12 6Z" fill="#ffffff"></path>
-                            </g>
-                          </svg>
-                        )}
+                      <SelectValue placeholder="Select an icon" />
+                    </div>
+                  </SelectTrigger>
+                  
+                  <SelectContent className="bg-slate-800 border-slate-700 text-slate-100 max-h-[300px]">
+                    {loadingIcons ? (
+                      <div className="p-2 flex justify-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
                       </div>
-                      <span className="text-xs font-medium text-slate-300">{option.label}</span>
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2 p-2">
+                        {icons.map((icon) => (
+                          <SelectItem 
+                            key={icon.name} 
+                            value={icon.name}
+                            className="cursor-pointer rounded-md p-2 data-[highlighted]:bg-slate-700 focus:bg-slate-700 hover:bg-slate-700 flex flex-col items-center justify-center"
+                          >
+                            <div className="h-12 w-12 flex items-center justify-center mb-1">
+                              <img 
+                                src={icon.url} 
+                                alt={icon.name}
+                                className="max-h-full max-w-full"
+                              />
+                            </div>
+                            <span className="text-xs text-center truncate max-w-full">
+                              {icon.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="mt-2 flex justify-center">
+              {!loadingIcons && selectedIcon && (
+                <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700/50">
+                  <img 
+                    src={selectedIcon.url} 
+                    alt={selectedIcon.name} 
+                    className="h-16 w-16"
+                  />
+                </div>
+              )}
             </div>
           </div>
 

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import TrainingPlanCard from "@/components/training/TrainingPlanCard";
 import TrainingPlanModal from "@/components/training/TrainingPlanModal";
-import { Plus } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 
 const TrainingPlansTab = () => {
   const { plans, loading, error, fetchPlans } = useTrainingPlans();
@@ -64,17 +64,24 @@ const TrainingPlansTab = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-100">Training Plans</h2>
         <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={handleAddNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Training Plan
+          <PlusIcon className="h-4 w-4 mr-2" />
+          Add New
         </Button>
       </div>
 
       {plans.length === 0 ? (
         <div className="text-center py-10">
           <p className="text-gray-400 mb-6">No training plans available. Add your first one to get started.</p>
+          <Button 
+            className="bg-blue-700 hover:bg-blue-800 text-white" 
+            onClick={handleAddNew}
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Create First Training Plan
+          </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <TrainingPlanCard isAddCard onAddNew={handleAddNew} />
           {plans.map((plan) => (
             <TrainingPlanCard 
