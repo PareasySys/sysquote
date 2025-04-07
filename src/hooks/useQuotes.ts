@@ -23,7 +23,8 @@ export const useQuotes = () => {
     setError(null);
     
     try {
-      const { data, error } = await supabase
+      // Cast to any to bypass TypeScript errors until the types are properly generated
+      const { data, error } = await (supabase
         .from("quotes")
         .select(`
           quote_id,
@@ -32,12 +33,12 @@ export const useQuotes = () => {
           created_at
         `)
         .eq("created_by_user_id", user.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }) as any);
       
       if (error) throw error;
 
       // Transform the data to match our expected Quote type
-      const formattedQuotes = data ? data.map((item) => ({
+      const formattedQuotes = data ? data.map((item: any) => ({
         quote_id: item.quote_id,
         quote_name: item.quote_name,
         client_name: item.client_name,
