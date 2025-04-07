@@ -21,12 +21,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { TrainingPlan } from "@/hooks/useTrainingPlans";
-import { useTrainingIcons, TrainingIcon } from "@/hooks/useTrainingIcons";
+import { useTrainingIcons } from "@/hooks/useTrainingIcons";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageTrainingIcons } from "@/hooks/useStorageTrainingIcons";
 
 interface TrainingPlanModalProps {
   open: boolean;
@@ -43,23 +42,21 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [iconName, setIconName] = useState("skill-level-basic");
+  const [iconName, setIconName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const { icons, loading: loadingIcons, fetchIcons } = useTrainingIcons();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const { uploadIcon, uploading } = useStorageTrainingIcons();
   
   useEffect(() => {
     if (plan) {
       setName(plan.name || "");
       setDescription(plan.description || "");
-      setIconName(plan.icon_name || "skill-level-basic");
+      setIconName(plan.icon_name || "");
     } else {
       setName("");
       setDescription("");
-      setIconName("skill-level-basic");
+      setIconName("");
     }
   }, [plan]);
 
@@ -71,17 +68,6 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
 
     try {
       setIsSaving(true);
-
-      // Handle file upload if a new SVG was selected
-      if (selectedFile) {
-        const newIconPath = await uploadIcon(selectedFile);
-        if (newIconPath) {
-          // Extract filename without extension
-          const fileName = selectedFile.name.replace('.svg', '').toLowerCase().replace(/[^a-z0-9_.]/g, '-');
-          setIconName(fileName);
-        }
-        setSelectedFile(null);
-      }
 
       if (plan) {
         const { error } = await supabase
@@ -147,32 +133,6 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
     }
   };
 
-  // Handle file selection
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.type !== 'image/svg+xml') {
-      toast.error("Please upload an SVG file");
-      return;
-    }
-
-    setSelectedFile(file);
-    
-    try {
-      const iconPath = await uploadIcon(file);
-      if (iconPath) {
-        // Extract filename without extension
-        const fileName = file.name.replace('.svg', '').toLowerCase().replace(/[^a-z0-9_.]/g, '-');
-        setIconName(fileName);
-        await fetchIcons(); // Refresh icons list
-      }
-    } catch (error) {
-      console.error("Error uploading icon:", error);
-      toast.error("Failed to upload icon");
-    }
-  };
-
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
@@ -207,19 +167,7 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
             </div>
 
             <div className="grid gap-2">
-              <div className="flex justify-between items-center">
-                <Label className="text-white">Icon</Label>
-                <label className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer">
-                  Upload new SVG
-                  <input 
-                    type="file"
-                    accept=".svg"
-                    className="hidden"
-                    onChange={handleFileChange}
-                    disabled={uploading}
-                  />
-                </label>
-              </div>
+              <Label className="text-white">Icon</Label>
               
               {loadingIcons ? (
                 <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
@@ -230,7 +178,7 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
                     />
                   ))}
                 </div>
-              ) : (
+              ) : icons.length > 0 ? (
                 <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
                   {icons.map((icon) => (
                     <button
@@ -248,13 +196,18 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
                           alt={icon.name}
                           className="max-h-full max-w-full"
                           onError={(e) => {
+                            console.error(`Error loading icon: ${icon.url}`);
                             const target = e.target as HTMLImageElement;
-                            target.src = "/training-plan-icons/skill-level-basic.svg";
+                            target.src = "/placeholder.svg";
                           }}
                         />
                       </div>
                     </button>
                   ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center bg-slate-800 rounded-md border border-slate-700">
+                  <p className="text-slate-400">No icons available in the storage bucket.</p>
                 </div>
               )}
             </div>
@@ -265,7 +218,7 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
               <Button
                 variant="destructive"
                 onClick={() => setConfirmDeleteOpen(true)}
-                disabled={isDeleting || isSaving || uploading}
+                disabled={isDeleting || isSaving}
                 className="mr-auto"
               >
                 {isDeleting ? (
@@ -287,13 +240,13 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={isSaving || uploading}
+              disabled={isSaving}
               className="bg-blue-700 hover:bg-blue-800"
             >
-              {isSaving || uploading ? (
+              {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {uploading ? "Uploading..." : "Saving..."}
+                  Saving...
                 </>
               ) : (
                 "Save Changes"

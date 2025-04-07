@@ -6,6 +6,7 @@ import { toast } from "sonner";
 export interface TrainingIcon {
   name: string;
   url: string;
+  source: "storage" | "local";
 }
 
 export const useTrainingIcons = () => {
@@ -13,37 +14,17 @@ export const useTrainingIcons = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Default icons based on local SVG files
-  const defaultIcons: TrainingIcon[] = [
-    {
-      name: "skill-level-basic",
-      url: "/training-plan-icons/skill-level-basic.svg"
-    },
-    {
-      name: "skill-level-intermediate",
-      url: "/training-plan-icons/skill-level-intermediate.svg"
-    },
-    {
-      name: "skill-level-advanced",
-      url: "/training-plan-icons/skill-level-advanced.svg"
-    },
-    {
-      name: "team-training",
-      url: "/training-plan-icons/team-training.svg"
-    }
-  ];
-
   const fetchIcons = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log("Fetching training icons...");
+      console.log("Fetching training icons from storage bucket...");
       
-      // Initialize with default icons
-      const iconsList = [...defaultIcons];
+      // Initialize with an empty array
+      let iconsList: TrainingIcon[] = [];
       
-      // Try to fetch icons from storage bucket if available
+      // Fetch icons from storage bucket
       const { data, error } = await supabase
         .storage
         .from('training_plan_icons')
@@ -52,24 +33,24 @@ export const useTrainingIcons = () => {
         });
       
       if (error) {
-        console.warn("Failed to fetch icons from storage, using defaults only:", error);
+        console.warn("Failed to fetch icons from storage:", error);
+        throw error;
       } else if (data) {
         console.log("Icons fetched from storage:", data);
         
-        // Add storage icons to the list
-        const storageIcons = data
+        // Create icons from storage files
+        iconsList = data
           .filter(file => file.name.endsWith('.svg'))
           .map(file => ({
             name: file.name.replace('.svg', ''),
-            url: `${supabase.storage.from('training_plan_icons').getPublicUrl(file.name).data.publicUrl}`
+            url: `${supabase.storage.from('training_plan_icons').getPublicUrl(file.name).data.publicUrl}`,
+            source: "storage" as const
           }));
-        
-        // Add storage icons to our list, avoiding duplicates
-        storageIcons.forEach(storageIcon => {
-          if (!iconsList.some(icon => icon.name === storageIcon.name)) {
-            iconsList.push(storageIcon);
-          }
-        });
+      }
+      
+      // If no icons were found in storage, show a message
+      if (iconsList.length === 0) {
+        toast.warning("No icons found in storage bucket. Please upload some icons first.");
       }
       
       setIcons(iconsList);
@@ -78,8 +59,8 @@ export const useTrainingIcons = () => {
       setError(err.message || "Failed to load training icons");
       toast.error("Failed to load icons");
       
-      // Fallback to default icons
-      setIcons(defaultIcons);
+      // Set empty array on error
+      setIcons([]);
     } finally {
       setLoading(false);
     }
