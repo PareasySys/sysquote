@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +9,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ImagePlus, KeyIcon, EyeIcon, EyeOffIcon } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ImagePlus, KeyIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,6 @@ const ProfileSettingsPage = () => {
   const id = useId();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { profileData, updateProfile, isUpdating } = useUserProfile(user);
-  const [showPassword, setShowPassword] = useState(false);
   
   const [formData, setFormData] = useState({
     email: user?.email || "",
@@ -162,10 +162,6 @@ const ProfileSettingsPage = () => {
     },
   ];
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
     <div className="flex h-screen bg-gray-900">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
@@ -259,30 +255,18 @@ const ProfileSettingsPage = () => {
                     <div className="relative">
                       <Input
                         id={`${id}-password`}
-                        type={showPassword ? "text" : "password"}
+                        type="password"
                         value="••••••••"
                         className="bg-gray-700 border-gray-600 text-gray-200 pr-28"
                         readOnly
                       />
                       <div className="absolute inset-y-0 right-0 flex items-center">
-                        <button
-                          type="button"
-                          onClick={togglePasswordVisibility}
-                          className="p-2 focus:outline-none text-gray-400 hover:text-gray-300"
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                        >
-                          {showPassword ? (
-                            <EyeOffIcon className="h-4 w-4" />
-                          ) : (
-                            <EyeIcon className="h-4 w-4" />
-                          )}
-                        </button>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={handlePasswordReset}
-                          className="mr-1 border-gray-600 text-gray-300 hover:bg-gray-700 flex items-center gap-1 h-8"
+                          className="mr-1 border-gray-600 text-[#33C3F0] hover:text-[#1EAEDB] hover:bg-gray-700 flex items-center gap-1 h-8"
                         >
                           <KeyIcon size={14} />
                           Change
@@ -296,7 +280,7 @@ const ProfileSettingsPage = () => {
                       type="button" 
                       variant="outline" 
                       onClick={() => navigate('/home')}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                      className="border-gray-600 text-[#33C3F0] hover:text-[#1EAEDB] hover:bg-gray-700"
                       disabled={isSubmitting || isUpdating}
                     >
                       Cancel
