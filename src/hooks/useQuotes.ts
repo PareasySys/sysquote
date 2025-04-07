@@ -20,6 +20,8 @@ export const useQuotes = () => {
   const retryTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCount = useRef<number>(0);
   const maxRetries = 3;
+  // Add initialized ref to prevent multiple initial fetches
+  const initialized = useRef<boolean>(false);
 
   const fetchQuotes = async () => {
     // Prevent multiple simultaneous fetches
@@ -93,7 +95,9 @@ export const useQuotes = () => {
   };
 
   useEffect(() => {
-    if (user) {
+    // Only fetch quotes if the component hasn't been initialized yet
+    if (user && !initialized.current) {
+      initialized.current = true;
       fetchQuotes();
     }
     
