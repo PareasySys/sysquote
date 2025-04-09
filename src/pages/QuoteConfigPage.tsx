@@ -284,35 +284,41 @@ const QuoteConfigPage: React.FC = () => {
                     Loading Quote
                   </TextShimmerWave>
                 ) : isEditing ? (
-                  <div className="flex flex-col space-y-2 ml-4 flex-1 min-w-[300px]">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <div className="w-full sm:w-1/2">
-                        <label htmlFor="quote_name" className="text-sm font-medium text-gray-400 mb-1 block">Quote Name</label>
-                        <Input 
-                          id="quote_name"
-                          value={editedQuote.quote_name || ''} 
-                          onChange={(e) => handleQuoteFieldChange('quote_name', e.target.value)}
-                          className="bg-slate-800 border-slate-700 text-gray-200"
-                        />
-                      </div>
-                      <div className="w-full sm:w-1/2">
-                        <label htmlFor="client_name" className="text-sm font-medium text-gray-400 mb-1 block">Client Name</label>
-                        <Input 
-                          id="client_name"
-                          value={editedQuote.client_name || ''} 
-                          onChange={(e) => handleQuoteFieldChange('client_name', e.target.value)}
-                          className="bg-slate-800 border-slate-700 text-gray-200"
-                        />
-                      </div>
+                  <div className="flex flex-row items-end gap-4 ml-4 flex-1">
+                    <div>
+                      <label htmlFor="quote_name" className="text-sm font-medium text-gray-400 mb-1 block">
+                        Quote Name
+                      </label>
+                      <Input 
+                        id="quote_name"
+                        value={editedQuote.quote_name || ''} 
+                        onChange={(e) => handleQuoteFieldChange('quote_name', e.target.value)}
+                        className="bg-slate-800 border-slate-700 text-gray-200 w-[200px]"
+                      />
                     </div>
-                    <div className="w-full sm:w-1/2">
-                      <label htmlFor="area" className="text-sm font-medium text-gray-400 mb-1 block">Area</label>
+                    
+                    <div>
+                      <label htmlFor="client_name" className="text-sm font-medium text-gray-400 mb-1 block">
+                        Client Name
+                      </label>
+                      <Input 
+                        id="client_name"
+                        value={editedQuote.client_name || ''} 
+                        onChange={(e) => handleQuoteFieldChange('client_name', e.target.value)}
+                        className="bg-slate-800 border-slate-700 text-gray-200 w-[200px]"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="area" className="text-sm font-medium text-gray-400 mb-1 block">
+                        Area
+                      </label>
                       <Select 
                         value={editedQuote.area_id?.toString() || ''} 
                         onValueChange={(value) => handleQuoteFieldChange('area_id', parseInt(value))}
                         disabled={areasLoading}
                       >
-                        <SelectTrigger className="bg-slate-800 border-slate-700 text-gray-200">
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-gray-200 w-[200px]">
                           <SelectValue placeholder="Select Area" />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-800 border-slate-700 text-gray-200">
