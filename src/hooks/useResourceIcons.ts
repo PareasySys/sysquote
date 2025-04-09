@@ -38,11 +38,11 @@ export const useResourceIcons = () => {
       } else if (data) {
         console.log("Icons fetched from storage:", data);
         
-        // Create icons from storage files - accept both SVGs and PNGs
+        // Create icons from storage files
         iconsList = data
-          .filter(file => file.name.endsWith('.svg') || file.name.endsWith('.png'))
+          .filter(file => file.name.endsWith('.svg'))
           .map(file => ({
-            name: file.name,
+            name: file.name.replace('.svg', ''),
             url: `${supabase.storage.from('resource_icons').getPublicUrl(file.name).data.publicUrl}`,
             source: "storage" as const
           }));
