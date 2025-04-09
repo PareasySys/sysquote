@@ -74,7 +74,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-slate-800 border-gray-700 text-gray-200 max-w-6xl max-h-[85vh]">
+        <DialogContent className="bg-slate-800 border-gray-700 text-gray-200 max-w-[90vw] w-[1200px] max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-xl text-gray-100">Select Machine Types</DialogTitle>
           </DialogHeader>
@@ -98,7 +98,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
                 <p className="text-red-300">{error}</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 p-1">
                 {machines.map((machine) => (
                   <div 
                     key={machine.machine_type_id}
