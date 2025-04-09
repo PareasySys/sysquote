@@ -43,6 +43,7 @@ const DialogContent = React.forwardRef<
         // Prevent focus from moving back into a dialog element on close
         event.preventDefault();
       }}
+      aria-describedby={undefined}
       {...props}
     >
       {children}

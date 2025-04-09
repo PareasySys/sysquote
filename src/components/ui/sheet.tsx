@@ -65,6 +65,7 @@ const SheetContent = React.forwardRef<
         event.preventDefault();
       }}
       className={cn(sheetVariants({ side }), className)}
+      aria-describedby={undefined}
       {...props}
     >
       {children}
