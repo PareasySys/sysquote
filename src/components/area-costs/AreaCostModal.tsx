@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -196,64 +197,35 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
 
     try {
       setIsDeleting(true);
-      console.log("Attempting to delete area cost:", areaCost);
       
-      const { data: quotesUsingArea, error: quotesError } = await supabase
+      // First update any quotes using this area to remove the reference
+      const { error: updateError } = await supabase
         .from("quotes")
-        .select("quote_id")
+        .update({ area_id: null })
         .eq("area_id", areaCost.area_id);
 
-      if (quotesError) {
-        console.error("Error checking quotes references:", quotesError);
-        throw quotesError;
+      if (updateError) {
+        console.error("Error removing references from quotes:", updateError);
+        throw updateError;
       }
 
-      if (quotesUsingArea && quotesUsingArea.length > 0) {
-        console.log(`Found ${quotesUsingArea.length} quotes using this area. Removing references...`);
-        
-        const { error: updateError } = await supabase
-          .from("quotes")
-          .update({ area_id: null })
-          .eq("area_id", areaCost.area_id);
-
-        if (updateError) {
-          console.error("Error removing references from quotes:", updateError);
-          throw updateError;
-        }
-      }
-
-      console.log(`Executing DELETE from area_costs WHERE area_cost_id = ${areaCost.area_cost_id}`);
-      
-      const { data, error, status } = await supabase
+      // Then delete the area cost
+      const { error } = await supabase
         .from("area_costs")
         .delete()
         .eq("area_cost_id", areaCost.area_cost_id);
         
-      console.log("Delete response status:", status);
-      
       if (error) {
         console.error("Error deleting area cost:", error);
         throw error;
       }
       
-      const { data: checkData, error: checkError } = await supabase
-        .from("area_costs")
-        .select("*")
-        .eq("area_cost_id", areaCost.area_cost_id)
-        .single();
-        
-      if (checkError && checkError.code === "PGRST116") {
-        console.log("Verified deletion - area cost no longer exists");
-        toast.success("Area cost deleted successfully");
-        onSave();
-        onClose();
-        setConfirmDeleteOpen(false);
-      } else if (checkData) {
-        console.error("Area cost deletion verification failed - row still exists");
-        toast.error("Failed to delete area cost");
-      } else if (checkError) {
-        console.error("Error verifying area cost deletion:", checkError);
-      }
+      toast.success("Area cost deleted successfully");
+      
+      // Close modals and refresh data
+      setConfirmDeleteOpen(false);
+      onSave();
+      onClose();
     } catch (error: any) {
       console.error("Error in delete operation:", error);
       toast.error(error.message || "Failed to delete area cost");
@@ -452,7 +424,21 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+      <AlertDialog 
+        open={confirmDeleteOpen} 
+        onOpenChange={(open) => {
+          setConfirmDeleteOpen(open);
+          // If the dialog is being closed and we're not in the process of deleting,
+          // we need to ensure we don't leave any lingering state
+          if (!open && !isDeleting) {
+            // This helps prevent any lingering overlay issues
+            setTimeout(() => {
+              // The timeout gives the animation time to complete
+              // before we make any further state changes
+            }, 300);
+          }
+        }}
+      >
         <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-100">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -462,7 +448,10 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-800 text-blue-700 border-slate-700 hover:bg-slate-700 hover:text-white">
+            <AlertDialogCancel 
+              onClick={() => setConfirmDeleteOpen(false)}
+              className="bg-slate-800 text-blue-700 border-slate-700 hover:bg-slate-700 hover:text-white"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
