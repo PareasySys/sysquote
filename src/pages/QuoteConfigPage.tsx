@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import MachineSelector from "@/components/quotes/MachineSelector";
 import SelectedMachineList from "@/components/quotes/SelectedMachineList";
+import QuoteTrainingTopics from "@/components/quotes/QuoteTrainingTopics";
 import { useQuoteMachines } from "@/hooks/useQuoteMachines";
 import { Input } from "@/components/ui/input";
 import { useGeographicAreas } from "@/hooks/useGeographicAreas";
@@ -411,12 +412,17 @@ const QuoteConfigPage: React.FC = () => {
                   )}
                 </Card>
                 
-                <Card className="bg-slate-800/80 border border-white/5 p-4">
-                  <h2 className="text-xl font-semibold mb-4 text-gray-200">Training Topics</h2>
-                  <div className="text-gray-400 p-4 text-center border border-dashed border-gray-700 rounded-lg">
-                    Training topics will be displayed here in the future
-                  </div>
-                </Card>
+                {/* Replace the placeholder with actual training topics component */}
+                {selectedMachines.length > 0 ? (
+                  <QuoteTrainingTopics selectedMachines={selectedMachines} />
+                ) : (
+                  <Card className="bg-slate-800/80 border border-white/5 p-4">
+                    <h2 className="text-xl font-semibold mb-4 text-gray-200">Training Topics</h2>
+                    <div className="text-gray-400 p-4 text-center border border-dashed border-gray-700 rounded-lg">
+                      Select machines to view applicable training topics
+                    </div>
+                  </Card>
+                )}
               </div>
             </div>
           )}
