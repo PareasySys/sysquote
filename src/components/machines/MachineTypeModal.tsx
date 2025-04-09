@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -45,16 +44,20 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     isUploading 
   } = useImageUpload();
   
-  // Training requirements hooks
-  const { plans, loading: loadingPlans } = useTrainingPlans();
-  const { resources, loading: loadingResources } = useResources();
+  const { 
+    plans, 
+    loading: loadingPlans 
+  } = useTrainingPlans();
+  const { 
+    resources, 
+    loading: loadingResources 
+  } = useResources();
   const { 
     requirements, 
     saveRequirement, 
     deleteRequirement 
   } = useMachineTrainingRequirements(machine?.machine_type_id);
 
-  // Selected resource state for each plan
   const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
 
   useEffect(() => {
@@ -72,7 +75,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
   }, [machine, setPreviewUrl]);
 
   useEffect(() => {
-    // Initialize selected resources based on existing requirements
     const initialSelectedResources: Record<number, number | undefined> = {};
     
     if (requirements && requirements.length > 0) {
@@ -89,11 +91,9 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     
     const file = e.target.files[0];
     try {
-      // Create a local preview URL
       const localUrl = URL.createObjectURL(file);
       setPreviewUrl(localUrl);
       
-      // Upload to storage
       const url = await uploadImage(file);
       setPhotoURL(url);
       
@@ -199,7 +199,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-          {/* Left Column - Basic Information */}
           <div className="space-y-4">
             <div className="grid gap-2">
               <Label htmlFor="name" className="text-white">Name</Label>
@@ -207,7 +206,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-slate-800 border-slate-700 text-slate-100"
+                className="bg-slate-800 border-slate-700 text-slate-100 focus:ring-0 focus:ring-offset-0 focus:border-blue-500 focus-visible:ring-0 focus-visible:ring-offset-0"
                 placeholder="Enter machine name"
               />
             </div>
@@ -218,7 +217,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 min-h-[100px]"
+                className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 focus:ring-0 focus:ring-offset-0 min-h-[100px]"
                 placeholder="Enter machine description"
               />
             </div>
@@ -257,7 +256,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
             </div>
           </div>
           
-          {/* Right Column - Training Requirements */}
           <div className="space-y-4">
             <div className="grid gap-3">
               <h3 className="font-medium text-white border-b border-slate-700 pb-2">Training Requirements</h3>
@@ -273,7 +271,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
                         value={selectedResources[plan.plan_id]?.toString() || "none"}
                         onValueChange={(value) => handleResourceChange(plan.plan_id, value === "none" ? undefined : Number(value))}
                       >
-                        <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100 focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-blue-500">
                           <SelectValue placeholder="No resource required" />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
