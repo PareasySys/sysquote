@@ -26,19 +26,27 @@ const Router = () => {
     },
     {
       path: "/home",
-      element: <PrivateRoute component={<HomePage />} />
+      element: <PrivateRoute>
+                <HomePage />
+               </PrivateRoute>
     },
     {
       path: "/profile",
-      element: <PrivateRoute component={<ProfileSettingsPage />} />
+      element: <PrivateRoute>
+                <ProfileSettingsPage />
+               </PrivateRoute>
     },
     {
       path: "/settings",
-      element: <PrivateRoute component={<SettingsPage />} />
+      element: <PrivateRoute>
+                <SettingsPage />
+               </PrivateRoute>
     },
     {
       path: "/quote/:quoteId/config",
-      element: <PrivateRoute component={<QuoteConfigPage />} />
+      element: <PrivateRoute>
+                <QuoteConfigPage />
+               </PrivateRoute>
     },
     {
       path: "*",

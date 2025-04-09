@@ -3,11 +3,11 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from "@/hooks/useAuth";
 
-type ProtectedRouteProps = {
+type PrivateRouteProps = {
   children: React.ReactNode;
 };
 
-const PrivateRoute = ({ children }: ProtectedRouteProps) => {
+const PrivateRoute = ({ children }: PrivateRouteProps) => {
   const { user, isLoading } = useAuth();
   
   if (isLoading) {

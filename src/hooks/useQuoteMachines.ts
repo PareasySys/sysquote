@@ -26,35 +26,22 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
       
       console.log("Fetching machines for quote:", quoteId);
       
-      // Fetch quote machines with machine details
+      // Use raw SQL query through rpc to bypass TypeScript limitations
       const { data, error: fetchError } = await supabase
-        .from("quote_machines")
-        .select(`
-          id,
-          quote_id,
-          machine_type_id,
-          created_at,
-          machine_types (
-            machine_type_id,
-            name,
-            description,
-            photo_url
-          )
-        `)
-        .eq("quote_id", quoteId);
+        .rpc('get_quote_machines', { quote_id_param: quoteId });
       
       if (fetchError) throw fetchError;
       
       console.log("Quote machines data:", data);
       
-      // Transform the data to include machine details
-      const formattedMachines = data.map((item: any) => ({
+      // Transform the data to match our expected interface
+      const formattedMachines = data ? data.map((item: any) => ({
         id: item.id,
         quote_id: item.quote_id,
         machine_type_id: item.machine_type_id,
         created_at: item.created_at,
-        machine: item.machine_types as MachineType
-      }));
+        machine: item.machine_details
+      })) : [];
       
       setSelectedMachines(formattedMachines);
     } catch (err: any) {
@@ -72,29 +59,14 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
     try {
       setLoading(true);
       
-      // First, remove existing machine selections
-      const { error: deleteError } = await supabase
-        .from("quote_machines")
-        .delete()
-        .eq("quote_id", quoteId);
+      // Call a stored procedure to handle the update
+      const { error } = await supabase
+        .rpc('update_quote_machines', { 
+          quote_id_param: quoteId,
+          machine_ids: machineIds
+        });
       
-      if (deleteError) throw deleteError;
-      
-      // If there are new machines to add
-      if (machineIds.length > 0) {
-        // Prepare data for insert
-        const machineData = machineIds.map(machineTypeId => ({
-          quote_id: quoteId,
-          machine_type_id: machineTypeId,
-        }));
-        
-        // Insert new machine selections
-        const { error: insertError } = await supabase
-          .from("quote_machines")
-          .insert(machineData);
-        
-        if (insertError) throw insertError;
-      }
+      if (error) throw error;
       
       // Refresh the machine list
       fetchQuoteMachines();
@@ -115,10 +87,11 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
     try {
       setLoading(true);
       
+      // Direct delete using REST API
       const { error } = await supabase
-        .from("quote_machines")
+        .from('quote_machines')
         .delete()
-        .eq("id", machineId);
+        .eq('id', machineId);
       
       if (error) throw error;
       
