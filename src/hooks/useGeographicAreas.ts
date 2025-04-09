@@ -38,6 +38,24 @@ export const useGeographicAreas = () => {
     }
   };
 
+  // Add a function to check if an area name already exists
+  const checkAreaNameExists = async (name: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from("geographic_areas")
+        .select("area_id")
+        .eq("name", name)
+        .maybeSingle();
+      
+      if (error) throw error;
+      
+      return !!data;
+    } catch (err: any) {
+      console.error("Error checking area name:", err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchAreas();
   }, []);
@@ -46,6 +64,7 @@ export const useGeographicAreas = () => {
     areas,
     loading,
     error,
-    fetchAreas
+    fetchAreas,
+    checkAreaNameExists
   };
 };

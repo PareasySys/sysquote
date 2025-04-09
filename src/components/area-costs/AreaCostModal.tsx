@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useGeographicAreas } from "@/hooks/useGeographicAreas";
 
 interface AreaCostModalProps {
   open: boolean;
@@ -66,6 +67,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const { icons, loading: loadingIcons } = useAreaIcons();
+  const { checkAreaNameExists } = useGeographicAreas();
 
   // Initialize the form with default values or the existing area cost values
   const form = useForm<AreaCostFormValues>({
@@ -108,6 +110,13 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
 
       // If we don't have an area_id or this is a new cost, create a new area
       if (!areaId) {
+        // First check if the area name already exists
+        const nameExists = await checkAreaNameExists(values.areaName);
+        if (nameExists) {
+          toast.error(`An area with the name "${values.areaName}" already exists`);
+          return;
+        }
+
         // Create a new geographic area
         const { data: newAreaData, error: newAreaError } = await supabase
           .from("geographic_areas")
@@ -117,6 +126,13 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
 
         if (newAreaError) {
           console.error("Error creating geographic area:", newAreaError);
+          
+          // Handle the duplicate key error specifically
+          if (newAreaError.code === '23505') {
+            toast.error(`An area with the name "${values.areaName}" already exists`);
+            return;
+          }
+          
           throw newAreaError;
         }
 
