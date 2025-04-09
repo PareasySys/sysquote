@@ -68,6 +68,52 @@ export type Database = {
         }
         Relationships: []
       }
+      machine_training_requirements: {
+        Row: {
+          created_at: string | null
+          id: number
+          machine_type_id: number | null
+          plan_id: number | null
+          resource_id: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          machine_type_id?: number | null
+          plan_id?: number | null
+          resource_id?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          machine_type_id?: number | null
+          plan_id?: number | null
+          resource_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_training_requirements_machine_type_id_fkey"
+            columns: ["machine_type_id"]
+            isOneToOne: false
+            referencedRelation: "machine_types"
+            referencedColumns: ["machine_type_id"]
+          },
+          {
+            foreignKeyName: "machine_training_requirements_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "machine_training_requirements_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["resource_id"]
+          },
+        ]
+      }
       machine_types: {
         Row: {
           created_at: string
