@@ -285,14 +285,14 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
                   <div key={plan.plan_id} className="flex flex-col gap-1.5">
                     <Label className="text-sm text-slate-300">{plan.name}</Label>
                     <Select
-                      value={selectedResources[plan.plan_id]?.toString() || ""}
-                      onValueChange={(value) => handleResourceChange(plan.plan_id, value ? Number(value) : undefined)}
+                      value={selectedResources[plan.plan_id]?.toString() || "none"}
+                      onValueChange={(value) => handleResourceChange(plan.plan_id, value === "none" ? undefined : Number(value))}
                     >
                       <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
                         <SelectValue placeholder="No resource required" />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
-                        <SelectItem value="">No resource required</SelectItem>
+                        <SelectItem value="none">No resource required</SelectItem>
                         {resources.map((resource) => (
                           <SelectItem key={resource.resource_id} value={resource.resource_id.toString()}>
                             {resource.name}
