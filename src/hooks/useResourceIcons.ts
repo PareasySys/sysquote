@@ -38,7 +38,7 @@ export const useResourceIcons = () => {
       } else if (data) {
         console.log("Icons fetched from storage:", data);
         
-        // Create icons from storage files
+        // Create icons from storage files - accept both SVGs and PNGs
         iconsList = data
           .filter(file => file.name.endsWith('.svg') || file.name.endsWith('.png'))
           .map(file => ({
