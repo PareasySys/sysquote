@@ -453,7 +453,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
       </Dialog>
 
       <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-100 z-[200]">
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-100">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
