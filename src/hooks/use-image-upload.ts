@@ -68,6 +68,9 @@ export function useImageUpload(initialImage?: string | null) {
     }
   }, []);
 
+  // Rename uploadToStorage to uploadImage to match what components expect
+  const uploadImage = uploadToStorage;
+
   return {
     previewUrl,
     fileInputRef,
@@ -75,6 +78,7 @@ export function useImageUpload(initialImage?: string | null) {
     handleFileChange,
     handleRemove,
     setPreviewUrl,
-    isUploading
+    isUploading,
+    uploadImage, // Export the uploadImage function
   };
 }

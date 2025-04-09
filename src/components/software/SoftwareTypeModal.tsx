@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -36,7 +35,12 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
   const [alwaysIncluded, setAlwaysIncluded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { uploadImage, isUploading } = useImageUpload();
+  const { 
+    previewUrl: previewURL, 
+    setPreviewUrl: setPreviewURL, 
+    uploadImage, 
+    isUploading 
+  } = useImageUpload();
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [previewURL, setPreviewURL] = useState<string | null>(null);
   

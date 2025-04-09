@@ -8,6 +8,7 @@ export interface MachineType {
   name: string;
   description: string | null;
   photo_url: string | null;
+  is_active: boolean; // Added this property
   created_at: string;
 }
 

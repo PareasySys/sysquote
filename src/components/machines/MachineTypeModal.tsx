@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -35,7 +34,12 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { uploadImage, isUploading } = useImageUpload();
+  const { 
+    previewUrl: previewURL, 
+    setPreviewUrl: setPreviewURL, 
+    uploadImage, 
+    isUploading 
+  } = useImageUpload();
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [previewURL, setPreviewURL] = useState<string | null>(null);
   
