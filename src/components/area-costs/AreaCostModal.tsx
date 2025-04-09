@@ -43,7 +43,6 @@ interface AreaCostModalProps {
   onSave: () => void;
 }
 
-// Create the schema for validation
 const areaCostSchema = z.object({
   areaName: z.string().min(1, "Area name is required"),
   dailyAccommodationFoodCost: z.coerce.number().min(0, "Cost cannot be negative"),
@@ -65,7 +64,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const { icons, loading: loadingIcons } = useAreaIcons();
 
-  // Initialize the form with default values or the existing area cost values
   const form = useForm<AreaCostFormValues>({
     resolver: zodResolver(areaCostSchema),
     defaultValues: {
@@ -77,7 +75,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
     },
   });
 
-  // Set form values when areaCost changes or on initial load
   useEffect(() => {
     if (areaCost) {
       form.reset({
@@ -98,7 +95,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
     }
   }, [areaCost, form]);
 
-  // Function to check if an area name already exists (excluding the current area)
   const checkAreaNameExists = async (name: string, currentAreaId?: number): Promise<boolean> => {
     try {
       let query = supabase
@@ -106,7 +102,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         .select("area_id")
         .eq("area_name", name);
       
-      // If editing, exclude the current area from the check
       if (currentAreaId) {
         query = query.neq("area_id", currentAreaId);
       }
@@ -129,7 +124,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
     try {
       setIsSaving(true);
 
-      // Check if name exists (but exclude current area if editing)
       const nameExists = await checkAreaNameExists(
         values.areaName, 
         areaCost ? areaCost.area_id : undefined
@@ -149,7 +143,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
       };
 
       if (areaCost) {
-        // Update existing area cost
         const { error } = await supabase
           .from("area_costs")
           .update(costData)
@@ -161,8 +154,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         }
         toast.success("Area cost updated successfully");
       } else {
-        // Create new area cost - generate a new area_id for new entries
-        // Get the highest area_id and increment it
         const { data: maxIdData, error: maxIdError } = await supabase
           .from('area_costs')
           .select('area_id')
@@ -176,7 +167,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         
         const nextId = maxIdData && maxIdData.length > 0 ? maxIdData[0].area_id + 1 : 1;
         
-        // Insert with the new area_id
         const { error } = await supabase
           .from("area_costs")
           .insert({
@@ -208,7 +198,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
       setIsDeleting(true);
       console.log("Attempting to delete area cost:", areaCost);
       
-      // First check if there are quotes using this area_id
       const { data: quotesUsingArea, error: quotesError } = await supabase
         .from("quotes")
         .select("quote_id")
@@ -219,7 +208,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         throw quotesError;
       }
 
-      // If there are quotes using this area, update them to remove the reference
       if (quotesUsingArea && quotesUsingArea.length > 0) {
         console.log(`Found ${quotesUsingArea.length} quotes using this area. Removing references...`);
         
@@ -234,7 +222,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         }
       }
 
-      // Delete the area cost - using both area_cost_id and area_id to ensure we're deleting the right row
       console.log(`Executing DELETE from area_costs WHERE area_cost_id = ${areaCost.area_cost_id}`);
       
       const { data, error, status } = await supabase
@@ -249,7 +236,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         throw error;
       }
       
-      // Double-check if the deletion was successful
       const { data: checkData, error: checkError } = await supabase
         .from("area_costs")
         .select("*")
@@ -257,18 +243,15 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         .single();
         
       if (checkError && checkError.code === "PGRST116") {
-        // PGRST116 means no results found, which is good in this case
         console.log("Verified deletion - area cost no longer exists");
         toast.success("Area cost deleted successfully");
         onSave();
         onClose();
         setConfirmDeleteOpen(false);
       } else if (checkData) {
-        // The row still exists, something went wrong
         console.error("Area cost deletion verification failed - row still exists");
         toast.error("Failed to delete area cost");
       } else if (checkError) {
-        // Some other error occurred
         console.error("Error verifying area cost deletion:", checkError);
       }
     } catch (error: any) {
