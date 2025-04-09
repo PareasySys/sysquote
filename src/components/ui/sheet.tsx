@@ -60,9 +60,18 @@ const SheetContent = React.forwardRef<
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
+      onOpenAutoFocus={(event) => {
+        // Allow default focus behavior when opening
+        if (props.onOpenAutoFocus) {
+          props.onOpenAutoFocus(event);
+        }
+      }}
       onCloseAutoFocus={(event) => {
         // Prevent focus from moving back into a sheet element on close
         event.preventDefault();
+        
+        // Move focus back to the document body or another safe element
+        document.body.focus();
       }}
       className={cn(sheetVariants({ side }), className)}
       aria-describedby={undefined}
