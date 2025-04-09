@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -228,7 +229,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[600px] bg-slate-900 border-slate-800 text-slate-100">
+        <DialogContent className="sm:max-w-[500px] bg-slate-900 border-slate-800 text-slate-100">
           <DialogHeader>
             <DialogTitle>
               {areaCost ? "Edit Area Cost" : "Add New Area Cost"}
@@ -256,49 +257,47 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="dailyAccommodationFoodCost"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">Daily Accommodation & Food (€)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="Enter cost"
-                          className="bg-slate-800 border-slate-700 text-slate-100"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <FormField
+                control={form.control}
+                name="dailyAccommodationFoodCost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Daily Accommodation & Food (€)</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Enter cost"
+                        className="bg-slate-800 border-slate-700 text-slate-100"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <FormField
-                  control={form.control}
-                  name="dailyAllowance"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">Daily Allowance (€)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="Enter allowance"
-                          className="bg-slate-800 border-slate-700 text-slate-100"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="dailyAllowance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Daily Allowance (€)</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Enter allowance"
+                        className="bg-slate-800 border-slate-700 text-slate-100"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -327,9 +326,9 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-white">Icon</FormLabel>
-                    <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
+                    <div className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
                       {loadingIcons ? (
-                        Array.from({ length: 8 }).map((_, i) => (
+                        Array.from({ length: 6 }).map((_, i) => (
                           <Skeleton 
                             key={i}
                             className="aspect-square rounded-md h-16"
@@ -361,7 +360,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
                           </button>
                         ))
                       ) : (
-                        <div className="p-8 text-center bg-slate-800 rounded-md border border-slate-700 col-span-4">
+                        <div className="p-8 text-center bg-slate-800 rounded-md border border-slate-700 col-span-3">
                           <p className="text-slate-400">No icons available in the area_icons bucket.</p>
                         </div>
                       )}

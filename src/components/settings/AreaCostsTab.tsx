@@ -8,7 +8,6 @@ import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import AreaCostModal from "@/components/area-costs/AreaCostModal";
 import { Layout } from "lucide-react";
-import { formatCurrency } from "@/utils/formatters";
 
 const AreaCostsTab = () => {
   const { areaCosts, loading, error, fetchAreaCosts } = useAreaCosts();
@@ -125,12 +124,10 @@ const AreaCostsTab = () => {
                   )}
                 </div>
                 
-                <div className="absolute bottom-0 left-0 right-0 p-2 z-20">
-                  <h3 className="text-sm font-semibold text-white mb-1">{areaCost.area_name}</h3>
-                  <div className="text-xl font-bold text-center text-gray-200">
-                    {formatCurrency(areaCost.daily_accommodation_food_cost)}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">accommodation & food/day</div>
+                <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
+                  <h3 className="text-lg font-semibold text-white text-center">
+                    {areaCost.area_name}
+                  </h3>
                 </div>
                 
                 <Button
