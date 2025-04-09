@@ -87,8 +87,9 @@ export const useTrainingTopics = (
       
       // Set item_type on each topic if needed
       if (data) {
-        const topicsWithType: TrainingTopic[] = data.map((topic) => ({
+        const topicsWithType: TrainingTopic[] = data.map((topic: any) => ({
           ...topic,
+          software_type_id: topic.software_type_id || null,
           item_type: topic.item_type || itemType // Preserve existing or set new
         }));
         setTopics(topicsWithType);
@@ -148,8 +149,10 @@ export const useTrainingTopics = (
       // Set the appropriate ID column based on itemType
       if (itemType === "machine") {
         newTopic.machine_type_id = itemId;
+        newTopic.software_type_id = null;
       } else {
         newTopic.software_type_id = itemId;
+        newTopic.machine_type_id = null;
       }
 
       const { data, error: insertError } = await supabase
@@ -161,7 +164,12 @@ export const useTrainingTopics = (
       
       if (data && data[0]) {
         // Make sure we're adding a complete TrainingTopic object with item_type
-        const addedTopic: TrainingTopic = data[0];
+        const addedTopic: TrainingTopic = {
+          ...data[0],
+          software_type_id: data[0].software_type_id || null,
+          machine_type_id: data[0].machine_type_id || null,
+          item_type: data[0].item_type || itemType
+        };
         
         setTopics(prev => [...prev, addedTopic]);
         return true;
