@@ -16,6 +16,10 @@ import { useImageUpload } from "@/hooks/use-image-upload";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { Loader2, Upload } from "lucide-react";
+import { useTrainingPlans } from "@/hooks/useTrainingPlans";
+import { useSoftwareTrainingRequirements } from "@/hooks/useSoftwareTrainingRequirements";
+import { useResources } from "@/hooks/useResources";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SoftwareTypeModalProps {
   open: boolean;
@@ -43,6 +47,19 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
     isUploading 
   } = useImageUpload();
   
+  // Training requirements hooks
+  const { plans, loading: loadingPlans } = useTrainingPlans();
+  const { resources, loading: loadingResources } = useResources();
+  const { 
+    requirements, 
+    saveRequirement, 
+    removeRequirement,
+    getResourceForPlan 
+  } = useSoftwareTrainingRequirements(software?.software_type_id);
+
+  // Selected resource state for each plan
+  const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
+  
   useEffect(() => {
     if (software) {
       setName(software.name || "");
@@ -58,6 +75,22 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
       setPreviewUrl(null);
     }
   }, [software, setPreviewUrl]);
+
+  useEffect(() => {
+    // Initialize selected resources based on requirements
+    if (plans && plans.length > 0) {
+      const initialSelectedResources: Record<number, number | undefined> = {};
+      
+      plans.forEach(plan => {
+        const resourceId = getResourceForPlan(plan.plan_id);
+        if (resourceId) {
+          initialSelectedResources[plan.plan_id] = resourceId;
+        }
+      });
+      
+      setSelectedResources(initialSelectedResources);
+    }
+  }, [plans, requirements, getResourceForPlan]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -105,12 +138,12 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
         }
         toast.success("Software updated successfully");
       } else {
-        const { error } = await supabase.from("software_types").insert({
+        const { data, error } = await supabase.from("software_types").insert({
           name,
           description,
           always_included: alwaysIncluded,
           photo_url: photoURL,
-        });
+        }).select();
 
         if (error) {
           console.error("Error creating software:", error);
@@ -153,6 +186,19 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
     }
   };
 
+  const handleResourceChange = async (planId: number, resourceId: number | undefined) => {
+    setSelectedResources(prev => ({
+      ...prev,
+      [planId]: resourceId
+    }));
+
+    if (resourceId) {
+      await saveRequirement(planId, resourceId);
+    } else {
+      await removeRequirement(planId);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px] bg-slate-900 border-slate-800 text-slate-100">
@@ -162,7 +208,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
           <div className="grid gap-2">
             <Label htmlFor="name" className="text-white">Name</Label>
             <Input
@@ -225,6 +271,39 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
                 />
               </label>
             </div>
+          </div>
+          
+          {/* Training Requirements Section */}
+          <div className="grid gap-3 pt-2 border-t border-slate-700">
+            <h3 className="font-medium text-white">Training Requirements</h3>
+            
+            {loadingPlans || loadingResources ? (
+              <div className="text-slate-400 text-sm">Loading training plans...</div>
+            ) : (
+              <div className="space-y-3">
+                {plans.map((plan) => (
+                  <div key={plan.plan_id} className="flex flex-col gap-1.5">
+                    <Label className="text-sm text-slate-300">{plan.name}</Label>
+                    <Select
+                      value={selectedResources[plan.plan_id]?.toString() || ""}
+                      onValueChange={(value) => handleResourceChange(plan.plan_id, value ? Number(value) : undefined)}
+                    >
+                      <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+                        <SelectValue placeholder="No resource required" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
+                        <SelectItem value="">No resource required</SelectItem>
+                        {resources.map((resource) => (
+                          <SelectItem key={resource.resource_id} value={resource.resource_id.toString()}>
+                            {resource.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
