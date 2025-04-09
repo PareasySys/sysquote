@@ -38,21 +38,24 @@ export const useGeographicAreas = () => {
     }
   };
 
-  // Add a function to check if an area name already exists
-  const checkAreaNameExists = async (name: string): Promise<boolean> => {
+  // Check if an area name already exists and return the area if it does
+  const checkAreaNameExists = async (name: string): Promise<{exists: boolean, area?: GeographicArea}> => {
     try {
       const { data, error } = await supabase
         .from("geographic_areas")
-        .select("area_id")
+        .select("area_id, name")
         .eq("name", name)
         .maybeSingle();
       
       if (error) throw error;
       
-      return !!data;
+      return { 
+        exists: !!data,
+        area: data ? data as GeographicArea : undefined
+      };
     } catch (err: any) {
       console.error("Error checking area name:", err);
-      return false;
+      return { exists: false };
     }
   };
 
