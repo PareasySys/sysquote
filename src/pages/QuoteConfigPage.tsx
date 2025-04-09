@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +9,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, Edit, Save } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card } from "@/components/ui/card";
@@ -19,6 +20,9 @@ import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import MachineSelector from "@/components/quotes/MachineSelector";
 import SelectedMachineList from "@/components/quotes/SelectedMachineList";
 import { useQuoteMachines } from "@/hooks/useQuoteMachines";
+import { Input } from "@/components/ui/input";
+import { useGeographicAreas } from "@/hooks/useGeographicAreas";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Quote = {
   quote_id: string;
@@ -46,6 +50,18 @@ const QuoteConfigPage: React.FC = () => {
     saveMachines,
     removeMachine
   } = useQuoteMachines(quoteId);
+  const { areas, loading: areasLoading } = useGeographicAreas();
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedQuote, setEditedQuote] = useState<{
+    quote_name: string;
+    client_name: string | null;
+    area_id?: number;
+  }>({
+    quote_name: '',
+    client_name: '',
+    area_id: undefined
+  });
 
   useEffect(() => {
     if (!user) {
@@ -55,6 +71,16 @@ const QuoteConfigPage: React.FC = () => {
     
     fetchQuote();
   }, [user, quoteId]);
+
+  useEffect(() => {
+    if (quote) {
+      setEditedQuote({
+        quote_name: quote.quote_name,
+        client_name: quote.client_name || '',
+        area_id: quote.area_id
+      });
+    }
+  }, [quote]);
 
   const fetchQuote = async () => {
     if (!quoteId) return;
@@ -113,6 +139,49 @@ const QuoteConfigPage: React.FC = () => {
 
   const handleBackToDashboard = () => {
     navigate("/home");
+  };
+
+  const handleEditToggle = () => {
+    if (isEditing) {
+      handleSaveQuote();
+    } else {
+      setIsEditing(true);
+    }
+  };
+
+  const handleSaveQuote = async () => {
+    if (!quoteId) return;
+
+    try {
+      setLoading(true);
+      
+      const { error: updateError } = await supabase
+        .from("quotes")
+        .update({
+          quote_name: editedQuote.quote_name,
+          client_name: editedQuote.client_name || null,
+          area_id: editedQuote.area_id
+        })
+        .eq("quote_id", quoteId);
+        
+      if (updateError) throw updateError;
+      
+      toast.success("Quote details updated successfully");
+      setIsEditing(false);
+      fetchQuote();
+    } catch (err: any) {
+      console.error("Error updating quote:", err);
+      toast.error("Failed to update quote details");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuoteFieldChange = (field: string, value: string | number | null) => {
+    setEditedQuote(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   if (!user) return null;
@@ -192,35 +261,98 @@ const QuoteConfigPage: React.FC = () => {
       <main className={`fixed inset-0 transition-all duration-300 bg-slate-950 overflow-auto ${sidebarOpen ? 'md:left-[300px]' : 'md:left-[60px]'}`}>
         <div className="p-6 min-h-screen">
           <div className="mb-6">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleBackToDashboard}
+                  className="text-gray-400 hover:text-gray-200"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                
+                {loading ? (
+                  <TextShimmerWave
+                    className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-2xl"
+                    duration={1}
+                    spread={1}
+                    zDistance={1}
+                    scaleDistance={1.1}
+                    rotateYDistance={10}
+                  >
+                    Loading Quote
+                  </TextShimmerWave>
+                ) : isEditing ? (
+                  <div className="flex flex-col space-y-2 ml-4 flex-1 min-w-[300px]">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="w-full sm:w-1/2">
+                        <label htmlFor="quote_name" className="text-sm font-medium text-gray-400 mb-1 block">Quote Name</label>
+                        <Input 
+                          id="quote_name"
+                          value={editedQuote.quote_name || ''} 
+                          onChange={(e) => handleQuoteFieldChange('quote_name', e.target.value)}
+                          className="bg-slate-800 border-slate-700 text-gray-200"
+                        />
+                      </div>
+                      <div className="w-full sm:w-1/2">
+                        <label htmlFor="client_name" className="text-sm font-medium text-gray-400 mb-1 block">Client Name</label>
+                        <Input 
+                          id="client_name"
+                          value={editedQuote.client_name || ''} 
+                          onChange={(e) => handleQuoteFieldChange('client_name', e.target.value)}
+                          className="bg-slate-800 border-slate-700 text-gray-200"
+                        />
+                      </div>
+                    </div>
+                    <div className="w-full sm:w-1/2">
+                      <label htmlFor="area" className="text-sm font-medium text-gray-400 mb-1 block">Area</label>
+                      <Select 
+                        value={editedQuote.area_id?.toString() || ''} 
+                        onValueChange={(value) => handleQuoteFieldChange('area_id', parseInt(value))}
+                        disabled={areasLoading}
+                      >
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-gray-200">
+                          <SelectValue placeholder="Select Area" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700 text-gray-200">
+                          {areas.map((area) => (
+                            <SelectItem key={area.area_id} value={area.area_id.toString()}>
+                              {area.area_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h1 className="text-2xl font-bold text-gray-100">{quote?.quote_name || 'Quote Configuration'}</h1>
+                    
+                    {quote?.client_name && (
+                      <p className="text-gray-400 ml-2">Client: {quote.client_name}</p>
+                    )}
+                    
+                    {quote?.area_name && (
+                      <p className="text-gray-400 ml-2">Area: {quote.area_name}</p>
+                    )}
+                  </>
+                )}
+              </div>
+              
               <Button 
                 variant="ghost" 
-                size="icon" 
-                onClick={handleBackToDashboard}
+                size="icon"
+                onClick={handleEditToggle}
                 className="text-gray-400 hover:text-gray-200"
               >
-                <ArrowLeft className="h-5 w-5" />
+                {isEditing ? (
+                  <Save className="h-5 w-5" />
+                ) : (
+                  <Edit className="h-5 w-5" />
+                )}
               </Button>
-              
-              {loading ? (
-                <TextShimmerWave
-                  className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-2xl"
-                  duration={1}
-                  spread={1}
-                  zDistance={1}
-                  scaleDistance={1.1}
-                  rotateYDistance={10}
-                >
-                  Loading Quote
-                </TextShimmerWave>
-              ) : (
-                <h1 className="text-2xl font-bold text-gray-100">{quote?.quote_name || 'Quote Configuration'}</h1>
-              )}
             </div>
-            
-            {quote?.client_name && (
-              <p className="text-gray-400 ml-10">Client: {quote.client_name}</p>
-            )}
           </div>
           
           {error ? (
