@@ -155,7 +155,7 @@ const TrainingOffersTab = () => {
                             type="number"
                             min="0"
                             step="0.5"
-                            className="w-20 text-center p-1 bg-slate-700 border-slate-500 text-white"
+                            className="w-20 text-center p-1 bg-slate-700 border-slate-500 text-white overflow-hidden"
                             value={editCells[`${row.machineId}-${cell.planId}`]}
                             onChange={(e) => handleInputChange(
                               row.machineId, 
@@ -168,6 +168,7 @@ const TrainingOffersTab = () => {
                               cell.planId
                             )}
                             autoFocus
+                            onFocus={(e) => e.target.select()}
                           />
                         </div>
                       ) : (
