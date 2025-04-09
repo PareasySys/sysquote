@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -35,14 +36,13 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
   const [alwaysIncluded, setAlwaysIncluded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
   const { 
-    previewUrl: previewURL, 
-    setPreviewUrl: setPreviewURL, 
+    previewUrl, 
+    setPreviewUrl, 
     uploadImage, 
     isUploading 
   } = useImageUpload();
-  const [photoURL, setPhotoURL] = useState<string | null>(null);
-  const [previewURL, setPreviewURL] = useState<string | null>(null);
   
   useEffect(() => {
     if (software) {
@@ -51,16 +51,16 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
       setIsActive(software.is_active);
       setAlwaysIncluded(software.always_included);
       setPhotoURL(software.photo_url);
-      setPreviewURL(software.photo_url);
+      setPreviewUrl(software.photo_url);
     } else {
       setName("");
       setDescription("");
       setIsActive(true);
       setAlwaysIncluded(false);
       setPhotoURL(null);
-      setPreviewURL(null);
+      setPreviewUrl(null);
     }
-  }, [software]);
+  }, [software, setPreviewUrl]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -69,7 +69,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
     try {
       // Create a local preview URL
       const localUrl = URL.createObjectURL(file);
-      setPreviewURL(localUrl);
+      setPreviewUrl(localUrl);
       
       // Upload to storage
       const url = await uploadImage(file);
@@ -211,13 +211,13 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
           <div className="grid gap-2">
             <Label htmlFor="photo" className="text-white">Photo</Label>
             <div className="flex flex-col items-center gap-4">
-              {previewURL && (
+              {previewUrl && (
                 <div className="relative w-40 h-40 mx-auto overflow-hidden rounded-lg border border-slate-700">
                   <img
-                    src={previewURL}
+                    src={previewUrl}
                     alt={name}
                     className="w-full h-full object-contain"
-                    onError={() => setPreviewURL("/placeholder.svg")}
+                    onError={() => setPreviewUrl("/placeholder.svg")}
                   />
                 </div>
               )}

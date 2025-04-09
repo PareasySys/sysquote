@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -34,14 +35,13 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
   const { 
-    previewUrl: previewURL, 
-    setPreviewUrl: setPreviewURL, 
+    previewUrl, 
+    setPreviewUrl, 
     uploadImage, 
     isUploading 
   } = useImageUpload();
-  const [photoURL, setPhotoURL] = useState<string | null>(null);
-  const [previewURL, setPreviewURL] = useState<string | null>(null);
   
   useEffect(() => {
     if (machine) {
@@ -49,15 +49,15 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
       setDescription(machine.description || "");
       setIsActive(machine.is_active);
       setPhotoURL(machine.photo_url);
-      setPreviewURL(machine.photo_url);
+      setPreviewUrl(machine.photo_url);
     } else {
       setName("");
       setDescription("");
       setIsActive(true);
       setPhotoURL(null);
-      setPreviewURL(null);
+      setPreviewUrl(null);
     }
-  }, [machine]);
+  }, [machine, setPreviewUrl]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -66,7 +66,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     try {
       // Create a local preview URL
       const localUrl = URL.createObjectURL(file);
-      setPreviewURL(localUrl);
+      setPreviewUrl(localUrl);
       
       // Upload to storage
       const url = await uploadImage(file);
@@ -197,13 +197,13 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
           <div className="grid gap-2">
             <Label htmlFor="photo" className="text-white">Photo</Label>
             <div className="flex flex-col items-center gap-4">
-              {previewURL && (
+              {previewUrl && (
                 <div className="relative w-40 h-40 mx-auto overflow-hidden rounded-lg border border-slate-700">
                   <img
-                    src={previewURL}
+                    src={previewUrl}
                     alt={name}
                     className="w-full h-full object-contain"
-                    onError={() => setPreviewURL("/placeholder.svg")}
+                    onError={() => setPreviewUrl("/placeholder.svg")}
                   />
                 </div>
               )}
