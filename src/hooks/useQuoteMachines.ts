@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { MachineType } from "@/hooks/useMachineTypes";
 import { toast } from "sonner";
 
 export interface QuoteMachine {
@@ -36,9 +35,12 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
       
       console.log("Fetching machines for quote:", quoteId);
       
-      // Use the new RPC function to get quote with machines
+      // Use the direct table query since we're having type issues with RPC
       const { data, error: fetchError } = await supabase
-        .rpc('get_quote_with_machines', { quote_id_param: quoteId });
+        .from('quotes')
+        .select('quote_id, quote_name, client_name, created_at, area_id, machine_type_ids')
+        .eq('quote_id', quoteId)
+        .single();
       
       if (fetchError) throw fetchError;
       
@@ -46,11 +48,22 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
       
       if (data) {
         // Set the machine type IDs
-        setMachineTypeIds(data.machine_type_ids || []);
+        const machineIds = data.machine_type_ids || [];
+        setMachineTypeIds(machineIds);
         
-        // Set the selected machines
-        const machines = data.machines ? JSON.parse(JSON.stringify(data.machines)) : [];
-        setSelectedMachines(machines);
+        // If we have machine ids, fetch their details
+        if (machineIds.length > 0) {
+          const { data: machinesData, error: machineError } = await supabase
+            .from('machine_types')
+            .select('machine_type_id, name, description, photo_url')
+            .in('machine_type_id', machineIds);
+          
+          if (machineError) throw machineError;
+          
+          setSelectedMachines(machinesData || []);
+        } else {
+          setSelectedMachines([]);
+        }
       } else {
         setMachineTypeIds([]);
         setSelectedMachines([]);
@@ -70,12 +83,11 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
     try {
       setLoading(true);
       
-      // Call the new function to update machine types directly in quotes table
+      // Update directly in the quotes table
       const { error } = await supabase
-        .rpc('update_quote_machines_direct', { 
-          quote_id_param: quoteId,
-          machine_ids: machineIds
-        });
+        .from('quotes')
+        .update({ machine_type_ids: machineIds })
+        .eq('quote_id', quoteId);
       
       if (error) throw error;
       
@@ -105,10 +117,9 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
       
       // Update the quote with the new machine type IDs
       const { error } = await supabase
-        .rpc('update_quote_machines_direct', {
-          quote_id_param: quoteId,
-          machine_ids: updatedMachineIds
-        });
+        .from('quotes')
+        .update({ machine_type_ids: updatedMachineIds })
+        .eq('quote_id', quoteId);
       
       if (error) throw error;
       
