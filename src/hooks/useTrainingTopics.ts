@@ -87,10 +87,10 @@ export const useTrainingTopics = (
       
       // Set item_type on each topic
       if (data) {
-        const topicsWithType = data.map((topic: any) => ({
+        const topicsWithType: TrainingTopic[] = data.map((topic: any) => ({
           ...topic,
           item_type: itemType
-        })) as TrainingTopic[];
+        }));
         setTopics(topicsWithType);
       } else {
         setTopics([]);
@@ -156,10 +156,13 @@ export const useTrainingTopics = (
       
       if (data && data[0]) {
         // Make sure we're adding a complete TrainingTopic object with item_type
-        const addedTopic = {
+        const addedTopic: TrainingTopic = {
           ...data[0],
+          machine_type_id: itemType === "machine" ? itemId : null,
+          software_type_id: itemType === "software" ? itemId : null,
+          plan_id: planId,
           item_type: itemType
-        } as TrainingTopic;
+        };
         
         setTopics(prev => [...prev, addedTopic]);
         return true;
