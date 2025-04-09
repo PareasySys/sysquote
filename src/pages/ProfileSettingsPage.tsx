@@ -147,7 +147,7 @@ const ProfileSettingsPage = () => {
     },
     {
       label: "Settings",
-      href: "#",
+      href: "/settings",
       icon: (
         <Settings className="text-gray-300 h-5 w-5 flex-shrink-0" />
       ),
