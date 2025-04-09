@@ -446,7 +446,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_quote_machines: {
+        Args: { quote_id_param: string }
+        Returns: {
+          id: string
+          quote_id: string
+          machine_type_id: number
+          created_at: string
+          machine_details: Json
+        }[]
+      }
+      update_quote_machines: {
+        Args: { quote_id_param: string; machine_ids: number[] }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
