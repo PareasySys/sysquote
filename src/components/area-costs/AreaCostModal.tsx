@@ -207,8 +207,9 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
 
     try {
       setIsDeleting(true);
+      console.log("Deleting area cost with ID:", areaCost.area_cost_id, "and area_id:", areaCost.area_id);
       
-      // Check if this area cost is referenced in quotes table
+      // First check if there are quotes using this area_id
       const { data: quotesUsingArea, error: quotesError } = await supabase
         .from("quotes")
         .select("quote_id")
@@ -234,14 +235,19 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         }
       }
 
-      // Now delete the area cost
-      const { error } = await supabase
+      // Delete the area cost using area_cost_id
+      const { error, count } = await supabase
         .from("area_costs")
         .delete()
-        .eq("area_cost_id", areaCost.area_cost_id);
+        .eq("area_cost_id", areaCost.area_cost_id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error deleting area cost:", error);
+        throw error;
+      }
 
+      console.log("Delete operation completed, rows affected:", count);
       toast.success("Area cost deleted successfully");
       onSave();
       onClose();
