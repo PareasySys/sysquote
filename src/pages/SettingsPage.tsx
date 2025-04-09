@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +21,7 @@ import SoftwareTypesTab from "@/components/settings/SoftwareTypesTab";
 import ResourcesTab from "@/components/settings/ResourcesTab";
 import TrainingPlansTab from "@/components/settings/TrainingPlansTab";
 import AreaCostsTab from "@/components/settings/AreaCostsTab";
+import TrainingOffersTab from "@/components/settings/TrainingOffersTab";
 
 const tabs = [
   { id: "machines", label: "Machine Types" },
@@ -27,7 +29,7 @@ const tabs = [
   { id: "resources", label: "Resources" },
   { id: "plans", label: "Training Plans" },
   { id: "area-costs", label: "Area Costs" },
-  { id: "plan-costs", label: "Plan Costs" },
+  { id: "training-offers", label: "Training Offers" },
 ];
 
 const SettingsPage = () => {
@@ -54,8 +56,8 @@ const SettingsPage = () => {
         return <TrainingPlansTab />;
       case "area-costs":
         return <AreaCostsTab />;
-      case "plan-costs":
-        return <div className="p-4">Plan Costs content coming soon</div>;
+      case "training-offers":
+        return <TrainingOffersTab />;
       default:
         return <div className="p-4">Select a tab</div>;
     }
