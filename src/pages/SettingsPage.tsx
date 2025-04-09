@@ -183,7 +183,7 @@ const SettingsPage = () => {
                           ${activeTab === tab.id ? 'bg-white/10 text-white' : 'text-gray-300 hover:text-white/80'} 
                           ${isDragging ? 'transition-none' : 'transition-colors'}`}
                       >
-                        <GripVertical className="h-4 w-4 text-gray-400" />
+                        <GripVertical className="h-4 w-4 text-white" />
                         <span>{tab.label}</span>
                       </div>
                     ))}
@@ -202,7 +202,7 @@ const SettingsPage = () => {
                   size="icon"
                   className="ml-2 hover:bg-slate-700"
                 >
-                  {isEditingTabs ? <Save className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
+                  {isEditingTabs ? <Save className="h-4 w-4 text-white" /> : <Edit className="h-4 w-4 text-white" />}
                 </Button>
               </div>
             </div>
