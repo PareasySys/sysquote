@@ -201,109 +201,114 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] bg-slate-900 border-slate-800 text-slate-100">
+      <DialogContent className="sm:max-w-[800px] bg-slate-900 border-slate-800 text-slate-100">
         <DialogHeader>
           <DialogTitle>
             {software ? "Edit Software" : "Add New Software"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-          <div className="grid gap-2">
-            <Label htmlFor="name" className="text-white">Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="bg-slate-800 border-slate-700 text-slate-100"
-              placeholder="Enter software name"
-            />
-          </div>
+        <div className="grid grid-cols-2 gap-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+          {/* Left Column - Basic Information */}
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name" className="text-white">Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="bg-slate-800 border-slate-700 text-slate-100"
+                placeholder="Enter software name"
+              />
+            </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="description" className="text-white">Description</Label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 min-h-[100px]"
-              placeholder="Enter software description"
-            />
-          </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description" className="text-white">Description</Label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 min-h-[100px]"
+                placeholder="Enter software description"
+              />
+            </div>
 
-          <div className="flex items-center justify-between">
-            <Label htmlFor="alwaysIncluded" className="text-white cursor-pointer">Always Included</Label>
-            <Switch
-              id="alwaysIncluded"
-              checked={alwaysIncluded}
-              onCheckedChange={setAlwaysIncluded}
-            />
-          </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="alwaysIncluded" className="text-white cursor-pointer">Always Included</Label>
+              <Switch
+                id="alwaysIncluded"
+                checked={alwaysIncluded}
+                onCheckedChange={setAlwaysIncluded}
+              />
+            </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="photo" className="text-white">Photo</Label>
-            <div className="flex flex-col items-center gap-4">
-              {previewUrl && (
-                <div className="relative w-40 h-40 mx-auto overflow-hidden rounded-lg border border-slate-700">
-                  <img
-                    src={previewUrl}
-                    alt={name}
-                    className="w-full h-full object-contain"
-                    onError={() => setPreviewUrl("/placeholder.svg")}
+            <div className="grid gap-2">
+              <Label htmlFor="photo" className="text-white">Photo</Label>
+              <div className="flex flex-col items-center gap-4">
+                {previewUrl && (
+                  <div className="relative w-40 h-40 mx-auto overflow-hidden rounded-lg border border-slate-700">
+                    <img
+                      src={previewUrl}
+                      alt={name}
+                      className="w-full h-full object-contain"
+                      onError={() => setPreviewUrl("/placeholder.svg")}
+                    />
+                  </div>
+                )}
+                <label
+                  htmlFor="photo-upload"
+                  className="cursor-pointer flex items-center justify-center gap-2 p-2 border border-dashed border-slate-600 rounded-lg w-full hover:bg-slate-800/50 transition-colors"
+                >
+                  <Upload className="h-4 w-4 text-slate-400" />
+                  <span className="text-slate-300 text-sm">
+                    {isUploading ? "Uploading..." : "Upload Image"}
+                  </span>
+                  <input
+                    id="photo-upload"
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
                   />
-                </div>
-              )}
-              <label
-                htmlFor="photo-upload"
-                className="cursor-pointer flex items-center justify-center gap-2 p-2 border border-dashed border-slate-600 rounded-lg w-full hover:bg-slate-800/50 transition-colors"
-              >
-                <Upload className="h-4 w-4 text-slate-400" />
-                <span className="text-slate-300 text-sm">
-                  {isUploading ? "Uploading..." : "Upload Image"}
-                </span>
-                <input
-                  id="photo-upload"
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={isUploading}
-                />
-              </label>
+                </label>
+              </div>
             </div>
           </div>
           
-          {/* Training Requirements Section */}
-          <div className="grid gap-3 pt-2 border-t border-slate-700">
-            <h3 className="font-medium text-white">Training Requirements</h3>
-            
-            {loadingPlans || loadingResources ? (
-              <div className="text-slate-400 text-sm">Loading training plans...</div>
-            ) : (
-              <div className="space-y-3">
-                {plans.map((plan) => (
-                  <div key={plan.plan_id} className="flex flex-col gap-1.5">
-                    <Label className="text-sm text-slate-300">{plan.name}</Label>
-                    <Select
-                      value={selectedResources[plan.plan_id]?.toString() || "none"}
-                      onValueChange={(value) => handleResourceChange(plan.plan_id, value === "none" ? undefined : Number(value))}
-                    >
-                      <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
-                        <SelectValue placeholder="No resource required" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
-                        <SelectItem value="none">No resource required</SelectItem>
-                        {resources.map((resource) => (
-                          <SelectItem key={resource.resource_id} value={resource.resource_id.toString()}>
-                            {resource.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Right Column - Training Requirements */}
+          <div className="space-y-4">
+            <div className="grid gap-3">
+              <h3 className="font-medium text-white border-b border-slate-700 pb-2">Training Requirements</h3>
+              
+              {loadingPlans || loadingResources ? (
+                <div className="text-slate-400 text-sm">Loading training plans...</div>
+              ) : (
+                <div className="space-y-4">
+                  {plans.map((plan) => (
+                    <div key={plan.plan_id} className="flex flex-col gap-1.5">
+                      <Label className="text-sm text-slate-300">{plan.name}</Label>
+                      <Select
+                        value={selectedResources[plan.plan_id]?.toString() || "none"}
+                        onValueChange={(value) => handleResourceChange(plan.plan_id, value === "none" ? undefined : Number(value))}
+                      >
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+                          <SelectValue placeholder="No resource required" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
+                          <SelectItem value="none">No resource required</SelectItem>
+                          {resources.map((resource) => (
+                            <SelectItem key={resource.resource_id} value={resource.resource_id.toString()}>
+                              {resource.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
