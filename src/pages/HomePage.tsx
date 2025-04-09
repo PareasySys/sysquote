@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,13 +54,18 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+const getSidebarState = () => {
+  const savedState = localStorage.getItem('sidebar-state');
+  return savedState === 'true';
+};
+
 const HomePage = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const { quotes, loading, error, fetchQuotes } = useQuotes();
   const { areas, loading: areasLoading } = useGeographicAreas();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(getSidebarState());
   const { profileData } = useUserProfile(user);
 
   const form = useForm<FormValues>({
@@ -86,6 +90,10 @@ const HomePage = () => {
       console.log("Geographic areas loaded:", areas);
     }
   }, [areasLoading, areas]);
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-state', sidebarOpen.toString());
+  }, [sidebarOpen]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -123,7 +131,6 @@ const HomePage = () => {
       
       console.log("Created new quote:", newQuote);
       
-      // Navigate to the quote configuration page
       navigate(`/quote/${newQuote.quote_id}/config`);
     } catch (error: any) {
       console.error("Error creating quote:", error);
@@ -132,7 +139,6 @@ const HomePage = () => {
   };
 
   const handleQuoteDeleted = () => {
-    // Refresh quotes when a quote is deleted
     fetchQuotes();
   };
 

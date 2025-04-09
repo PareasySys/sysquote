@@ -1,7 +1,6 @@
-
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import React, { useState, createContext, useContext } from "react";
+import React, { useState, createContext, useContext, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 
 interface Links {
@@ -40,10 +39,19 @@ export const SidebarProvider = ({
   setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
   animate?: boolean;
 }) => {
-  const [openState, setOpenState] = useState(false);
+  const initialState = () => {
+    const savedState = localStorage.getItem('sidebar-state');
+    return savedState === 'true';
+  };
+  
+  const [openState, setOpenState] = useState(initialState());
 
   const open = openProp !== undefined ? openProp : openState;
   const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-state', open.toString());
+  }, [open]);
 
   return (
     <SidebarContext.Provider value={{ open, setOpen, animate }}>
@@ -85,6 +93,17 @@ export const DesktopSidebar = ({
   ...props
 }: React.ComponentProps<"div">) => {
   const { open, setOpen, animate } = useSidebar();
+  
+  const handleMouseEnter = () => {
+    setOpen(true);
+    localStorage.setItem('sidebar-state', 'true');
+  };
+  
+  const handleMouseLeave = () => {
+    setOpen(false);
+    localStorage.setItem('sidebar-state', 'false');
+  };
+  
   return (
     <div
       className={cn(
@@ -92,8 +111,8 @@ export const DesktopSidebar = ({
         open ? "w-[300px] left-0" : "w-[60px] left-0",
         className
       )}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       {...props}
     >
       {children}

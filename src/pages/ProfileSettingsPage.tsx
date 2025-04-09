@@ -21,10 +21,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/lib/supabaseClient";
 import { useUserProfile } from "@/hooks/use-user-profile";
 
+// Get the sidebar state from localStorage or default to closed
+const getSidebarState = () => {
+  const savedState = localStorage.getItem('sidebar-state');
+  return savedState === 'true';
+};
+
 const ProfileSettingsPage = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(getSidebarState());
   const { toast } = useToast();
   const id = useId();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,6 +59,11 @@ const ProfileSettingsPage = () => {
       navigate("/");
     }
   }, [user, navigate]);
+  
+  // Save sidebar state to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('sidebar-state', sidebarOpen.toString());
+  }, [sidebarOpen]);
 
   const handleSignOut = async () => {
     await signOut();
