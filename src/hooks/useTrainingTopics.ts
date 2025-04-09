@@ -11,9 +11,9 @@ export interface TrainingTopic {
   created_at: string;
   updated_at: string;
   machine_type_id: number | null;
+  software_type_id: number | null;
   plan_id: number | null;
-  software_type_id?: number | null;
-  item_type?: string; // "machine" or "software"
+  item_type: string; // "machine" or "software"
 }
 
 export interface TrainingRequirementWithTopics {
@@ -85,11 +85,11 @@ export const useTrainingTopics = (
       
       console.log("Training topics fetched:", data);
       
-      // Set item_type on each topic
+      // Set item_type on each topic if needed
       if (data) {
-        const topicsWithType: TrainingTopic[] = data.map((topic: any) => ({
+        const topicsWithType: TrainingTopic[] = data.map((topic) => ({
           ...topic,
-          item_type: itemType
+          item_type: topic.item_type || itemType // Preserve existing or set new
         }));
         setTopics(topicsWithType);
       } else {
@@ -137,15 +137,20 @@ export const useTrainingTopics = (
       }
 
       // Determine which column to set based on itemType
-      const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
-      
-      const newTopic = {
+      const newTopic: any = {
         requirement_id: reqId,
-        [columnName]: itemId,
         plan_id: planId,
         topic_text: topicText,
+        item_type: itemType,
         updated_at: new Date().toISOString()
       };
+
+      // Set the appropriate ID column based on itemType
+      if (itemType === "machine") {
+        newTopic.machine_type_id = itemId;
+      } else {
+        newTopic.software_type_id = itemId;
+      }
 
       const { data, error: insertError } = await supabase
         .from('training_topics')
@@ -156,13 +161,7 @@ export const useTrainingTopics = (
       
       if (data && data[0]) {
         // Make sure we're adding a complete TrainingTopic object with item_type
-        const addedTopic: TrainingTopic = {
-          ...data[0],
-          machine_type_id: itemType === "machine" ? itemId : null,
-          software_type_id: itemType === "software" ? itemId : null,
-          plan_id: planId,
-          item_type: itemType
-        };
+        const addedTopic: TrainingTopic = data[0];
         
         setTopics(prev => [...prev, addedTopic]);
         return true;

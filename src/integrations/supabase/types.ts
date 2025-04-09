@@ -406,9 +406,11 @@ export type Database = {
         Row: {
           created_at: string
           display_order: number | null
+          item_type: string | null
           machine_type_id: number | null
           plan_id: number | null
           requirement_id: number
+          software_type_id: number | null
           topic_id: number
           topic_text: string
           updated_at: string
@@ -416,9 +418,11 @@ export type Database = {
         Insert: {
           created_at?: string
           display_order?: number | null
+          item_type?: string | null
           machine_type_id?: number | null
           plan_id?: number | null
           requirement_id: number
+          software_type_id?: number | null
           topic_id?: number
           topic_text: string
           updated_at?: string
@@ -426,9 +430,11 @@ export type Database = {
         Update: {
           created_at?: string
           display_order?: number | null
+          item_type?: string | null
           machine_type_id?: number | null
           plan_id?: number | null
           requirement_id?: number
+          software_type_id?: number | null
           topic_id?: number
           topic_text?: string
           updated_at?: string
@@ -447,6 +453,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "training_plans"
             referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "training_topics_software_type_id_fkey"
+            columns: ["software_type_id"]
+            isOneToOne: false
+            referencedRelation: "software_types"
+            referencedColumns: ["software_type_id"]
           },
         ]
       }
