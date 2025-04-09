@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
 import { MachineType } from "@/hooks/useMachineTypes";
-import { Check, Edit, Pencil } from "lucide-react";
+import { Check, Edit } from "lucide-react";
 
 interface MachineTypeCardProps {
   machine?: MachineType;
@@ -12,6 +12,7 @@ interface MachineTypeCardProps {
   onEdit?: (machine: MachineType) => void;
   onAddNew?: () => void;
   isSelected?: boolean;
+  showSelectionIndicator?: boolean;
 }
 
 const MachineTypeCard: React.FC<MachineTypeCardProps> = ({ 
@@ -19,7 +20,8 @@ const MachineTypeCard: React.FC<MachineTypeCardProps> = ({
   isAddCard = false,
   onEdit,
   onAddNew,
-  isSelected = false
+  isSelected = false,
+  showSelectionIndicator = false
 }) => {
   const handleClick = () => {
     if (isAddCard && onAddNew) {
@@ -66,7 +68,7 @@ const MachineTypeCard: React.FC<MachineTypeCardProps> = ({
     <div className="w-full">
       <AspectRatio ratio={3/4} className="w-full">
         <Card 
-          className={`relative overflow-hidden h-full cursor-pointer w-full border-0 ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
+          className={`relative overflow-hidden h-full cursor-pointer w-full border-0 ${isSelected && showSelectionIndicator ? 'ring-2 ring-blue-500' : ''}`}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
           {machine?.photo_url ? (
@@ -91,20 +93,22 @@ const MachineTypeCard: React.FC<MachineTypeCardProps> = ({
             )}
           </div>
           
-          {/* Show both indicators: selection status AND edit button */}
-          <div className={`absolute top-2 right-2 h-6 w-6 rounded-full flex items-center justify-center transition-all z-20 ${
-            isSelected 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-slate-700/60 text-gray-400'
-          }`}>
-            <Check className="h-4 w-4" />
-          </div>
+          {/* Selection indicator - only shown when showSelectionIndicator is true */}
+          {showSelectionIndicator && (
+            <div className={`absolute top-2 right-2 h-6 w-6 rounded-full flex items-center justify-center transition-all z-20 ${
+              isSelected 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-slate-700/60 text-gray-400'
+            }`}>
+              <Check className="h-4 w-4" />
+            </div>
+          )}
           
-          {/* Add back the edit button */}
-          {onEdit && (
+          {/* Edit button - only shown when onEdit is provided */}
+          {onEdit && !showSelectionIndicator && (
             <Button 
               onClick={handleEditClick}
-              className="absolute top-2 left-2 h-8 w-8 p-0 bg-slate-800/80 hover:bg-slate-700 z-20"
+              className="absolute top-2 right-2 h-8 w-8 p-0 bg-slate-800/80 hover:bg-slate-700 z-20"
               size="icon"
               variant="ghost"
             >

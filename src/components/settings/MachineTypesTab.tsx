@@ -78,6 +78,7 @@ const MachineTypesTab = () => {
             key={machine.machine_type_id} 
             machine={machine} 
             onEdit={() => handleEdit(machine)}
+            showSelectionIndicator={false}
           />
         ))}
       </div>

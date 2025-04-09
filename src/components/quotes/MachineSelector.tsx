@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useMachineTypes, MachineType } from "@/hooks/useMachineTypes";
 import MachineTypeCard from "@/components/machines/MachineTypeCard";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
-import { Plus, Check } from "lucide-react";
+import { Plus } from "lucide-react";
 
 interface MachineSelectorProps {
   selectedMachineIds: number[];
@@ -108,6 +108,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
                     <MachineTypeCard 
                       machine={machine} 
                       isSelected={isSelected(machine.machine_type_id)}
+                      showSelectionIndicator={true}
                     />
                   </div>
                 ))}
