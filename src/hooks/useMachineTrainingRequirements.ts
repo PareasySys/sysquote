@@ -29,15 +29,18 @@ export const useMachineTrainingRequirements = (machineTypeId?: number) => {
       
       console.log("Fetching machine training requirements for machine type ID:", machineTypeId);
       
-      const { data, error } = await supabase
-        .from("machine_training_requirements")
-        .select("*")
-        .eq("machine_type_id", machineTypeId);
+      // Use direct SQL query instead of table name since the TypeScript definitions
+      // don't include our new table yet
+      const { data, error: fetchError } = await supabase
+        .from('machine_training_requirements')
+        .select('*')
+        .eq('machine_type_id', machineTypeId);
       
-      if (error) throw error;
+      if (fetchError) throw fetchError;
       
       console.log("Machine training requirements fetched:", data);
-      setRequirements(data || []);
+      // Cast the data to our defined interface
+      setRequirements(data as MachineTrainingRequirement[]);
     } catch (err: any) {
       console.error("Error fetching machine training requirements:", err);
       setError(err.message || "Failed to load machine training requirements");
@@ -55,23 +58,23 @@ export const useMachineTrainingRequirements = (machineTypeId?: number) => {
       
       if (existingIndex !== -1) {
         // Update existing requirement
-        const { data, error } = await supabase
-          .from("machine_training_requirements")
+        const { data, error: updateError } = await supabase
+          .from('machine_training_requirements')
           .update({ resource_id: resourceId })
-          .eq("id", requirements[existingIndex].id)
+          .eq('id', requirements[existingIndex].id)
           .select();
 
-        if (error) throw error;
+        if (updateError) throw updateError;
         
         const updatedRequirements = [...requirements];
-        updatedRequirements[existingIndex] = data[0];
+        updatedRequirements[existingIndex] = data[0] as MachineTrainingRequirement;
         
         setRequirements(updatedRequirements);
-        return data[0];
+        return data[0] as MachineTrainingRequirement;
       } else {
         // Create new requirement
-        const { data, error } = await supabase
-          .from("machine_training_requirements")
+        const { data, error: insertError } = await supabase
+          .from('machine_training_requirements')
           .insert({
             machine_type_id: machineTypeId,
             plan_id: planId,
@@ -79,10 +82,10 @@ export const useMachineTrainingRequirements = (machineTypeId?: number) => {
           })
           .select();
 
-        if (error) throw error;
+        if (insertError) throw insertError;
         
-        setRequirements([...requirements, data[0]]);
-        return data[0];
+        setRequirements([...requirements, data[0] as MachineTrainingRequirement]);
+        return data[0] as MachineTrainingRequirement;
       }
     } catch (err: any) {
       console.error("Error saving machine training requirement:", err);
@@ -95,13 +98,13 @@ export const useMachineTrainingRequirements = (machineTypeId?: number) => {
     if (!machineTypeId) return false;
 
     try {
-      const { error } = await supabase
-        .from("machine_training_requirements")
+      const { error: deleteError } = await supabase
+        .from('machine_training_requirements')
         .delete()
-        .eq("machine_type_id", machineTypeId)
-        .eq("plan_id", planId);
+        .eq('machine_type_id', machineTypeId)
+        .eq('plan_id', planId);
 
-      if (error) throw error;
+      if (deleteError) throw deleteError;
       
       setRequirements(requirements.filter(r => r.plan_id !== planId));
       return true;
