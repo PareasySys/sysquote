@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useTrainingOffers } from "@/hooks/useTrainingOffers";
 import { useMachineTypes } from "@/hooks/useMachineTypes";
@@ -6,6 +7,7 @@ import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+
 const TrainingOffersTab = () => {
   const {
     offersMatrix,
@@ -23,6 +25,7 @@ const TrainingOffersTab = () => {
     loading: loadingPlans
   } = useTrainingPlans();
   const [editCells, setEditCells] = useState<Record<string, number>>({});
+
   if (loading || loadingMachines || loadingPlans) {
     return <div className="p-4">
         <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg" duration={1} spread={1} zDistance={1} scaleDistance={1.1} rotateYDistance={10}>
@@ -30,6 +33,7 @@ const TrainingOffersTab = () => {
         </TextShimmerWave>
       </div>;
   }
+
   if (error) {
     return <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
         <p className="text-red-300">{error}</p>
@@ -38,12 +42,14 @@ const TrainingOffersTab = () => {
         </Button>
       </div>;
   }
+
   const handleCellDoubleClick = (machineId: number, planId: number, currentValue: number) => {
     setEditCells({
       ...editCells,
       [`${machineId}-${planId}`]: currentValue
     });
   };
+
   const handleInputChange = (machineId: number, planId: number, value: string) => {
     const numericValue = value === '' ? 0 : Number(value);
     if (!isNaN(numericValue)) {
@@ -53,6 +59,7 @@ const TrainingOffersTab = () => {
       });
     }
   };
+
   const handleSaveCell = async (machineId: number, planId: number) => {
     const key = `${machineId}-${planId}`;
     const hours = editCells[key];
@@ -65,6 +72,7 @@ const TrainingOffersTab = () => {
     delete newEditCells[key];
     setEditCells(newEditCells);
   };
+
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>, machineId: number, planId: number) => {
     if (e.key === 'Enter') {
       handleSaveCell(machineId, planId);
@@ -76,6 +84,7 @@ const TrainingOffersTab = () => {
       setEditCells(newEditCells);
     }
   };
+
   if (machines.length === 0 || plans.length === 0) {
     return <div className="p-6">
         <div className="bg-amber-900/30 border border-amber-700/30 rounded-lg p-4 text-center">
@@ -87,6 +96,7 @@ const TrainingOffersTab = () => {
         </div>
       </div>;
   }
+
   return <div className="p-6">
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-100">Training Offers</h2>
@@ -113,7 +123,18 @@ const TrainingOffersTab = () => {
               const isEditing = editCells[`${row.machineId}-${cell.planId}`] !== undefined;
               return <TableCell key={`${row.machineId}-${cell.planId}`} className="text-center relative border-r border-slate-700 py-3" onDoubleClick={() => handleCellDoubleClick(row.machineId, cell.planId, cell.hoursRequired)}>
                       {isEditing ? <div className="flex items-center justify-center">
-                          <Input type="number" min="0" step="0.5" className="w-20 text-center p-1 bg-slate-700 border-slate-500 text-white overflow-hidden" value={editCells[`${row.machineId}-${cell.planId}`]} onChange={e => handleInputChange(row.machineId, cell.planId, e.target.value)} onKeyDown={e => handleKeyPress(e, row.machineId, cell.planId)} autoFocus onFocus={e => e.target.select()} />
+                          <Input 
+                            type="number" 
+                            min="0" 
+                            step="0.5" 
+                            className="w-20 text-center p-1 bg-slate-700 border-slate-500 text-white overflow-hidden" 
+                            value={editCells[`${row.machineId}-${cell.planId}`]} 
+                            onChange={e => handleInputChange(row.machineId, cell.planId, e.target.value)} 
+                            onKeyDown={e => handleKeyPress(e, row.machineId, cell.planId)} 
+                            autoFocus 
+                            onFocus={e => e.target.select()}
+                            style={{ overflow: 'hidden' }}
+                          />
                         </div> : <div className="px-3 py-1 rounded-md cursor-pointer hover:bg-slate-700/50 transition-colors" title="Double-click to edit">
                           <span className={cell.hoursRequired > 0 ? 'bg-blue-900/30 text-blue-300 font-medium px-3 py-1 rounded-md' : 'text-gray-500'}>
                             {cell.hoursRequired}
@@ -130,4 +151,5 @@ const TrainingOffersTab = () => {
       </div>
     </div>;
 };
+
 export default TrainingOffersTab;
