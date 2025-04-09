@@ -87,15 +87,6 @@ const SoftwareTypeCard: React.FC<SoftwareTypeCardProps> = ({
                   Always
                 </div>
               )}
-              {software?.is_active !== undefined && (
-                <div className={`px-1.5 py-0.5 rounded text-[10px] ${
-                  software.is_active
-                    ? "bg-green-900/70 text-green-300"
-                    : "bg-red-900/70 text-red-300"
-                }`}>
-                  {software.is_active ? "Active" : "Inactive"}
-                </div>
-              )}
             </div>
           </div>
           

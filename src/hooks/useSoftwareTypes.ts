@@ -7,7 +7,6 @@ export interface SoftwareType {
   software_type_id: number;
   name: string;
   description: string | null;
-  is_active: boolean;
   always_included: boolean;
   photo_url: string | null;
   created_at: string;
