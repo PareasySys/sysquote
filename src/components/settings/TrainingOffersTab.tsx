@@ -14,7 +14,7 @@ import {
   TableCell
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Save } from "lucide-react";
+import { Save, Edit2 } from "lucide-react";
 
 const TrainingOffersTab = () => {
   const { offersMatrix, loading, error, fetchOffers, updateTrainingHours } = useTrainingOffers();
@@ -54,25 +54,25 @@ const TrainingOffersTab = () => {
     );
   }
 
-  const handleCellDoubleClick = (planId: number, machineId: number, currentValue: number) => {
+  const handleCellDoubleClick = (machineId: number, planId: number, currentValue: number) => {
     setEditCells({
       ...editCells,
-      [`${planId}-${machineId}`]: currentValue
+      [`${machineId}-${planId}`]: currentValue
     });
   };
 
-  const handleInputChange = (planId: number, machineId: number, value: string) => {
+  const handleInputChange = (machineId: number, planId: number, value: string) => {
     const numericValue = value === '' ? 0 : Number(value);
     if (!isNaN(numericValue)) {
       setEditCells({
         ...editCells,
-        [`${planId}-${machineId}`]: numericValue
+        [`${machineId}-${planId}`]: numericValue
       });
     }
   };
 
-  const handleSaveCell = async (planId: number, machineId: number) => {
-    const key = `${planId}-${machineId}`;
+  const handleSaveCell = async (machineId: number, planId: number) => {
+    const key = `${machineId}-${planId}`;
     const hours = editCells[key];
     
     await updateTrainingHours(machineId, planId, hours);
@@ -85,14 +85,14 @@ const TrainingOffersTab = () => {
 
   const handleKeyPress = (
     e: React.KeyboardEvent<HTMLInputElement>,
-    planId: number,
-    machineId: number
+    machineId: number,
+    planId: number
   ) => {
     if (e.key === 'Enter') {
-      handleSaveCell(planId, machineId);
+      handleSaveCell(machineId, planId);
     } else if (e.key === 'Escape') {
       const newEditCells = { ...editCells };
-      delete newEditCells[`${planId}-${machineId}`];
+      delete newEditCells[`${machineId}-${planId}`];
       setEditCells(newEditCells);
     }
   };
@@ -119,32 +119,34 @@ const TrainingOffersTab = () => {
       </div>
 
       <div className="overflow-x-auto">
-        <Table className="border-collapse">
-          <TableHeader>
+        <Table className="border-collapse border-slate-700">
+          <TableHeader className="bg-slate-800 border-b-2 border-slate-600">
             <TableRow>
-              <TableHead className="bg-slate-800 sticky left-0 z-10">Training Plan / Machine</TableHead>
-              {machines.map((machine) => (
-                <TableHead key={machine.machine_type_id} className="text-center whitespace-nowrap min-w-[150px]">
-                  {machine.name}
+              <TableHead className="bg-slate-800 sticky left-0 z-10 border-r-2 border-slate-600 text-gray-300">
+                Machine / Training Plan
+              </TableHead>
+              {plans.map((plan) => (
+                <TableHead key={plan.plan_id} className="text-center whitespace-nowrap min-w-[150px] text-gray-300 font-medium border-r border-slate-700">
+                  {plan.name}
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {offersMatrix.map((row) => (
-              <TableRow key={row.planId}>
-                <TableCell className="bg-slate-800 sticky left-0 z-10 whitespace-nowrap font-medium">
-                  {row.planName}
+              <TableRow key={row.machineId} className="border-b border-slate-700 hover:bg-slate-800/40">
+                <TableCell className="bg-slate-800 sticky left-0 z-10 whitespace-nowrap font-medium border-r-2 border-slate-600 text-gray-300">
+                  {row.machineName}
                 </TableCell>
-                {row.machines.map((cell) => {
-                  const isEditing = editCells[`${row.planId}-${cell.machineId}`] !== undefined;
+                {row.plans.map((cell) => {
+                  const isEditing = editCells[`${row.machineId}-${cell.planId}`] !== undefined;
                   return (
                     <TableCell 
-                      key={`${row.planId}-${cell.machineId}`} 
-                      className="text-center relative"
+                      key={`${row.machineId}-${cell.planId}`} 
+                      className="text-center relative border-r border-slate-700 py-3"
                       onDoubleClick={() => handleCellDoubleClick(
-                        row.planId, 
-                        cell.machineId, 
+                        row.machineId, 
+                        cell.planId, 
                         cell.hoursRequired
                       )}
                     >
@@ -154,33 +156,49 @@ const TrainingOffersTab = () => {
                             type="number"
                             min="0"
                             step="0.5"
-                            className="w-20 text-center p-1 bg-slate-700 border-slate-500"
-                            value={editCells[`${row.planId}-${cell.machineId}`]}
+                            className="w-20 text-center p-1 bg-slate-700 border-slate-500 text-white"
+                            value={editCells[`${row.machineId}-${cell.planId}`]}
                             onChange={(e) => handleInputChange(
-                              row.planId, 
-                              cell.machineId, 
+                              row.machineId, 
+                              cell.planId, 
                               e.target.value
                             )}
                             onKeyDown={(e) => handleKeyPress(
                               e, 
-                              row.planId, 
-                              cell.machineId
+                              row.machineId, 
+                              cell.planId
                             )}
                             autoFocus
                           />
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="ml-1 h-7 w-7"
-                            onClick={() => handleSaveCell(row.planId, cell.machineId)}
+                            className="ml-1 h-7 w-7 hover:bg-emerald-900/50 hover:text-emerald-400"
+                            onClick={() => handleSaveCell(row.machineId, cell.planId)}
                           >
                             <Save className="h-4 w-4" />
                           </Button>
                         </div>
                       ) : (
-                        <span className="cursor-pointer hover:text-blue-300">
-                          {cell.hoursRequired}
-                        </span>
+                        <div className="flex items-center justify-center group">
+                          <span className={`px-3 py-1 rounded-md ${
+                            cell.hoursRequired > 0 ? 'bg-blue-900/30 text-blue-300 font-medium' : 'text-gray-500'
+                          }`}>
+                            {cell.hoursRequired}
+                          </span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="ml-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-900/30 hover:text-blue-300"
+                            onClick={() => handleCellDoubleClick(
+                              row.machineId, 
+                              cell.planId, 
+                              cell.hoursRequired
+                            )}
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   );
@@ -190,8 +208,9 @@ const TrainingOffersTab = () => {
           </TableBody>
         </Table>
       </div>
-      <div className="mt-4 text-sm text-gray-400">
-        <p>Double-click on a cell to edit training hours</p>
+      <div className="mt-4 text-sm text-gray-400 flex items-center gap-2">
+        <Edit2 className="h-4 w-4" /> 
+        <span>Double-click on a cell or click the edit icon to modify training hours</span>
       </div>
     </div>
   );

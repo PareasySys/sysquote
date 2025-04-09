@@ -22,25 +22,26 @@ export const useTrainingOffers = () => {
   const { plans } = useTrainingPlans();
 
   // Create a 2D matrix representation of hours for each machine-plan combination
-  const offersMatrix = plans.map(plan => {
-    const planRow = {
-      planId: plan.plan_id,
-      planName: plan.name,
-      machines: machines.map(machine => {
+  // Inverted from previous version: machines are now rows, plans are columns
+  const offersMatrix = machines.map(machine => {
+    const machineRow = {
+      machineId: machine.machine_type_id,
+      machineName: machine.name,
+      plans: plans.map(plan => {
         const offer = offers.find(o => 
           o.plan_id === plan.plan_id && 
           o.machine_type_id === machine.machine_type_id
         );
         
         return {
-          machineId: machine.machine_type_id,
-          machineName: machine.name,
+          planId: plan.plan_id,
+          planName: plan.name,
           hoursRequired: offer?.hours_required || 0,
           offerId: offer?.id
         };
       })
     };
-    return planRow;
+    return machineRow;
   });
 
   const fetchOffers = async () => {
