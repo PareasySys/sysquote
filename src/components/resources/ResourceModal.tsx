@@ -168,7 +168,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="hourlyRate" className="text-white">Hourly Rate ($)</Label>
+              <Label htmlFor="hourlyRate" className="text-white">Hourly Rate (€)</Label>
               <Input
                 id="hourlyRate"
                 type="number"

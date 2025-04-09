@@ -8,6 +8,7 @@ import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import ResourceModal from "@/components/resources/ResourceModal";
 import { Layout } from "lucide-react";
+import { formatCurrency } from "@/utils/formatters";
 
 const ResourcesTab = () => {
   const { resources, loading, error, fetchResources } = useResources();
@@ -126,7 +127,9 @@ const ResourcesTab = () => {
                 
                 <div className="absolute bottom-0 left-0 right-0 p-2 z-20">
                   <h3 className="text-sm font-semibold text-white mb-1">{resource.name}</h3>
-                  <div className="text-xl font-bold text-center text-gray-200">${resource.hourly_rate.toFixed(2)}</div>
+                  <div className="text-xl font-bold text-center text-gray-200">
+                    {formatCurrency(resource.hourly_rate)}
+                  </div>
                   <div className="text-xs text-gray-400 mt-1">hourly rate</div>
                 </div>
                 
