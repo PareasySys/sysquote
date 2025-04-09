@@ -49,7 +49,7 @@ export const useQuotes = () => {
           client_name,
           created_at,
           area_id,
-          geographic_areas(name)
+          area_costs(area_name)
         `)
         .eq("created_by_user_id", user.id)
         .order("created_at", { ascending: false });
@@ -69,7 +69,7 @@ export const useQuotes = () => {
           quote_name: item.quote_name,
           client_name: item.client_name,
           area_id: item.area_id,
-          area_name: item.geographic_areas?.name,
+          area_name: item.area_costs?.area_name,
           created_at: item.created_at
         })) : [];
 

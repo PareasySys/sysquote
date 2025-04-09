@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -18,7 +17,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { AreaCost } from "@/hooks/useAreaCosts";
 import { useAreaIcons } from "@/hooks/useAreaIcons";
@@ -106,60 +104,17 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
     try {
       setIsSaving(true);
 
-      let areaId = areaCost?.area_id;
-
-      // If we don't have an area_id or this is a new cost, handle area creation/selection
-      if (!areaId) {
-        // Check if the area name already exists and get its ID if it does
-        const { exists, area } = await checkAreaNameExists(values.areaName);
-        
-        if (exists && area) {
-          // If area exists, use its ID
-          console.log(`Area "${values.areaName}" already exists, using existing area_id:`, area.area_id);
-          areaId = area.area_id;
-          
-          // Check if this area already has costs associated with it
-          const { data: existingCost, error: costCheckError } = await supabase
-            .from("area_costs")
-            .select("area_cost_id")
-            .eq("area_id", areaId)
-            .maybeSingle();
-            
-          if (costCheckError) {
-            console.error("Error checking existing costs:", costCheckError);
-            throw costCheckError;
-          }
-          
-          if (existingCost) {
-            toast.error(`Cost data for "${values.areaName}" already exists. Please edit the existing entry instead.`);
-            return;
-          }
-        } else {
-          // Create a new geographic area
-          const { data: newAreaData, error: newAreaError } = await supabase
-            .from("geographic_areas")
-            .insert({ name: values.areaName })
-            .select("area_id")
-            .single();
-
-          if (newAreaError) {
-            console.error("Error creating geographic area:", newAreaError);
-            
-            // Handle the duplicate key error specifically
-            if (newAreaError.code === '23505') {
-              toast.error(`An area with the name "${values.areaName}" already exists`);
-              return;
-            }
-            
-            throw newAreaError;
-          }
-
-          areaId = newAreaData.area_id;
+      // If this is a new area cost, check if the name already exists
+      if (!areaCost) {
+        const { exists } = await checkAreaNameExists(values.areaName);
+        if (exists) {
+          toast.error(`An area with the name "${values.areaName}" already exists`);
+          return;
         }
       }
 
       const costData = {
-        area_id: areaId,
+        area_name: values.areaName,
         daily_accommodation_food_cost: values.dailyAccommodationFoodCost,
         daily_allowance: values.dailyAllowance,
         daily_pocket_money: values.dailyPocketMoney,
@@ -211,7 +166,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
       const { data: quotesUsingArea, error: quotesError } = await supabase
         .from("quotes")
         .select("quote_id")
-        .eq("area_id", areaCost.area_id);
+        .eq("area_id", areaCost.area_cost_id);
 
       if (quotesError) {
         console.error("Error checking quotes references:", quotesError);
@@ -225,7 +180,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         const { error: updateError } = await supabase
           .from("quotes")
           .update({ area_id: null })
-          .eq("area_id", areaCost.area_id);
+          .eq("area_id", areaCost.area_cost_id);
 
         if (updateError) {
           console.error("Error removing references from quotes:", updateError);

@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export interface GeographicArea {
-  area_id: number;
-  name: string;
+  area_cost_id: number;
+  area_name: string;
 }
 
 export const useGeographicAreas = () => {
@@ -21,9 +21,9 @@ export const useGeographicAreas = () => {
       console.log("Fetching geographic areas...");
       
       const { data, error } = await supabase
-        .from("geographic_areas")
-        .select("area_id, name")
-        .order("name");
+        .from("area_costs")
+        .select("area_cost_id, area_name")
+        .order("area_name");
       
       if (error) throw error;
       
@@ -42,16 +42,16 @@ export const useGeographicAreas = () => {
   const checkAreaNameExists = async (name: string): Promise<{exists: boolean, area?: GeographicArea}> => {
     try {
       const { data, error } = await supabase
-        .from("geographic_areas")
-        .select("area_id, name")
-        .eq("name", name)
+        .from("area_costs")
+        .select("area_cost_id, area_name")
+        .eq("area_name", name)
         .maybeSingle();
       
       if (error) throw error;
       
       return { 
         exists: !!data,
-        area: data ? data as GeographicArea : undefined
+        area: data ? { area_cost_id: data.area_cost_id, area_name: data.area_name } : undefined
       };
     } catch (err: any) {
       console.error("Error checking area name:", err);
