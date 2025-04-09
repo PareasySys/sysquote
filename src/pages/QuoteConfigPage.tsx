@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +8,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, Save } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card } from "@/components/ui/card";
@@ -41,6 +40,7 @@ const QuoteConfigPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const { 
     selectedMachines, 
+    machineTypeIds,
     loading: machinesLoading, 
     error: machinesError, 
     saveMachines,
@@ -78,7 +78,6 @@ const QuoteConfigPage: React.FC = () => {
       
       if (fetchError) throw fetchError;
       
-      // Transform to match our Quote type
       const formattedQuote: Quote = {
         quote_id: data.quote_id,
         quote_name: data.quote_name,
@@ -237,18 +236,16 @@ const QuoteConfigPage: React.FC = () => {
             </div>
           ) : (
             <div className="flex flex-col lg:flex-row gap-6">
-              {/* Left Column - Machine Selector */}
               <div className="w-full lg:w-1/3">
                 <Card className="bg-slate-800/80 border border-white/5 p-4 h-full">
                   <h2 className="text-xl font-semibold mb-4 text-gray-200">Machine Selection</h2>
                   <MachineSelector
-                    selectedMachineIds={selectedMachines.map(m => m.machine_type_id)}
+                    selectedMachineIds={machineTypeIds}
                     onSave={handleMachineSave}
                   />
                 </Card>
               </div>
               
-              {/* Right Column - Selected Machines & Training */}
               <div className="w-full lg:w-2/3">
                 <Card className="bg-slate-800/80 border border-white/5 p-4 mb-6">
                   <h2 className="text-xl font-semibold mb-4 text-gray-200">Selected Machines</h2>

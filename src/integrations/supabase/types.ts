@@ -192,6 +192,7 @@ export type Database = {
           client_name: string | null
           created_at: string
           created_by_user_id: string
+          machine_type_ids: number[] | null
           quote_id: string
           quote_name: string
         }
@@ -200,6 +201,7 @@ export type Database = {
           client_name?: string | null
           created_at?: string
           created_by_user_id: string
+          machine_type_ids?: number[] | null
           quote_id?: string
           quote_name: string
         }
@@ -208,6 +210,7 @@ export type Database = {
           client_name?: string | null
           created_at?: string
           created_by_user_id?: string
+          machine_type_ids?: number[] | null
           quote_id?: string
           quote_name?: string
         }
@@ -456,7 +459,23 @@ export type Database = {
           machine_details: Json
         }[]
       }
+      get_quote_with_machines: {
+        Args: { quote_id_param: string }
+        Returns: {
+          quote_id: string
+          quote_name: string
+          client_name: string
+          created_at: string
+          area_id: number
+          machine_type_ids: number[]
+          machines: Json
+        }[]
+      }
       update_quote_machines: {
+        Args: { quote_id_param: string; machine_ids: number[] }
+        Returns: undefined
+      }
+      update_quote_machines_direct: {
         Args: { quote_id_param: string; machine_ids: number[] }
         Returns: undefined
       }

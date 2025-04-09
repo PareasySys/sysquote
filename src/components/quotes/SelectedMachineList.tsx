@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 
 interface SelectedMachineListProps {
   machines: QuoteMachine[];
-  onRemove: (machineId: string) => void;
+  onRemove: (machineTypeId: number) => void;
   loading?: boolean;
 }
 
@@ -26,17 +26,17 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
 
   return (
     <div className="space-y-2">
-      {machines.map((item) => (
+      {machines.map((machine) => (
         <Card 
-          key={item.id} 
+          key={machine.machine_type_id} 
           className="bg-slate-800/80 border border-white/5 p-3 flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-slate-700 rounded flex-shrink-0 overflow-hidden">
-              {item.machine?.photo_url ? (
+              {machine.photo_url ? (
                 <img 
-                  src={item.machine.photo_url} 
-                  alt={item.machine.name} 
+                  src={machine.photo_url} 
+                  alt={machine.name} 
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = "/placeholder.svg";
@@ -50,11 +50,11 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
             </div>
             <div className="overflow-hidden">
               <h4 className="text-sm font-medium text-gray-200 truncate">
-                {item.machine?.name || "Unknown Machine"}
+                {machine.name || "Unknown Machine"}
               </h4>
-              {item.machine?.description && (
+              {machine.description && (
                 <p className="text-xs text-gray-400 truncate max-w-md">
-                  {item.machine.description}
+                  {machine.description}
                 </p>
               )}
             </div>
@@ -62,7 +62,7 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onRemove(item.id)}
+            onClick={() => onRemove(machine.machine_type_id)}
             disabled={loading}
             className="text-gray-400 hover:text-red-400 hover:bg-red-900/20"
           >
