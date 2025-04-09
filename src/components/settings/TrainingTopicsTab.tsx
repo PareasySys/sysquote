@@ -217,86 +217,90 @@ const TrainingTopicsTab: React.FC = () => {
       <div className="grid grid-cols-1 gap-4">
         {machines.map((machine) => (
           <Card key={machine.machine_type_id} className="bg-slate-800/80 border-slate-700/50">
-            <AccordionItem value={machine.machine_type_id.toString()} className="border-0">
-              <AccordionTrigger 
-                onClick={() => handleMachineSelect(machine.machine_type_id)}
-                className="px-4 py-3 hover:bg-slate-700/30 text-gray-100"
-              >
-                <span className="flex items-center gap-2">
-                  <Book className="w-5 h-5 text-blue-400" />
-                  {machine.name}
-                </span>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="px-4 pb-3 space-y-2">
-                  {plans.map((plan) => (
-                    <Card key={plan.plan_id} className="bg-slate-700/50 border-slate-600/50">
-                      <AccordionItem value={`${machine.machine_type_id}-${plan.plan_id}`} className="border-0">
-                        <AccordionTrigger
-                          onClick={() => handlePlanSelect(machine.machine_type_id, plan.plan_id)}
-                          className="px-4 py-2 hover:bg-slate-600/30 text-gray-200"
-                        >
-                          <span className="flex items-center gap-2">
-                            <List className="w-4 h-4 text-green-400" />
-                            {plan.name}
-                          </span>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          {isLoadingRequirement ? (
-                            <div className="p-4 text-center text-sm text-gray-400">
-                              Loading topics...
-                            </div>
-                          ) : (
-                            <CardContent className="p-4 bg-slate-800/50">
-                              <div className="mb-4">
-                                <div className="font-medium text-gray-300 mb-3">Topics</div>
-                                <div className="space-y-1 max-h-[250px] overflow-y-auto pr-1">
-                                  {topics.length === 0 ? (
-                                    <div className="text-gray-400 text-sm italic">
-                                      No topics defined yet
-                                    </div>
-                                  ) : (
-                                    topics.map((topic) => (
-                                      <TopicItem 
-                                        key={topic.topic_id}
-                                        topic={topic}
-                                        onDelete={handleDeleteTopic}
-                                        onUpdate={handleUpdateTopic}
-                                      />
-                                    ))
-                                  )}
+            <Accordion type="single" collapsible>
+              <AccordionItem value={machine.machine_type_id.toString()} className="border-0">
+                <AccordionTrigger 
+                  onClick={() => handleMachineSelect(machine.machine_type_id)}
+                  className="px-4 py-3 hover:bg-slate-700/30 text-gray-100"
+                >
+                  <span className="flex items-center gap-2">
+                    <Book className="w-5 h-5 text-blue-400" />
+                    {machine.name}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="px-4 pb-3 space-y-2">
+                    {plans.map((plan) => (
+                      <Card key={plan.plan_id} className="bg-slate-700/50 border-slate-600/50">
+                        <Accordion type="single" collapsible>
+                          <AccordionItem value={`${machine.machine_type_id}-${plan.plan_id}`} className="border-0">
+                            <AccordionTrigger
+                              onClick={() => handlePlanSelect(machine.machine_type_id, plan.plan_id)}
+                              className="px-4 py-2 hover:bg-slate-600/30 text-gray-200"
+                            >
+                              <span className="flex items-center gap-2">
+                                <List className="w-4 h-4 text-green-400" />
+                                {plan.name}
+                              </span>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              {isLoadingRequirement ? (
+                                <div className="p-4 text-center text-sm text-gray-400">
+                                  Loading topics...
                                 </div>
-                              </div>
-                              
-                              <div className="flex gap-2">
-                                <Input
-                                  placeholder="Add new topic..."
-                                  value={newTopic}
-                                  onChange={(e) => setNewTopic(e.target.value)}
-                                  className="flex-1 bg-slate-700 border-slate-600 text-gray-200"
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleAddTopic();
-                                  }}
-                                />
-                                <Button 
-                                  onClick={handleAddTopic} 
-                                  disabled={!newTopic.trim() || !currentRequirementId}
-                                  size="sm"
-                                  className="gap-1"
-                                >
-                                  <Plus size={16} />
-                                  Add
-                                </Button>
-                              </div>
-                            </CardContent>
-                          )}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Card>
-                  ))}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+                              ) : (
+                                <CardContent className="p-4 bg-slate-800/50">
+                                  <div className="mb-4">
+                                    <div className="font-medium text-gray-300 mb-3">Topics</div>
+                                    <div className="space-y-1 max-h-[250px] overflow-y-auto pr-1">
+                                      {topics.length === 0 ? (
+                                        <div className="text-gray-400 text-sm italic">
+                                          No topics defined yet
+                                        </div>
+                                      ) : (
+                                        topics.map((topic) => (
+                                          <TopicItem 
+                                            key={topic.topic_id}
+                                            topic={topic}
+                                            onDelete={handleDeleteTopic}
+                                            onUpdate={handleUpdateTopic}
+                                          />
+                                        ))
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex gap-2">
+                                    <Input
+                                      placeholder="Add new topic..."
+                                      value={newTopic}
+                                      onChange={(e) => setNewTopic(e.target.value)}
+                                      className="flex-1 bg-slate-700 border-slate-600 text-gray-200"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleAddTopic();
+                                      }}
+                                    />
+                                    <Button 
+                                      onClick={handleAddTopic} 
+                                      disabled={!newTopic.trim() || !currentRequirementId}
+                                      size="sm"
+                                      className="gap-1"
+                                    >
+                                      <Plus size={16} />
+                                      Add
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              )}
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      </Card>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </Card>
         ))}
       </div>
