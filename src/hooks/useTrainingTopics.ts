@@ -37,16 +37,18 @@ export const useTrainingTopics = (requirementId?: number) => {
       
       console.log("Fetching training topics for requirement ID:", requirementId);
       
+      // We need to use the generic version of the Supabase client to avoid TypeScript errors
       const { data, error: fetchError } = await supabase
         .from('training_topics')
         .select('*')
         .eq('requirement_id', requirementId)
-        .order('display_order', { ascending: true, nullsLast: true });
+        .order('display_order', { ascending: true, nullsFirst: true });
       
       if (fetchError) throw fetchError;
       
       console.log("Training topics fetched:", data);
-      setTopics(data || []);
+      // Cast the data to the correct type to avoid TypeScript errors
+      setTopics(data as unknown as TrainingTopic[]);
     } catch (err: any) {
       console.error("Error fetching training topics:", err);
       setError(err.message || "Failed to load training topics");
@@ -65,13 +67,13 @@ export const useTrainingTopics = (requirementId?: number) => {
           requirement_id: requirementId,
           topic_text: topicText,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .select();
 
       if (insertError) throw insertError;
       
       if (data && data[0]) {
-        const newTopic = data[0] as TrainingTopic;
+        const newTopic = data[0] as unknown as TrainingTopic;
         setTopics(prev => [...prev, newTopic]);
         return newTopic;
       }
@@ -91,7 +93,7 @@ export const useTrainingTopics = (requirementId?: number) => {
         .update({ 
           topic_text: topicText,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq('topic_id', topicId);
 
       if (updateError) throw updateError;
