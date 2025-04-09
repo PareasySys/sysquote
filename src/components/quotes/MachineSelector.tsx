@@ -74,7 +74,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-slate-800 border-gray-700 text-gray-200 max-w-5xl max-h-[80vh]">
+        <DialogContent className="bg-slate-800 border-gray-700 text-gray-200 max-w-6xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="text-xl text-gray-100">Select Machine Types</DialogTitle>
           </DialogHeader>
@@ -105,14 +105,10 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
                     className="relative"
                     onClick={() => toggleMachineSelection(machine.machine_type_id)}
                   >
-                    <MachineTypeCard machine={machine} />
-                    <div className={`absolute top-2 right-2 h-6 w-6 rounded-full flex items-center justify-center transition-all ${
-                      isSelected(machine.machine_type_id) 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-slate-700/60 text-gray-400'
-                    }`}>
-                      <Check className="h-4 w-4" />
-                    </div>
+                    <MachineTypeCard 
+                      machine={machine} 
+                      isSelected={isSelected(machine.machine_type_id)}
+                    />
                   </div>
                 ))}
               </div>
@@ -132,7 +128,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
               className="bg-blue-700 hover:bg-blue-800 text-white"
               disabled={loading}
             >
-              Save Selection
+              Save Selection ({selection.length} selected)
             </Button>
           </DialogFooter>
         </DialogContent>

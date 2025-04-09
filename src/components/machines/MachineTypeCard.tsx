@@ -4,20 +4,22 @@ import { Card } from "@/components/ui/card";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
 import { MachineType } from "@/hooks/useMachineTypes";
-import { Edit } from "lucide-react";
+import { Check } from "lucide-react";
 
 interface MachineTypeCardProps {
   machine?: MachineType;
   isAddCard?: boolean;
   onEdit?: (machine: MachineType) => void;
   onAddNew?: () => void;
+  isSelected?: boolean;
 }
 
 const MachineTypeCard: React.FC<MachineTypeCardProps> = ({ 
   machine, 
   isAddCard = false,
   onEdit,
-  onAddNew
+  onAddNew,
+  isSelected = false
 }) => {
   const handleClick = () => {
     if (isAddCard && onAddNew) {
@@ -63,7 +65,9 @@ const MachineTypeCard: React.FC<MachineTypeCardProps> = ({
   return (
     <div className="w-full">
       <AspectRatio ratio={3/4} className="w-full">
-        <Card className="relative overflow-hidden h-full cursor-default w-full border-0">
+        <Card 
+          className={`relative overflow-hidden h-full cursor-pointer w-full border-0 ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
+        >
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
           {machine?.photo_url ? (
             <img 
@@ -80,18 +84,20 @@ const MachineTypeCard: React.FC<MachineTypeCardProps> = ({
             </div>
           )}
           
-          <div className="absolute bottom-0 left-0 right-0 p-2 z-20">
+          <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
             <h3 className="text-sm font-semibold text-white mb-1">{machine?.name}</h3>
+            {machine?.description && (
+              <p className="text-xs text-gray-300 line-clamp-2">{machine.description}</p>
+            )}
           </div>
           
-          <Button
-            size="icon"
-            variant="ghost"
-            className="absolute top-1 right-1 bg-slate-800/60 hover:bg-slate-700 z-20 h-8 w-8"
-            onClick={handleEditClick}
-          >
-            <Edit className="h-4 w-4 text-white" />
-          </Button>
+          <div className={`absolute top-2 right-2 h-6 w-6 rounded-full flex items-center justify-center transition-all z-20 ${
+            isSelected 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-slate-700/60 text-gray-400'
+          }`}>
+            <Check className="h-4 w-4" />
+          </div>
         </Card>
       </AspectRatio>
     </div>

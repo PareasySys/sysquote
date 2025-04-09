@@ -150,42 +150,6 @@ export type Database = {
           },
         ]
       }
-      quote_machines: {
-        Row: {
-          created_at: string
-          id: string
-          machine_type_id: number
-          quote_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          machine_type_id: number
-          quote_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          machine_type_id?: number
-          quote_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quote_machines_machine_type_id_fkey"
-            columns: ["machine_type_id"]
-            isOneToOne: false
-            referencedRelation: "machine_types"
-            referencedColumns: ["machine_type_id"]
-          },
-          {
-            foreignKeyName: "quote_machines_quote_id_fkey"
-            columns: ["quote_id"]
-            isOneToOne: false
-            referencedRelation: "quotes"
-            referencedColumns: ["quote_id"]
-          },
-        ]
-      }
       quotes: {
         Row: {
           area_id: number | null
