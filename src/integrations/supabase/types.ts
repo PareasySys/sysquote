@@ -406,6 +406,8 @@ export type Database = {
         Row: {
           created_at: string
           display_order: number | null
+          machine_type_id: number | null
+          plan_id: number | null
           requirement_id: number
           topic_id: number
           topic_text: string
@@ -414,6 +416,8 @@ export type Database = {
         Insert: {
           created_at?: string
           display_order?: number | null
+          machine_type_id?: number | null
+          plan_id?: number | null
           requirement_id: number
           topic_id?: number
           topic_text: string
@@ -422,12 +426,29 @@ export type Database = {
         Update: {
           created_at?: string
           display_order?: number | null
+          machine_type_id?: number | null
+          plan_id?: number | null
           requirement_id?: number
           topic_id?: number
           topic_text?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "training_topics_machine_type_id_fkey"
+            columns: ["machine_type_id"]
+            isOneToOne: false
+            referencedRelation: "machine_types"
+            referencedColumns: ["machine_type_id"]
+          },
+          {
+            foreignKeyName: "training_topics_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["plan_id"]
+          },
+        ]
       }
     }
     Views: {

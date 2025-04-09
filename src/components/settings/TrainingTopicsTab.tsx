@@ -1,8 +1,7 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useMachineTypes } from "@/hooks/useMachineTypes";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
-import { useMachineTrainingRequirements } from "@/hooks/useMachineTrainingRequirements";
 import { useTrainingTopics, TrainingTopic } from "@/hooks/useTrainingTopics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +10,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Card, CardContent } from "@/components/ui/card";
 import { Trash, Plus, Edit, Save, X, Book, List } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabaseClient";
 
 interface TopicItemProps {
   topic: TrainingTopic;
@@ -83,88 +81,46 @@ const TrainingTopicsTab: React.FC = () => {
   const { plans, loading: plansLoading } = useTrainingPlans();
   const [expandedMachineId, setExpandedMachineId] = useState<number | null>(null);
   const [expandedPlanId, setExpandedPlanId] = useState<number | null>(null);
-  const [currentRequirementId, setCurrentRequirementId] = useState<number | null>(null);
+  const [selectedMachineId, setSelectedMachineId] = useState<number | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [newTopic, setNewTopic] = useState("");
-  const [requirements, setRequirements] = useState<Record<string, number>>({});
-  const [isLoadingRequirement, setIsLoadingRequirement] = useState(false);
   
-  const { topics, loading: topicsLoading, addTopic, deleteTopic, updateTopic } = useTrainingTopics(currentRequirementId || undefined);
+  const { 
+    topics, 
+    loading: topicsLoading, 
+    addTopic, 
+    deleteTopic, 
+    updateTopic 
+  } = useTrainingTopics(selectedMachineId || undefined, selectedPlanId || undefined);
 
-  const fetchRequirement = async (machineId: number, planId: number) => {
-    setIsLoadingRequirement(true);
-    const key = `${machineId}-${planId}`;
-    
-    try {
-      // Check if we already have this requirement in our local cache
-      if (requirements[key]) {
-        setCurrentRequirementId(requirements[key]);
-        return requirements[key];
-      }
-      
-      // Check if requirement exists
-      const { data: existingReq, error: fetchError } = await supabase
-        .from('machine_training_requirements')
-        .select('id')
-        .eq('machine_type_id', machineId)
-        .eq('plan_id', planId)
-        .maybeSingle();
-      
-      if (fetchError) throw fetchError;
-      
-      if (existingReq) {
-        // Requirement exists, use it
-        setRequirements(prev => ({ ...prev, [key]: existingReq.id }));
-        setCurrentRequirementId(existingReq.id);
-        return existingReq.id;
-      } else {
-        // Create a new requirement
-        const { data: newReq, error: insertError } = await supabase
-          .from('machine_training_requirements')
-          .insert({
-            machine_type_id: machineId,
-            plan_id: planId,
-            resource_id: null // Default to null as it's not needed for topics
-          })
-          .select();
-        
-        if (insertError) throw insertError;
-        
-        if (newReq && newReq[0]) {
-          setRequirements(prev => ({ ...prev, [key]: newReq[0].id }));
-          setCurrentRequirementId(newReq[0].id);
-          return newReq[0].id;
-        }
-      }
-      
-      return null;
-    } catch (err) {
-      console.error("Error fetching/creating requirement:", err);
-      toast.error("Failed to load training topics");
-      return null;
-    } finally {
-      setIsLoadingRequirement(false);
+  const handleMachineSelect = (machineId: number) => {
+    if (expandedMachineId === machineId) {
+      setExpandedMachineId(null);
+      setExpandedPlanId(null);
+      setSelectedMachineId(null);
+      setSelectedPlanId(null);
+    } else {
+      setExpandedMachineId(machineId);
+      setExpandedPlanId(null);
+      setSelectedMachineId(null);
+      setSelectedPlanId(null);
     }
   };
   
-  const handleMachineSelect = (machineId: number) => {
-    setExpandedMachineId(prevId => prevId === machineId ? null : machineId);
-    setExpandedPlanId(null);
-    setCurrentRequirementId(null);
-  };
-  
-  const handlePlanSelect = async (machineId: number, planId: number) => {
+  const handlePlanSelect = (machineId: number, planId: number) => {
     if (expandedPlanId === planId && expandedMachineId === machineId) {
       setExpandedPlanId(null);
-      setCurrentRequirementId(null);
-      return;
+      setSelectedMachineId(null);
+      setSelectedPlanId(null);
+    } else {
+      setExpandedPlanId(planId);
+      setSelectedMachineId(machineId);
+      setSelectedPlanId(planId);
     }
-    
-    setExpandedPlanId(planId);
-    await fetchRequirement(machineId, planId);
   };
   
   const handleAddTopic = async () => {
-    if (!newTopic.trim() || !currentRequirementId) return;
+    if (!newTopic.trim() || !selectedMachineId || !selectedPlanId) return;
     
     const success = await addTopic(newTopic);
     if (success) {
@@ -217,7 +173,7 @@ const TrainingTopicsTab: React.FC = () => {
       <div className="grid grid-cols-1 gap-4">
         {machines.map((machine) => (
           <Card key={machine.machine_type_id} className="bg-slate-800/80 border-slate-700/50">
-            <Accordion type="single" collapsible>
+            <Accordion type="single" collapsible value={expandedMachineId === machine.machine_type_id ? machine.machine_type_id.toString() : ""}>
               <AccordionItem value={machine.machine_type_id.toString()} className="border-0">
                 <AccordionTrigger 
                   onClick={() => handleMachineSelect(machine.machine_type_id)}
@@ -232,7 +188,11 @@ const TrainingTopicsTab: React.FC = () => {
                   <div className="px-4 pb-3 space-y-2">
                     {plans.map((plan) => (
                       <Card key={plan.plan_id} className="bg-slate-700/50 border-slate-600/50">
-                        <Accordion type="single" collapsible>
+                        <Accordion type="single" collapsible value={
+                          expandedPlanId === plan.plan_id && expandedMachineId === machine.machine_type_id 
+                            ? `${machine.machine_type_id}-${plan.plan_id}` 
+                            : ""
+                        }>
                           <AccordionItem value={`${machine.machine_type_id}-${plan.plan_id}`} className="border-0">
                             <AccordionTrigger
                               onClick={() => handlePlanSelect(machine.machine_type_id, plan.plan_id)}
@@ -244,7 +204,7 @@ const TrainingTopicsTab: React.FC = () => {
                               </span>
                             </AccordionTrigger>
                             <AccordionContent>
-                              {isLoadingRequirement ? (
+                              {topicsLoading ? (
                                 <div className="p-4 text-center text-sm text-gray-400">
                                   Loading topics...
                                 </div>
@@ -282,7 +242,7 @@ const TrainingTopicsTab: React.FC = () => {
                                     />
                                     <Button 
                                       onClick={handleAddTopic} 
-                                      disabled={!newTopic.trim() || !currentRequirementId}
+                                      disabled={!newTopic.trim()}
                                       size="sm"
                                       className="gap-1"
                                     >

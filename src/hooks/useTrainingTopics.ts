@@ -10,9 +10,8 @@ export interface TrainingTopic {
   display_order: number | null;
   created_at: string;
   updated_at: string;
-  // Extended information (joined from machine_training_requirements)
-  machine_type_id?: number;
-  plan_id?: number;
+  machine_type_id: number;
+  plan_id: number;
 }
 
 export interface TrainingRequirementWithTopics {
@@ -22,13 +21,34 @@ export interface TrainingRequirementWithTopics {
   topics: TrainingTopic[];
 }
 
-export const useTrainingTopics = (requirementId?: number) => {
+export const useTrainingTopics = (machineTypeId?: number, planId?: number) => {
   const [topics, setTopics] = useState<TrainingTopic[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [requirementId, setRequirementId] = useState<number | null>(null);
+
+  const fetchRequirement = async () => {
+    if (!machineTypeId || !planId) return null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('machine_training_requirements')
+        .select('id')
+        .eq('machine_type_id', machineTypeId)
+        .eq('plan_id', planId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      
+      return data?.id || null;
+    } catch (err) {
+      console.error("Error fetching requirement:", err);
+      return null;
+    }
+  };
 
   const fetchTopics = async () => {
-    if (!requirementId) {
+    if (!machineTypeId || !planId) {
       setTopics([]);
       setLoading(false);
       return;
@@ -38,37 +58,25 @@ export const useTrainingTopics = (requirementId?: number) => {
       setLoading(true);
       setError(null);
       
-      console.log("Fetching training topics for requirement ID:", requirementId);
+      console.log(`Fetching training topics for machine type ${machineTypeId} and plan ${planId}`);
       
-      // Fetch requirement first to get machine_type_id and plan_id
-      const { data: requirementData, error: reqError } = await supabase
-        .from('machine_training_requirements')
-        .select('*')
-        .eq('id', requirementId)
-        .single();
-      
-      if (reqError) throw reqError;
-      
-      // Then fetch topics with the requirement info
-      const { data: topicsData, error: fetchError } = await supabase
+      // Fetch topics directly using machine_type_id and plan_id
+      const { data, error: fetchError } = await supabase
         .from('training_topics')
         .select('*')
-        .eq('requirement_id', requirementId)
+        .eq('machine_type_id', machineTypeId)
+        .eq('plan_id', planId)
         .order('display_order', { ascending: true, nullsFirst: true });
       
       if (fetchError) throw fetchError;
       
-      // Combine the requirement data with each topic
-      const enrichedTopics = topicsData?.map(topic => ({
-        ...topic,
-        machine_type_id: requirementData.machine_type_id,
-        plan_id: requirementData.plan_id
-      })) || [];
+      console.log("Training topics fetched:", data);
+      setTopics(data || []);
       
-      console.log("Training topics fetched:", enrichedTopics);
+      // Also fetch or create the requirement ID for later use
+      const reqId = await fetchRequirement();
+      setRequirementId(reqId);
       
-      // Cast the data to the correct type
-      setTopics(enrichedTopics as unknown as TrainingTopic[]);
     } catch (err: any) {
       console.error("Error fetching training topics:", err);
       setError(err.message || "Failed to load training topics");
@@ -78,21 +86,36 @@ export const useTrainingTopics = (requirementId?: number) => {
   };
 
   const addTopic = async (topicText: string): Promise<boolean> => {
-    if (!requirementId) return false;
+    if (!machineTypeId || !planId) return false;
 
     try {
-      const { data: requirementData, error: reqError } = await supabase
-        .from('machine_training_requirements')
-        .select('machine_type_id, plan_id')
-        .eq('id', requirementId)
-        .single();
-        
-      if (reqError) throw reqError;
+      // Check if we need to create a requirement first
+      let reqId = requirementId;
+      
+      if (!reqId) {
+        // Create a new requirement
+        const { data: newReq, error: reqError } = await supabase
+          .from('machine_training_requirements')
+          .insert({
+            machine_type_id: machineTypeId,
+            plan_id: planId,
+            resource_id: null
+          })
+          .select();
+          
+        if (reqError) throw reqError;
+        if (newReq && newReq.length > 0) {
+          reqId = newReq[0].id;
+          setRequirementId(reqId);
+        }
+      }
 
       const { data, error: insertError } = await supabase
         .from('training_topics')
         .insert({
-          requirement_id: requirementId,
+          requirement_id: reqId,
+          machine_type_id: machineTypeId,
+          plan_id: planId,
           topic_text: topicText,
           updated_at: new Date().toISOString()
         })
@@ -101,13 +124,7 @@ export const useTrainingTopics = (requirementId?: number) => {
       if (insertError) throw insertError;
       
       if (data && data[0]) {
-        const newTopic = {
-          ...data[0],
-          machine_type_id: requirementData.machine_type_id,
-          plan_id: requirementData.plan_id
-        } as unknown as TrainingTopic;
-        
-        setTopics(prev => [...prev, newTopic]);
+        setTopics(prev => [...prev, data[0]]);
         return true;
       }
       
@@ -163,7 +180,7 @@ export const useTrainingTopics = (requirementId?: number) => {
 
   useEffect(() => {
     fetchTopics();
-  }, [requirementId]);
+  }, [machineTypeId, planId]);
 
   return {
     topics,
