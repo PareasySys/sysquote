@@ -235,6 +235,52 @@ export type Database = {
         }
         Relationships: []
       }
+      software_training_requirements: {
+        Row: {
+          created_at: string
+          id: number
+          plan_id: number
+          resource_id: number | null
+          software_type_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          plan_id: number
+          resource_id?: number | null
+          software_type_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          plan_id?: number
+          resource_id?: number | null
+          software_type_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "software_training_requirements_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "software_training_requirements_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["resource_id"]
+          },
+          {
+            foreignKeyName: "software_training_requirements_software_type_id_fkey"
+            columns: ["software_type_id"]
+            isOneToOne: false
+            referencedRelation: "software_types"
+            referencedColumns: ["software_type_id"]
+          },
+        ]
+      }
       software_types: {
         Row: {
           always_included: boolean
