@@ -71,7 +71,12 @@ export const useTrainingTopics = (machineTypeId?: number, planId?: number) => {
       if (fetchError) throw fetchError;
       
       console.log("Training topics fetched:", data);
-      setTopics(data || []);
+      // Ensure each fetched topic has the machine_type_id and plan_id properties
+      if (data) {
+        setTopics(data as TrainingTopic[]);
+      } else {
+        setTopics([]);
+      }
       
       // Also fetch or create the requirement ID for later use
       const reqId = await fetchRequirement();
@@ -110,21 +115,24 @@ export const useTrainingTopics = (machineTypeId?: number, planId?: number) => {
         }
       }
 
+      const newTopic = {
+        requirement_id: reqId,
+        machine_type_id: machineTypeId,
+        plan_id: planId,
+        topic_text: topicText,
+        updated_at: new Date().toISOString()
+      };
+
       const { data, error: insertError } = await supabase
         .from('training_topics')
-        .insert({
-          requirement_id: reqId,
-          machine_type_id: machineTypeId,
-          plan_id: planId,
-          topic_text: topicText,
-          updated_at: new Date().toISOString()
-        })
+        .insert(newTopic)
         .select();
 
       if (insertError) throw insertError;
       
       if (data && data[0]) {
-        setTopics(prev => [...prev, data[0]]);
+        // Make sure we're adding a complete TrainingTopic object
+        setTopics(prev => [...prev, data[0] as TrainingTopic]);
         return true;
       }
       
