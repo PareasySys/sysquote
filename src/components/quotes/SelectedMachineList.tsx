@@ -1,7 +1,5 @@
 
 import React from "react";
-import { Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
 import { Card } from "@/components/ui/card";
 
@@ -13,7 +11,6 @@ interface SelectedMachineListProps {
 
 const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
   machines,
-  onRemove,
   loading = false
 }) => {
   if (machines.length === 0) {
@@ -41,15 +38,6 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
                 </p>}
             </div>
           </div>
-          
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="text-gray-400 hover:text-red-400"
-            onClick={() => onRemove(machine.machine_type_id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
         </Card>)}
     </div>;
 };
