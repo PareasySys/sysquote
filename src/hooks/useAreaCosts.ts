@@ -45,7 +45,7 @@ export const useAreaCosts = () => {
         return {
           ...item,
           area_name: item.geographic_areas?.name || "Unknown Area",
-          icon_name: "icon-location", // Default icon name, will be updated in the future
+          icon_name: item.icon_name || null,
         };
       }) || [];
       
