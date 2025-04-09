@@ -74,12 +74,12 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-slate-800 border-gray-700 text-gray-200 max-w-[90vw] w-[1200px] max-h-[90vh]">
+        <DialogContent className="bg-slate-800 border-gray-700 text-gray-200 max-w-[95vw] w-[1600px] max-h-[95vh]">
           <DialogHeader>
-            <DialogTitle className="text-xl text-gray-100">Select Machine Types</DialogTitle>
+            <DialogTitle className="text-2xl text-gray-100 mb-2">Select Machine Types</DialogTitle>
           </DialogHeader>
           
-          <div className="overflow-y-auto py-4">
+          <div className="overflow-y-auto py-6">
             {loading ? (
               <div className="p-4 text-center">
                 <TextShimmerWave
@@ -98,7 +98,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
                 <p className="text-red-300">{error}</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 p-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6 p-2">
                 {machines.map((machine) => (
                   <div 
                     key={machine.machine_type_id}
@@ -116,17 +116,17 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
             )}
           </div>
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-6">
             <Button 
               variant="outline" 
               onClick={handleCancel}
-              className="border-gray-600 hover:bg-gray-700 text-gray-300"
+              className="border-gray-600 hover:bg-gray-700 text-gray-300 text-lg px-8 py-6 h-auto"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleSave}
-              className="bg-blue-700 hover:bg-blue-800 text-white"
+              className="bg-blue-700 hover:bg-blue-800 text-white text-lg px-8 py-6 h-auto"
               disabled={loading}
             >
               Save Selection ({selection.length} selected)
