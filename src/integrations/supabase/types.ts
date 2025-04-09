@@ -402,6 +402,33 @@ export type Database = {
           },
         ]
       }
+      training_topics: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          requirement_id: number
+          topic_id: number
+          topic_text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          requirement_id: number
+          topic_id?: number
+          topic_text: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          requirement_id?: number
+          topic_id?: number
+          topic_text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

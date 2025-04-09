@@ -24,14 +24,16 @@ import ResourcesTab from "@/components/settings/ResourcesTab";
 import TrainingPlansTab from "@/components/settings/TrainingPlansTab";
 import AreaCostsTab from "@/components/settings/AreaCostsTab";
 import TrainingOffersTab from "@/components/settings/TrainingOffersTab";
+import TrainingTopicsTab from "@/components/settings/TrainingTopicsTab";
 
 const initialTabs = [
   { id: "machines", label: "Machine Types", order: 0 },
   { id: "software", label: "Software Types", order: 1 },
   { id: "resources", label: "Resources", order: 2 },
   { id: "plans", label: "Training Plans", order: 3 },
-  { id: "area-costs", label: "Area Costs", order: 4 },
-  { id: "training-offers", label: "Training Offers", order: 5 },
+  { id: "topics", label: "Training Topics", order: 4 },
+  { id: "area-costs", label: "Area Costs", order: 5 },
+  { id: "training-offers", label: "Training Offers", order: 6 },
 ];
 
 const SettingsPage = () => {
@@ -74,6 +76,8 @@ const SettingsPage = () => {
         return <ResourcesTab />;
       case "plans":
         return <TrainingPlansTab />;
+      case "topics":
+        return <TrainingTopicsTab />;
       case "area-costs":
         return <AreaCostsTab />;
       case "training-offers":
