@@ -1,38 +1,52 @@
 
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import HomePage from "@/pages/HomePage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
-import HomePage from "@/pages/HomePage";
-import ProfileSettingsPage from "@/pages/ProfileSettingsPage";
-import SettingsPage from "@/pages/SettingsPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import NotFoundPage from "@/pages/NotFoundPage";
+import ProfileSettingsPage from "@/pages/ProfileSettingsPage";
+import SettingsPage from "@/pages/SettingsPage";
+import QuoteConfigPage from "@/pages/QuoteConfigPage";
 import PrivateRoute from "./PrivateRoute";
 
-const Router = () => (
-  <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/home" element={
-        <PrivateRoute>
-          <HomePage />
-        </PrivateRoute>
-      } />
-      <Route path="/profile" element={
-        <PrivateRoute>
-          <ProfileSettingsPage />
-        </PrivateRoute>
-      } />
-      <Route path="/settings" element={
-        <PrivateRoute>
-          <SettingsPage />
-        </PrivateRoute>
-      } />
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
-  </BrowserRouter>
-);
+const Router = () => {
+  const router = createBrowserRouter([
+    {
+      path: "/",
+      element: <LoginPage />
+    },
+    {
+      path: "/signup",
+      element: <SignupPage />
+    },
+    {
+      path: "/forgot-password",
+      element: <ForgotPasswordPage />
+    },
+    {
+      path: "/home",
+      element: <PrivateRoute component={<HomePage />} />
+    },
+    {
+      path: "/profile",
+      element: <PrivateRoute component={<ProfileSettingsPage />} />
+    },
+    {
+      path: "/settings",
+      element: <PrivateRoute component={<SettingsPage />} />
+    },
+    {
+      path: "/quote/:quoteId/config",
+      element: <PrivateRoute component={<QuoteConfigPage />} />
+    },
+    {
+      path: "*",
+      element: <NotFoundPage />
+    }
+  ]);
+
+  return <RouterProvider router={router} />;
+};
 
 export default Router;

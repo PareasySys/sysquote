@@ -39,7 +39,7 @@ const QuoteCard = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleClick = () => {
-    navigate(`/quote/${quote_id}/input`);
+    navigate(`/quote/${quote_id}/config`);
   };
 
   const handleDeleteClick = (e: React.MouseEvent) => {

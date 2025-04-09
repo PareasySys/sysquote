@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -120,8 +121,10 @@ const HomePage = () => {
       toast.success("Quote created successfully!");
       setDialogOpen(false);
       
-      console.log("Created new quote, fetching updated quotes");
-      fetchQuotes(); // Refresh quotes after creating a new one
+      console.log("Created new quote:", newQuote);
+      
+      // Navigate to the quote configuration page
+      navigate(`/quote/${newQuote.quote_id}/config`);
     } catch (error: any) {
       console.error("Error creating quote:", error);
       toast.error(error.message || "Failed to create quote");
