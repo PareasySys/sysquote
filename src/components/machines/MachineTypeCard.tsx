@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
 import { MachineType } from "@/hooks/useMachineTypes";
-import { Check } from "lucide-react";
+import { Check, Edit, Pencil } from "lucide-react";
 
 interface MachineTypeCardProps {
   machine?: MachineType;
@@ -91,6 +91,7 @@ const MachineTypeCard: React.FC<MachineTypeCardProps> = ({
             )}
           </div>
           
+          {/* Show both indicators: selection status AND edit button */}
           <div className={`absolute top-2 right-2 h-6 w-6 rounded-full flex items-center justify-center transition-all z-20 ${
             isSelected 
               ? 'bg-blue-600 text-white' 
@@ -98,6 +99,18 @@ const MachineTypeCard: React.FC<MachineTypeCardProps> = ({
           }`}>
             <Check className="h-4 w-4" />
           </div>
+          
+          {/* Add back the edit button */}
+          {onEdit && (
+            <Button 
+              onClick={handleEditClick}
+              className="absolute top-2 left-2 h-8 w-8 p-0 bg-slate-800/80 hover:bg-slate-700 z-20"
+              size="icon"
+              variant="ghost"
+            >
+              <Edit className="h-4 w-4 text-white" />
+            </Button>
+          )}
         </Card>
       </AspectRatio>
     </div>
