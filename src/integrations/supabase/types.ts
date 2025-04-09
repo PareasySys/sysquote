@@ -19,6 +19,7 @@ export type Database = {
           daily_car_rental_cost: number | null
           daily_pocket_money: number
           daily_taxi_cost: number | null
+          icon_name: string | null
           travel_cost_flight: number | null
           updated_at: string
         }
@@ -31,6 +32,7 @@ export type Database = {
           daily_car_rental_cost?: number | null
           daily_pocket_money: number
           daily_taxi_cost?: number | null
+          icon_name?: string | null
           travel_cost_flight?: number | null
           updated_at?: string
         }
@@ -43,6 +45,7 @@ export type Database = {
           daily_car_rental_cost?: number | null
           daily_pocket_money?: number
           daily_taxi_cost?: number | null
+          icon_name?: string | null
           travel_cost_flight?: number | null
           updated_at?: string
         }
