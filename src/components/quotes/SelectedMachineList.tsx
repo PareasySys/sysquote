@@ -19,7 +19,7 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
       </div>;
   }
   return <div className="space-y-2">
-      {machines.map(machine => <Card key={machine.machine_type_id} className="bg-slate-800/80 border border-white/5 p-3 flex items-center justify-canter">
+      {machines.map(machine => <Card key={machine.machine_type_id} className="bg-slate-800/80 border border-white/5 p-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-slate-700 rounded flex-shrink-0 overflow-hidden">
               {machine.photo_url ? <img src={machine.photo_url} alt={machine.name} className="w-full h-full object-cover" onError={e => {
