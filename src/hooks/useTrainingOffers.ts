@@ -50,7 +50,8 @@ export const useTrainingOffers = () => {
       
       console.log("Fetching training offers...");
       
-      const { data, error } = await supabase
+      // Use any type as a workaround for the missing type definition
+      const { data, error } = await (supabase as any)
         .from("training_offers")
         .select("*");
       
@@ -79,7 +80,7 @@ export const useTrainingOffers = () => {
 
       if (existingOffer) {
         // Update existing record
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from("training_offers")
           .update({ 
             hours_required,
@@ -90,7 +91,7 @@ export const useTrainingOffers = () => {
         if (error) throw error;
       } else {
         // Create new record
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from("training_offers")
           .insert({
             machine_type_id,
