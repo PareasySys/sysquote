@@ -206,7 +206,34 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
 
     try {
       setIsDeleting(true);
+      
+      // Check if this area cost is referenced in quotes table
+      const { data: quotesUsingArea, error: quotesError } = await supabase
+        .from("quotes")
+        .select("quote_id")
+        .eq("area_id", areaCost.area_id);
 
+      if (quotesError) {
+        console.error("Error checking quotes references:", quotesError);
+        throw quotesError;
+      }
+
+      // If there are quotes using this area, update them to remove the reference
+      if (quotesUsingArea && quotesUsingArea.length > 0) {
+        console.log(`Found ${quotesUsingArea.length} quotes using this area. Removing references...`);
+        
+        const { error: updateError } = await supabase
+          .from("quotes")
+          .update({ area_id: null })
+          .eq("area_id", areaCost.area_id);
+
+        if (updateError) {
+          console.error("Error removing references from quotes:", updateError);
+          throw updateError;
+        }
+      }
+
+      // Now delete the area cost
       const { error } = await supabase
         .from("area_costs")
         .delete()
@@ -418,12 +445,12 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
       </Dialog>
 
       <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-100">
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-100 z-[200]">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
               This action cannot be undone. This will permanently delete the
-              area cost and remove the data from our servers.
+              area cost and remove all references to it from the database.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -435,7 +462,14 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
               disabled={isDeleting}
               className="bg-red-700 hover:bg-red-800 text-white"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
