@@ -13,6 +13,7 @@ export type Database = {
         Row: {
           area_cost_id: number
           area_id: number
+          area_name: string
           created_at: string
           daily_accommodation_food_cost: number
           daily_allowance: number
@@ -23,6 +24,7 @@ export type Database = {
         Insert: {
           area_cost_id?: number
           area_id: number
+          area_name?: string
           created_at?: string
           daily_accommodation_food_cost: number
           daily_allowance: number
@@ -33,6 +35,7 @@ export type Database = {
         Update: {
           area_cost_id?: number
           area_id?: number
+          area_name?: string
           created_at?: string
           daily_accommodation_food_cost?: number
           daily_allowance?: number
