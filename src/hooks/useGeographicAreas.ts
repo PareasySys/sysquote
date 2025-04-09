@@ -39,13 +39,19 @@ export const useGeographicAreas = () => {
   };
 
   // Check if an area name already exists and return the area if it does
-  const checkAreaNameExists = async (name: string): Promise<{exists: boolean, area?: GeographicArea}> => {
+  const checkAreaNameExists = async (name: string, currentAreaId?: number): Promise<{exists: boolean, area?: GeographicArea}> => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("area_costs")
         .select("area_id, area_name")
-        .eq("area_name", name)
-        .maybeSingle();
+        .eq("area_name", name);
+      
+      // If editing existing area, exclude it from the check
+      if (currentAreaId) {
+        query = query.neq("area_id", currentAreaId);
+      }
+      
+      const { data, error } = await query.maybeSingle();
       
       if (error) throw error;
       

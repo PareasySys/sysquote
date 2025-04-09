@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useGeographicAreas } from "@/hooks/useGeographicAreas";
 
 interface AreaCostModalProps {
   open: boolean;
@@ -66,7 +65,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const { icons, loading: loadingIcons } = useAreaIcons();
-  const { checkAreaNameExists } = useGeographicAreas();
 
   // Initialize the form with default values or the existing area cost values
   const form = useForm<AreaCostFormValues>({
@@ -101,17 +99,46 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
     }
   }, [areaCost, form]);
 
+  // Function to check if an area name already exists (excluding the current area)
+  const checkAreaNameExists = async (name: string, currentAreaId?: number): Promise<boolean> => {
+    try {
+      let query = supabase
+        .from("area_costs")
+        .select("area_id")
+        .eq("area_name", name);
+      
+      // If editing, exclude the current area from the check
+      if (currentAreaId) {
+        query = query.neq("area_id", currentAreaId);
+      }
+      
+      const { data, error } = await query.maybeSingle();
+      
+      if (error) {
+        console.error("Error checking area name:", error);
+        throw error;
+      }
+      
+      return !!data;
+    } catch (err) {
+      console.error("Error in checkAreaNameExists:", err);
+      return false;
+    }
+  };
+
   const handleSave = async (values: AreaCostFormValues) => {
     try {
       setIsSaving(true);
 
-      // If this is a new area cost, check if the name already exists
-      if (!areaCost) {
-        const { exists } = await checkAreaNameExists(values.areaName);
-        if (exists) {
-          toast.error(`An area with the name "${values.areaName}" already exists`);
-          return;
-        }
+      // Check if name exists (but exclude current area if editing)
+      const nameExists = await checkAreaNameExists(
+        values.areaName, 
+        areaCost ? areaCost.area_id : undefined
+      );
+      
+      if (nameExists) {
+        toast.error(`An area with the name "${values.areaName}" already exists`);
+        return;
       }
 
       const costData = {
@@ -250,7 +277,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
                         {...field}
                         placeholder="Enter area name"
                         className="bg-slate-800 border-slate-700 text-slate-100"
-                        disabled={Boolean(areaCost)} // Disable editing if editing existing area cost
                       />
                     </FormControl>
                     <FormMessage />
