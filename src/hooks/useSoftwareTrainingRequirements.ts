@@ -27,14 +27,18 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
       setLoading(true);
       setError(null);
       
-      const { data, error } = await supabase
-        .from("software_training_requirements")
+      // Use 'as any' to bypass the type checking for table names
+      const { data, error } = await (supabase
+        .from("software_training_requirements" as any)
         .select("*")
-        .eq("software_type_id", softwareTypeId);
+        .eq("software_type_id", softwareTypeId)) as unknown as {
+          data: SoftwareTrainingRequirement[] | null;
+          error: any;
+        };
       
       if (error) throw error;
       
-      setRequirements(data as SoftwareTrainingRequirement[]);
+      setRequirements(data || []);
     } catch (err: any) {
       console.error("Error fetching software training requirements:", err);
       setError(err.message || "Failed to load training requirements");
@@ -52,10 +56,12 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
       
       if (existingReq) {
         // Update existing requirement
-        const { error } = await supabase
-          .from("software_training_requirements")
+        const { error } = await (supabase
+          .from("software_training_requirements" as any)
           .update({ resource_id: resourceId })
-          .eq("id", existingReq.id);
+          .eq("id", existingReq.id)) as unknown as {
+            error: any;
+          };
         
         if (error) throw error;
         
@@ -67,18 +73,23 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
         );
       } else {
         // Create new requirement
-        const { data, error } = await supabase
-          .from("software_training_requirements")
+        const { data, error } = await (supabase
+          .from("software_training_requirements" as any)
           .insert({
             software_type_id: softwareTypeId,
             plan_id: planId,
             resource_id: resourceId
           })
-          .select();
+          .select()) as unknown as {
+            data: SoftwareTrainingRequirement[] | null;
+            error: any;
+          };
         
         if (error) throw error;
         
-        setRequirements(prev => [...prev, data[0] as SoftwareTrainingRequirement]);
+        if (data && data.length > 0) {
+          setRequirements(prev => [...prev, data[0]]);
+        }
       }
       
       toast.success("Training requirement saved");
@@ -95,10 +106,12 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
     if (!existingReq) return;
     
     try {
-      const { error } = await supabase
-        .from("software_training_requirements")
+      const { error } = await (supabase
+        .from("software_training_requirements" as any)
         .delete()
-        .eq("id", existingReq.id);
+        .eq("id", existingReq.id)) as unknown as {
+          error: any;
+        };
       
       if (error) throw error;
       
