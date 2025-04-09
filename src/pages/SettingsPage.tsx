@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +19,7 @@ import MachineTypesTab from "@/components/settings/MachineTypesTab";
 import SoftwareTypesTab from "@/components/settings/SoftwareTypesTab";
 import ResourcesTab from "@/components/settings/ResourcesTab";
 import TrainingPlansTab from "@/components/settings/TrainingPlansTab";
+import AreaCostsTab from "@/components/settings/AreaCostsTab";
 
 const tabs = [
   { id: "machines", label: "Machine Types" },
@@ -53,7 +53,7 @@ const SettingsPage = () => {
       case "plans":
         return <TrainingPlansTab />;
       case "area-costs":
-        return <div className="p-4">Area Costs content coming soon</div>;
+        return <AreaCostsTab />;
       case "plan-costs":
         return <div className="p-4">Plan Costs content coming soon</div>;
       default:
