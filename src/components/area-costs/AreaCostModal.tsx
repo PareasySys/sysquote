@@ -23,11 +23,20 @@ import { Input } from "@/components/ui/input";
 import { AreaCost } from "@/hooks/useAreaCosts";
 import { useAreaIcons } from "@/hooks/useAreaIcons";
 import { supabase } from "@/lib/supabaseClient";
-import { useGeographicAreas } from "@/hooks/useGeographicAreas";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useForm } from "react-hook-form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 interface AreaCostModalProps {
   open: boolean;
@@ -36,79 +45,90 @@ interface AreaCostModalProps {
   onSave: () => void;
 }
 
+// Create the schema for validation
+const areaCostSchema = z.object({
+  areaName: z.string().min(1, "Area name is required"),
+  dailyAccommodationFoodCost: z.coerce.number().min(0, "Cost cannot be negative"),
+  dailyAllowance: z.coerce.number().min(0, "Allowance cannot be negative"),
+  dailyPocketMoney: z.coerce.number().min(0, "Pocket money cannot be negative"),
+  iconName: z.string().optional(),
+});
+
+type AreaCostFormValues = z.infer<typeof areaCostSchema>;
+
 const AreaCostModal: React.FC<AreaCostModalProps> = ({
   open,
   onClose,
   areaCost,
   onSave,
 }) => {
-  const [areaId, setAreaId] = useState<number | null>(null);
-  const [dailyAccommodationFoodCost, setDailyAccommodationFoodCost] = useState<number>(0);
-  const [dailyAllowance, setDailyAllowance] = useState<number>(0);
-  const [dailyCarRentalCost, setDailyCarRentalCost] = useState<number | null>(null);
-  const [dailyTaxiCost, setDailyTaxiCost] = useState<number | null>(null);
-  const [dailyPocketMoney, setDailyPocketMoney] = useState<number>(0);
-  const [travelCostFlight, setTravelCostFlight] = useState<number | null>(null);
-  const [iconName, setIconName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const { icons, loading: loadingIcons } = useAreaIcons();
-  const { areas, loading: loadingAreas } = useGeographicAreas();
 
+  // Initialize the form with default values or the existing area cost values
+  const form = useForm<AreaCostFormValues>({
+    resolver: zodResolver(areaCostSchema),
+    defaultValues: {
+      areaName: "",
+      dailyAccommodationFoodCost: 0,
+      dailyAllowance: 0,
+      dailyPocketMoney: 0,
+      iconName: "",
+    },
+  });
+
+  // Set form values when areaCost changes or on initial load
   useEffect(() => {
     if (areaCost) {
-      setAreaId(areaCost.area_id);
-      setDailyAccommodationFoodCost(areaCost.daily_accommodation_food_cost);
-      setDailyAllowance(areaCost.daily_allowance);
-      setDailyCarRentalCost(areaCost.daily_car_rental_cost);
-      setDailyTaxiCost(areaCost.daily_taxi_cost);
-      setDailyPocketMoney(areaCost.daily_pocket_money);
-      setTravelCostFlight(areaCost.travel_cost_flight);
-      setIconName(areaCost.icon_name || "");
+      form.reset({
+        areaName: areaCost.area_name || "",
+        dailyAccommodationFoodCost: areaCost.daily_accommodation_food_cost,
+        dailyAllowance: areaCost.daily_allowance,
+        dailyPocketMoney: areaCost.daily_pocket_money,
+        iconName: areaCost.icon_name || "",
+      });
     } else {
-      setAreaId(null);
-      setDailyAccommodationFoodCost(0);
-      setDailyAllowance(0);
-      setDailyCarRentalCost(null);
-      setDailyTaxiCost(null);
-      setDailyPocketMoney(0);
-      setTravelCostFlight(null);
-      setIconName("");
+      form.reset({
+        areaName: "",
+        dailyAccommodationFoodCost: 0,
+        dailyAllowance: 0,
+        dailyPocketMoney: 0,
+        iconName: "",
+      });
     }
-  }, [areaCost]);
+  }, [areaCost, form]);
 
-  const handleSave = async () => {
-    if (areaId === null) {
-      toast.error("Please select an area");
-      return;
-    }
-
-    if (dailyAccommodationFoodCost < 0 || dailyAllowance < 0 || dailyPocketMoney < 0) {
-      toast.error("Costs cannot be negative");
-      return;
-    }
-
-    // Check if optional costs are negative when provided
-    if ((dailyCarRentalCost !== null && dailyCarRentalCost < 0) ||
-        (dailyTaxiCost !== null && dailyTaxiCost < 0) ||
-        (travelCostFlight !== null && travelCostFlight < 0)) {
-      toast.error("Costs cannot be negative");
-      return;
-    }
-
+  const handleSave = async (values: AreaCostFormValues) => {
     try {
       setIsSaving(true);
 
+      let areaId = areaCost?.area_id;
+
+      // If we don't have an area_id or this is a new cost, create a new area
+      if (!areaId) {
+        // Create a new geographic area
+        const { data: newAreaData, error: newAreaError } = await supabase
+          .from("geographic_areas")
+          .insert({ name: values.areaName })
+          .select("area_id")
+          .single();
+
+        if (newAreaError) {
+          console.error("Error creating geographic area:", newAreaError);
+          throw newAreaError;
+        }
+
+        areaId = newAreaData.area_id;
+      }
+
       const costData = {
         area_id: areaId,
-        daily_accommodation_food_cost: dailyAccommodationFoodCost,
-        daily_allowance: dailyAllowance,
-        daily_car_rental_cost: dailyCarRentalCost,
-        daily_taxi_cost: dailyTaxiCost,
-        daily_pocket_money: dailyPocketMoney,
-        travel_cost_flight: travelCostFlight,
-        icon_name: iconName || null,
+        daily_accommodation_food_cost: values.dailyAccommodationFoodCost,
+        daily_allowance: values.dailyAllowance,
+        daily_pocket_money: values.dailyPocketMoney,
+        icon_name: values.iconName || null,
       };
 
       if (areaCost) {
@@ -171,11 +191,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
     }
   };
 
-  const handleNumericInputChange = (setter: React.Dispatch<React.SetStateAction<number | null>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value === "" ? null : parseFloat(e.target.value);
-    setter(value);
-  };
-
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
@@ -186,203 +201,186 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="area" className="text-white">Geographic Area</Label>
-              <Select 
-                value={areaId?.toString() || ""} 
-                onValueChange={(value) => setAreaId(parseInt(value))}
-              >
-                <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
-                  <SelectValue placeholder="Select an area" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
-                  {loadingAreas ? (
-                    <div className="p-2">Loading areas...</div>
-                  ) : areas.length > 0 ? (
-                    areas.map(area => (
-                      <SelectItem key={area.area_id} value={area.area_id.toString()}>
-                        {area.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-2">No areas available</div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="dailyAccommodationFood" className="text-white">Daily Accommodation & Food (€)</Label>
-                <Input
-                  id="dailyAccommodationFood"
-                  type="number"
-                  step="0.01"
-                  value={dailyAccommodationFoodCost !== null ? dailyAccommodationFoodCost : ''}
-                  onChange={handleNumericInputChange(setDailyAccommodationFoodCost)}
-                  className="bg-slate-800 border-slate-700 text-slate-100"
-                  placeholder="Enter cost"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="dailyAllowance" className="text-white">Daily Allowance (€)</Label>
-                <Input
-                  id="dailyAllowance"
-                  type="number"
-                  step="0.01"
-                  value={dailyAllowance !== null ? dailyAllowance : ''}
-                  onChange={handleNumericInputChange(setDailyAllowance)}
-                  className="bg-slate-800 border-slate-700 text-slate-100"
-                  placeholder="Enter cost"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="dailyCarRental" className="text-white">Daily Car Rental (€, optional)</Label>
-                <Input
-                  id="dailyCarRental"
-                  type="number"
-                  step="0.01"
-                  value={dailyCarRentalCost !== null ? dailyCarRentalCost : ''}
-                  onChange={handleNumericInputChange(setDailyCarRentalCost)}
-                  className="bg-slate-800 border-slate-700 text-slate-100"
-                  placeholder="Enter cost (optional)"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="dailyTaxi" className="text-white">Daily Taxi (€, optional)</Label>
-                <Input
-                  id="dailyTaxi"
-                  type="number"
-                  step="0.01"
-                  value={dailyTaxiCost !== null ? dailyTaxiCost : ''}
-                  onChange={handleNumericInputChange(setDailyTaxiCost)}
-                  className="bg-slate-800 border-slate-700 text-slate-100"
-                  placeholder="Enter cost (optional)"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="dailyPocketMoney" className="text-white">Daily Pocket Money (€)</Label>
-                <Input
-                  id="dailyPocketMoney"
-                  type="number"
-                  step="0.01"
-                  value={dailyPocketMoney !== null ? dailyPocketMoney : ''}
-                  onChange={handleNumericInputChange(setDailyPocketMoney)}
-                  className="bg-slate-800 border-slate-700 text-slate-100"
-                  placeholder="Enter amount"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="travelFlight" className="text-white">Flight Travel Cost (€, optional)</Label>
-                <Input
-                  id="travelFlight"
-                  type="number"
-                  step="0.01"
-                  value={travelCostFlight !== null ? travelCostFlight : ''}
-                  onChange={handleNumericInputChange(setTravelCostFlight)}
-                  className="bg-slate-800 border-slate-700 text-slate-100"
-                  placeholder="Enter cost (optional)"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label className="text-white">Icon</Label>
-              
-              {loadingIcons ? (
-                <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <Skeleton 
-                      key={i}
-                      className="aspect-square rounded-md h-16"
-                    />
-                  ))}
-                </div>
-              ) : icons.length > 0 ? (
-                <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
-                  {icons.map((icon) => (
-                    <button
-                      key={icon.name}
-                      type="button"
-                      onClick={() => setIconName(icon.name)}
-                      className={`cursor-pointer rounded-md p-2 hover:bg-slate-700 flex flex-col items-center justify-center transition-all ${
-                        iconName === icon.name ? 'ring-2 ring-blue-500 bg-slate-700' : 'bg-slate-800'
-                      }`}
-                      title={icon.name}
-                    >
-                      <div className="h-10 w-10 flex items-center justify-center">
-                        <img 
-                          src={icon.url} 
-                          alt={icon.name}
-                          className="max-h-full max-w-full"
-                          onError={(e) => {
-                            console.error(`Error loading icon: ${icon.url}`);
-                            const target = e.target as HTMLImageElement;
-                            target.src = "/placeholder.svg";
-                          }}
-                        />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-8 text-center bg-slate-800 rounded-md border border-slate-700">
-                  <p className="text-slate-400">No icons available in the area_icons bucket.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            {areaCost && (
-              <Button
-                variant="destructive"
-                onClick={() => setConfirmDeleteOpen(true)}
-                disabled={isDeleting || isSaving}
-                className="mr-auto"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  "Delete Area Cost"
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSave)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="areaName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Area Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Enter area name"
+                        className="bg-slate-800 border-slate-700 text-slate-100"
+                        disabled={Boolean(areaCost)} // Disable editing if editing existing area cost
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </Button>
-            )}
-            <Button 
-              variant="outline" 
-              onClick={onClose}
-              className="text-blue-700 border-slate-700 hover:bg-slate-800 hover:text-white"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="bg-blue-700 hover:bg-blue-800"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </DialogFooter>
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="dailyAccommodationFoodCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">Daily Accommodation & Food (€)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Enter cost"
+                          className="bg-slate-800 border-slate-700 text-slate-100"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dailyAllowance"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">Daily Allowance (€)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Enter allowance"
+                          className="bg-slate-800 border-slate-700 text-slate-100"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="dailyPocketMoney"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Daily Pocket Money (€)</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Enter amount"
+                        className="bg-slate-800 border-slate-700 text-slate-100"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="iconName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Icon</FormLabel>
+                    <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
+                      {loadingIcons ? (
+                        Array.from({ length: 8 }).map((_, i) => (
+                          <Skeleton 
+                            key={i}
+                            className="aspect-square rounded-md h-16"
+                          />
+                        ))
+                      ) : icons.length > 0 ? (
+                        icons.map((icon) => (
+                          <button
+                            key={icon.name}
+                            type="button"
+                            onClick={() => form.setValue("iconName", icon.name)}
+                            className={`cursor-pointer rounded-md p-2 hover:bg-slate-700 flex flex-col items-center justify-center transition-all ${
+                              field.value === icon.name ? 'ring-2 ring-blue-500 bg-slate-700' : 'bg-slate-800'
+                            }`}
+                            title={icon.name}
+                          >
+                            <div className="h-10 w-10 flex items-center justify-center">
+                              <img 
+                                src={icon.url} 
+                                alt={icon.name}
+                                className="max-h-full max-w-full"
+                                onError={(e) => {
+                                  console.error(`Error loading icon: ${icon.url}`);
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = "/placeholder.svg";
+                                }}
+                              />
+                            </div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center bg-slate-800 rounded-md border border-slate-700 col-span-4">
+                          <p className="text-slate-400">No icons available in the area_icons bucket.</p>
+                        </div>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                {areaCost && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => setConfirmDeleteOpen(true)}
+                    disabled={isDeleting || isSaving}
+                    className="mr-auto"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      "Delete Area Cost"
+                    )}
+                  </Button>
+                )}
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  onClick={onClose}
+                  className="text-blue-700 border-slate-700 hover:bg-slate-800 hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  className="bg-blue-700 hover:bg-blue-800"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 

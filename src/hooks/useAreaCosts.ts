@@ -8,10 +8,7 @@ export interface AreaCost {
   area_id: number;
   daily_accommodation_food_cost: number;
   daily_allowance: number;
-  daily_car_rental_cost: number | null;
-  daily_taxi_cost: number | null;
   daily_pocket_money: number;
-  travel_cost_flight: number | null;
   created_at: string;
   updated_at: string;
   area_name?: string; // This will be joined from geographic_areas table

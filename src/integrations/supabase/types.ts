@@ -16,11 +16,8 @@ export type Database = {
           created_at: string
           daily_accommodation_food_cost: number
           daily_allowance: number
-          daily_car_rental_cost: number | null
           daily_pocket_money: number
-          daily_taxi_cost: number | null
           icon_name: string | null
-          travel_cost_flight: number | null
           updated_at: string
         }
         Insert: {
@@ -29,11 +26,8 @@ export type Database = {
           created_at?: string
           daily_accommodation_food_cost: number
           daily_allowance: number
-          daily_car_rental_cost?: number | null
           daily_pocket_money: number
-          daily_taxi_cost?: number | null
           icon_name?: string | null
-          travel_cost_flight?: number | null
           updated_at?: string
         }
         Update: {
@@ -42,11 +36,8 @@ export type Database = {
           created_at?: string
           daily_accommodation_food_cost?: number
           daily_allowance?: number
-          daily_car_rental_cost?: number | null
           daily_pocket_money?: number
-          daily_taxi_cost?: number | null
           icon_name?: string | null
-          travel_cost_flight?: number | null
           updated_at?: string
         }
         Relationships: [
