@@ -34,7 +34,8 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
       
       if (error) throw error;
       
-      setRequirements(data as SoftwareTrainingRequirement[]);
+      // Cast the data to our expected type
+      setRequirements(data as unknown as SoftwareTrainingRequirement[]);
     } catch (err: any) {
       console.error("Error fetching software training requirements:", err);
       setError(err.message || "Failed to load training requirements");
@@ -78,7 +79,7 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
         
         if (error) throw error;
         
-        setRequirements(prev => [...prev, data[0] as SoftwareTrainingRequirement]);
+        setRequirements(prev => [...prev, data[0] as unknown as SoftwareTrainingRequirement]);
       }
       
       toast.success("Training requirement saved");

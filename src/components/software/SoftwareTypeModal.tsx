@@ -60,7 +60,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
   
-  const { trainingPlans } = useTrainingPlans();
+  const { plans } = useTrainingPlans();
   const { resources } = useResources();
   const { 
     requirements, 
@@ -327,7 +327,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
                     <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
                       <h4 className="text-md font-medium mb-3 text-white">Training Plans</h4>
                       <div className="space-y-3">
-                        {trainingPlans.map(plan => (
+                        {plans.map(plan => (
                           <div key={plan.plan_id} className="flex items-center justify-between">
                             <div>
                               <p className="text-white text-sm">{plan.name}</p>
@@ -341,7 +341,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
                     <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
                       <h4 className="text-md font-medium mb-3 text-white">Assign Resources</h4>
                       <div className="space-y-3">
-                        {trainingPlans.map(plan => (
+                        {plans.map(plan => (
                           <div key={plan.plan_id} className="flex items-center justify-between">
                             <p className="text-white text-sm">{plan.name}</p>
                             <div>
