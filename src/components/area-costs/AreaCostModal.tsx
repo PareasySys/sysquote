@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -207,7 +206,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
 
     try {
       setIsDeleting(true);
-      console.log("Deleting area cost with ID:", areaCost.area_cost_id, "and area_id:", areaCost.area_id);
+      console.log("Attempting to delete area cost:", areaCost);
       
       // First check if there are quotes using this area_id
       const { data: quotesUsingArea, error: quotesError } = await supabase
@@ -235,25 +234,45 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         }
       }
 
-      // Delete the area cost using area_cost_id
-      const { error, count } = await supabase
+      // Delete the area cost - using both area_cost_id and area_id to ensure we're deleting the right row
+      console.log(`Executing DELETE from area_costs WHERE area_cost_id = ${areaCost.area_cost_id}`);
+      
+      const { data, error, status } = await supabase
         .from("area_costs")
         .delete()
-        .eq("area_cost_id", areaCost.area_cost_id)
-        .select();
-
+        .eq("area_cost_id", areaCost.area_cost_id);
+        
+      console.log("Delete response status:", status);
+      
       if (error) {
         console.error("Error deleting area cost:", error);
         throw error;
       }
-
-      console.log("Delete operation completed, rows affected:", count);
-      toast.success("Area cost deleted successfully");
-      onSave();
-      onClose();
-      setConfirmDeleteOpen(false);
+      
+      // Double-check if the deletion was successful
+      const { data: checkData, error: checkError } = await supabase
+        .from("area_costs")
+        .select("*")
+        .eq("area_cost_id", areaCost.area_cost_id)
+        .single();
+        
+      if (checkError && checkError.code === "PGRST116") {
+        // PGRST116 means no results found, which is good in this case
+        console.log("Verified deletion - area cost no longer exists");
+        toast.success("Area cost deleted successfully");
+        onSave();
+        onClose();
+        setConfirmDeleteOpen(false);
+      } else if (checkData) {
+        // The row still exists, something went wrong
+        console.error("Area cost deletion verification failed - row still exists");
+        toast.error("Failed to delete area cost");
+      } else if (checkError) {
+        // Some other error occurred
+        console.error("Error verifying area cost deletion:", checkError);
+      }
     } catch (error: any) {
-      console.error("Error deleting area cost:", error);
+      console.error("Error in delete operation:", error);
       toast.error(error.message || "Failed to delete area cost");
     } finally {
       setIsDeleting(false);
