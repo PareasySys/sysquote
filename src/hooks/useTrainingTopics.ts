@@ -41,7 +41,7 @@ export const useTrainingTopics = (
       const tableName = itemType === "machine" ? 'machine_training_requirements' : 'software_training_requirements';
       const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
       
-      const { data, error } = await supabase
+      const { data: reqData, error } = await supabase
         .from(tableName)
         .select('id')
         .eq(columnName, itemId)
@@ -50,7 +50,7 @@ export const useTrainingTopics = (
       
       if (error) throw error;
       
-      return data?.id || null;
+      return reqData?.id || null;
     } catch (err) {
       console.error("Error fetching requirement:", err);
       return null;
@@ -237,6 +237,26 @@ export const useTrainingTopics = (
     }
   };
 
+  // Helper function to delete all topics for a specific machine or software type
+  const deleteTopicsByItemId = async (itemIdToDelete: number, itemTypeToDelete: string): Promise<boolean> => {
+    try {
+      const columnName = itemTypeToDelete === "machine" ? 'machine_type_id' : 'software_type_id';
+      
+      const { error: deleteError } = await supabase
+        .from('training_topics')
+        .delete()
+        .eq(columnName, itemIdToDelete);
+
+      if (deleteError) throw deleteError;
+      
+      return true;
+    } catch (err: any) {
+      console.error(`Error deleting training topics for ${itemTypeToDelete} ${itemIdToDelete}:`, err);
+      toast.error(err.message || `Failed to delete training topics for ${itemTypeToDelete}`);
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchTopics();
   }, [itemId, planId, itemType]);
@@ -248,6 +268,7 @@ export const useTrainingTopics = (
     fetchTopics,
     addTopic,
     updateTopic,
-    deleteTopic
+    deleteTopic,
+    deleteTopicsByItemId
   };
 };

@@ -18,6 +18,7 @@ import { Loader2, Upload } from "lucide-react";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { useSoftwareTrainingRequirements } from "@/hooks/useSoftwareTrainingRequirements";
 import { useResources } from "@/hooks/useResources";
+import { useTrainingTopics } from "@/hooks/useTrainingTopics";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SoftwareTypeModalProps {
@@ -54,6 +55,8 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
     removeRequirement,
     getResourceForPlan 
   } = useSoftwareTrainingRequirements(software?.software_type_id);
+  
+  const { deleteTopicsByItemId } = useTrainingTopics();
 
   const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
   
@@ -162,6 +165,17 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
     try {
       setIsDeleting(true);
 
+      await deleteTopicsByItemId(software.software_type_id, "software");
+      
+      try {
+        await supabase
+          .from("software_training_requirements")
+          .delete()
+          .eq("software_type_id", software.software_type_id);
+      } catch (error) {
+        console.error("Error deleting software training requirements:", error);
+      }
+      
       const { error } = await supabase
         .from("software_types")
         .delete()

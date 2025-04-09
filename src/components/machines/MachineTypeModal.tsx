@@ -17,6 +17,7 @@ import { Loader2, Upload } from "lucide-react";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { useMachineTrainingRequirements } from "@/hooks/useMachineTrainingRequirements";
 import { useResources } from "@/hooks/useResources";
+import { useTrainingTopics } from "@/hooks/useTrainingTopics";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface MachineTypeModalProps {
@@ -57,6 +58,8 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     saveRequirement, 
     deleteRequirement 
   } = useMachineTrainingRequirements(machine?.machine_type_id);
+  
+  const { deleteTopicsByItemId } = useTrainingTopics();
 
   const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
 
@@ -158,6 +161,26 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     try {
       setIsDeleting(true);
 
+      await deleteTopicsByItemId(machine.machine_type_id, "machine");
+      
+      try {
+        await supabase
+          .from("machine_training_requirements")
+          .delete()
+          .eq("machine_type_id", machine.machine_type_id);
+      } catch (error) {
+        console.error("Error deleting training requirements:", error);
+      }
+      
+      try {
+        await supabase
+          .from("training_offers")
+          .delete()
+          .eq("machine_type_id", machine.machine_type_id);
+      } catch (error) {
+        console.error("Error deleting training offers:", error);
+      }
+      
       const { error } = await supabase
         .from("machine_types")
         .delete()
