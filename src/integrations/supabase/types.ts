@@ -43,32 +43,6 @@ export type Database = {
           icon_name?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "area_costs_area_id_fkey"
-            columns: ["area_id"]
-            isOneToOne: true
-            referencedRelation: "geographic_areas"
-            referencedColumns: ["area_id"]
-          },
-        ]
-      }
-      geographic_areas: {
-        Row: {
-          area_id: number
-          created_at: string | null
-          name: string
-        }
-        Insert: {
-          area_id?: number
-          created_at?: string | null
-          name: string
-        }
-        Update: {
-          area_id?: number
-          created_at?: string | null
-          name?: string
-        }
         Relationships: []
       }
       machine_training_requirements: {
@@ -206,7 +180,7 @@ export type Database = {
             foreignKeyName: "quotes_area_id_fkey"
             columns: ["area_id"]
             isOneToOne: false
-            referencedRelation: "geographic_areas"
+            referencedRelation: "area_costs"
             referencedColumns: ["area_id"]
           },
         ]

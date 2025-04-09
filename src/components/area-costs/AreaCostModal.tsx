@@ -135,10 +135,28 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         }
         toast.success("Area cost updated successfully");
       } else {
-        // Create new area cost
+        // Create new area cost - generate a new area_id for new entries
+        // Get the highest area_id and increment it
+        const { data: maxIdData, error: maxIdError } = await supabase
+          .from('area_costs')
+          .select('area_id')
+          .order('area_id', { ascending: false })
+          .limit(1);
+          
+        if (maxIdError) {
+          console.error("Error getting max area_id:", maxIdError);
+          throw maxIdError;
+        }
+        
+        const nextId = maxIdData && maxIdData.length > 0 ? maxIdData[0].area_id + 1 : 1;
+        
+        // Insert with the new area_id
         const { error } = await supabase
           .from("area_costs")
-          .insert(costData);
+          .insert({
+            ...costData,
+            area_id: nextId
+          });
 
         if (error) {
           console.error("Error creating area cost:", error);
@@ -167,7 +185,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
       const { data: quotesUsingArea, error: quotesError } = await supabase
         .from("quotes")
         .select("quote_id")
-        .eq("area_id", areaCost.area_cost_id);
+        .eq("area_id", areaCost.area_id);
 
       if (quotesError) {
         console.error("Error checking quotes references:", quotesError);
@@ -181,7 +199,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         const { error: updateError } = await supabase
           .from("quotes")
           .update({ area_id: null })
-          .eq("area_id", areaCost.area_cost_id);
+          .eq("area_id", areaCost.area_id);
 
         if (updateError) {
           console.error("Error removing references from quotes:", updateError);

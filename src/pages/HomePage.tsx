@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -360,7 +359,7 @@ const HomePage = () => {
                               value={area.area_id.toString()}
                               className="text-gray-200 focus:bg-slate-600 focus:text-white hover:bg-slate-600"
                             >
-                              {area.name}
+                              {area.area_name}
                             </SelectItem>
                           ))
                         )}

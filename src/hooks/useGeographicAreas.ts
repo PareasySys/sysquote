@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export interface GeographicArea {
-  area_cost_id: number;
+  area_id: number;
   area_name: string;
 }
 
@@ -22,7 +22,7 @@ export const useGeographicAreas = () => {
       
       const { data, error } = await supabase
         .from("area_costs")
-        .select("area_cost_id, area_name")
+        .select("area_id, area_name")
         .order("area_name");
       
       if (error) throw error;
@@ -43,7 +43,7 @@ export const useGeographicAreas = () => {
     try {
       const { data, error } = await supabase
         .from("area_costs")
-        .select("area_cost_id, area_name")
+        .select("area_id, area_name")
         .eq("area_name", name)
         .maybeSingle();
       
@@ -51,7 +51,7 @@ export const useGeographicAreas = () => {
       
       return { 
         exists: !!data,
-        area: data ? { area_cost_id: data.area_cost_id, area_name: data.area_name } : undefined
+        area: data ? { area_id: data.area_id, area_name: data.area_name } : undefined
       };
     } catch (err: any) {
       console.error("Error checking area name:", err);

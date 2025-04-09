@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 export interface AreaCost {
   area_cost_id: number;
+  area_id: number;
   area_name: string;
   daily_accommodation_food_cost: number;
   daily_allowance: number;
