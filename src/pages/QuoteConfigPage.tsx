@@ -237,13 +237,10 @@ const QuoteConfigPage: React.FC = () => {
           ) : (
             <div className="flex flex-col lg:flex-row gap-6">
               <div className="w-full lg:w-1/3">
-                <Card className="bg-slate-800/80 border border-white/5 p-4 h-full">
-                  <h2 className="text-xl font-semibold mb-4 text-gray-200">Machine Selection</h2>
-                  <MachineSelector
-                    selectedMachineIds={machineTypeIds}
-                    onSave={handleMachineSave}
-                  />
-                </Card>
+                <MachineSelector
+                  selectedMachineIds={machineTypeIds}
+                  onSave={handleMachineSave}
+                />
               </div>
               
               <div className="w-full lg:w-2/3">
