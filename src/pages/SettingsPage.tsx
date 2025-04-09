@@ -15,6 +15,7 @@ import { LayoutDashboard, Settings, LogOut, UserCog, Edit, Save, GripVertical } 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { useTabOrder } from "@/hooks/useTabOrder";
+import { Button } from "@/components/ui/button";
 
 // Tab components
 import MachineTypesTab from "@/components/settings/MachineTypesTab";
@@ -47,6 +48,7 @@ const SettingsPage = () => {
     startDrag, 
     onDragOver, 
     onDrop,
+    onDragEnd,
     saveTabOrder
   } = useTabOrder(initialTabs);
 
@@ -160,29 +162,13 @@ const SettingsPage = () => {
 
       <main className={`fixed inset-0 transition-all duration-300 bg-slate-950 overflow-auto ${sidebarOpen ? 'md:left-[300px]' : 'md:left-[60px]'}`}>
         <div className="p-6 min-h-screen">
-          <div className="mb-6 flex justify-between items-center">
+          <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-100">Settings</h1>
-            <button 
-              onClick={toggleEditMode}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 transition-colors text-sm font-medium"
-            >
-              {isEditingTabs ? (
-                <>
-                  <Save className="h-4 w-4" />
-                  <span>Save Order</span>
-                </>
-              ) : (
-                <>
-                  <Edit className="h-4 w-4" />
-                  <span>Reorder Tabs</span>
-                </>
-              )}
-            </button>
           </div>
           
           <Card className="bg-slate-800/80 border border-white/5 h-[calc(100vh-140px)]">
             <div className="p-4 border-b border-slate-700/50">
-              <div className="flex items-center">
+              <div className="flex items-center justify-between">
                 {isEditingTabs ? (
                   <div className="flex gap-2 flex-wrap">
                     {tabs.map((tab, index) => (
@@ -192,6 +178,7 @@ const SettingsPage = () => {
                         onDragStart={(e) => startDrag(e, index)}
                         onDragOver={onDragOver}
                         onDrop={(e) => onDrop(e, index)}
+                        onDragEnd={onDragEnd}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-md cursor-move 
                           ${activeTab === tab.id ? 'bg-white/10 text-white' : 'text-gray-300 hover:text-white/80'} 
                           ${isDragging ? 'transition-none' : 'transition-colors'}`}
@@ -206,9 +193,17 @@ const SettingsPage = () => {
                     tabs={tabs} 
                     activeTab={activeTab}
                     onTabChange={(tabId) => setActiveTab(tabId)}
-                    className="mb-2"
                   />
                 )}
+                
+                <Button
+                  onClick={toggleEditMode}
+                  variant="ghost"
+                  size="icon"
+                  className="ml-2 hover:bg-slate-700"
+                >
+                  {isEditingTabs ? <Save className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
+                </Button>
               </div>
             </div>
             <div className="h-full overflow-auto">

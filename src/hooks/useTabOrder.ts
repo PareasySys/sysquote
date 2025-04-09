@@ -55,10 +55,33 @@ export const useTabOrder = (initialTabs: OrderedTab[]) => {
     
     // This is needed for Firefox
     e.dataTransfer.setData('text/plain', index.toString());
+    
+    // Add a CSS class to the dragged item for styling
+    const element = e.currentTarget as HTMLElement;
+    element.classList.add('dragging');
   };
 
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    
+    if (draggedItemIndex === null) return;
+    
+    // Add visual feedback for the drop zone
+    const element = e.currentTarget as HTMLElement;
+    element.classList.add('drag-over');
+    
+    // Create space between tabs during drag
+    const rect = element.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+    const height = rect.height;
+    
+    if (offsetY < height / 2) {
+      element.style.marginTop = '0.5rem';
+      element.style.marginBottom = '0';
+    } else {
+      element.style.marginTop = '0';
+      element.style.marginBottom = '0.5rem';
+    }
   };
 
   const onDrop = (e: React.DragEvent, dropIndex: number) => {
@@ -81,6 +104,12 @@ export const useTabOrder = (initialTabs: OrderedTab[]) => {
       order: index
     }));
     
+    // Reset styles
+    const element = e.currentTarget as HTMLElement;
+    element.classList.remove('drag-over');
+    element.style.marginTop = '';
+    element.style.marginBottom = '';
+    
     setTabs(reorderedTabs);
     setDraggedItemIndex(null);
     setIsDragging(false);
@@ -93,6 +122,13 @@ export const useTabOrder = (initialTabs: OrderedTab[]) => {
   const onDragEnd = () => {
     setDraggedItemIndex(null);
     setIsDragging(false);
+    
+    // Reset any styles that might have been applied during dragging
+    document.querySelectorAll('.dragging, .drag-over').forEach(element => {
+      element.classList.remove('dragging', 'drag-over');
+      (element as HTMLElement).style.marginTop = '';
+      (element as HTMLElement).style.marginBottom = '';
+    });
   };
 
   return {

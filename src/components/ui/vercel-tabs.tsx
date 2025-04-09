@@ -24,6 +24,14 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
     const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
     const tabRefs = useRef<(HTMLDivElement | null)[]>([])
 
+    // Find the active tab index based on the activeTab prop
+    useEffect(() => {
+      const index = tabs.findIndex(tab => tab.id === activeTab)
+      if (index !== -1) {
+        setActiveIndex(index)
+      }
+    }, [activeTab, tabs])
+
     useEffect(() => {
       if (hoveredIndex !== null) {
         const hoveredElement = tabRefs.current[hoveredIndex]
@@ -46,11 +54,11 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
           width: `${offsetWidth}px`,
         })
       }
-    }, [activeIndex])
+    }, [activeIndex, tabs]) // Added tabs as dependency to update when order changes
 
     useEffect(() => {
       requestAnimationFrame(() => {
-        const firstElement = tabRefs.current[0]
+        const firstElement = tabRefs.current[activeIndex]
         if (firstElement) {
           const { offsetLeft, offsetWidth } = firstElement
           setActiveStyle({
@@ -59,12 +67,12 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
           })
         }
       })
-    }, [])
+    }, [tabs]) // Added tabs as dependency to update when order changes
 
     return (
       <div 
         ref={ref} 
-        className={cn("relative", className)} 
+        className={cn("relative flex-grow", className)} 
         {...props}
       >
         <div className="relative">
