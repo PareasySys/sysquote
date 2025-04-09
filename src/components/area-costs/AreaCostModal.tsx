@@ -7,16 +7,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AreaCost } from "@/hooks/useAreaCosts";
@@ -62,7 +52,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
 }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const { icons, loading: loadingIcons } = useAreaIcons();
 
   const form = useForm<AreaCostFormValues>({
@@ -223,7 +212,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
       toast.success("Area cost deleted successfully");
       
       // Close modals and refresh data
-      setConfirmDeleteOpen(false);
       onSave();
       onClose();
     } catch (error: any) {
@@ -235,243 +223,193 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
   };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[500px] bg-slate-900 border-slate-800 text-slate-100">
-          <DialogHeader>
-            <DialogTitle>
-              {areaCost ? "Edit Area Cost" : "Add New Area Cost"}
-            </DialogTitle>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px] bg-slate-900 border-slate-800 text-slate-100">
+        <DialogHeader>
+          <DialogTitle>
+            {areaCost ? "Edit Area Cost" : "Add New Area Cost"}
+          </DialogTitle>
+        </DialogHeader>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSave)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="areaName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Area Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Enter area name"
-                        className="bg-slate-800 border-slate-700 text-slate-100"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="areaName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">Area Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Enter area name"
+                      className="bg-slate-800 border-slate-700 text-slate-100"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="dailyAccommodationFoodCost"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Daily Accommodation & Food (€)</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="Enter cost"
-                        className="bg-slate-800 border-slate-700 text-slate-100"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="dailyAccommodationFoodCost"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">Daily Accommodation & Food (€)</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Enter cost"
+                      className="bg-slate-800 border-slate-700 text-slate-100"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="dailyAllowance"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Daily Allowance (€)</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="Enter allowance"
-                        className="bg-slate-800 border-slate-700 text-slate-100"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="dailyAllowance"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">Daily Allowance (€)</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Enter allowance"
+                      className="bg-slate-800 border-slate-700 text-slate-100"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="dailyPocketMoney"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Daily Pocket Money (€)</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="Enter amount"
-                        className="bg-slate-800 border-slate-700 text-slate-100"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="dailyPocketMoney"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">Daily Pocket Money (€)</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Enter amount"
+                      className="bg-slate-800 border-slate-700 text-slate-100"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="iconName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Icon</FormLabel>
-                    <div className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
-                      {loadingIcons ? (
-                        Array.from({ length: 6 }).map((_, i) => (
-                          <Skeleton 
-                            key={i}
-                            className="aspect-square rounded-md h-16"
-                          />
-                        ))
-                      ) : icons.length > 0 ? (
-                        icons.map((icon) => (
-                          <button
-                            key={icon.name}
-                            type="button"
-                            onClick={() => form.setValue("iconName", icon.name)}
-                            className={`cursor-pointer rounded-md p-2 hover:bg-slate-700 flex flex-col items-center justify-center transition-all ${
-                              field.value === icon.name ? 'ring-2 ring-blue-500 bg-slate-700' : 'bg-slate-800'
-                            }`}
-                            title={icon.name}
-                          >
-                            <div className="h-10 w-10 flex items-center justify-center">
-                              <img 
-                                src={icon.url} 
-                                alt={icon.name}
-                                className="max-h-full max-w-full"
-                                onError={(e) => {
-                                  console.error(`Error loading icon: ${icon.url}`);
-                                  const target = e.target as HTMLImageElement;
-                                  target.src = "/placeholder.svg";
-                                }}
-                              />
-                            </div>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="p-8 text-center bg-slate-800 rounded-md border border-slate-700 col-span-3">
-                          <p className="text-slate-400">No icons available in the area_icons bucket.</p>
-                        </div>
-                      )}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
-                {areaCost && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => setConfirmDeleteOpen(true)}
-                    disabled={isDeleting || isSaving}
-                    className="mr-auto"
-                  >
-                    {isDeleting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Deleting...
-                      </>
+            <FormField
+              control={form.control}
+              name="iconName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">Icon</FormLabel>
+                  <div className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
+                    {loadingIcons ? (
+                      Array.from({ length: 6 }).map((_, i) => (
+                        <Skeleton 
+                          key={i}
+                          className="aspect-square rounded-md h-16"
+                        />
+                      ))
+                    ) : icons.length > 0 ? (
+                      icons.map((icon) => (
+                        <button
+                          key={icon.name}
+                          type="button"
+                          onClick={() => form.setValue("iconName", icon.name)}
+                          className={`cursor-pointer rounded-md p-2 hover:bg-slate-700 flex flex-col items-center justify-center transition-all ${
+                            field.value === icon.name ? 'ring-2 ring-blue-500 bg-slate-700' : 'bg-slate-800'
+                          }`}
+                          title={icon.name}
+                        >
+                          <div className="h-10 w-10 flex items-center justify-center">
+                            <img 
+                              src={icon.url} 
+                              alt={icon.name}
+                              className="max-h-full max-w-full"
+                              onError={(e) => {
+                                console.error(`Error loading icon: ${icon.url}`);
+                                const target = e.target as HTMLImageElement;
+                                target.src = "/placeholder.svg";
+                              }}
+                            />
+                          </div>
+                        </button>
+                      ))
                     ) : (
-                      "Delete Area Cost"
+                      <div className="p-8 text-center bg-slate-800 rounded-md border border-slate-700 col-span-3">
+                        <p className="text-slate-400">No icons available in the area_icons bucket.</p>
+                      </div>
                     )}
-                  </Button>
-                )}
-                <Button 
-                  type="button"
-                  variant="outline" 
-                  onClick={onClose}
-                  className="text-blue-700 border-slate-700 hover:bg-slate-800 hover:text-white"
-                >
-                  Cancel
-                </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              {areaCost && (
                 <Button
-                  type="submit"
-                  disabled={isSaving}
-                  className="bg-blue-700 hover:bg-blue-800"
+                  type="button"
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={isDeleting || isSaving}
+                  className="mr-auto"
                 >
-                  {isSaving ? (
+                  {isDeleting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
+                      Deleting...
                     </>
                   ) : (
-                    "Save Changes"
+                    "Delete Area Cost"
                   )}
                 </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog 
-        open={confirmDeleteOpen} 
-        onOpenChange={(open) => {
-          setConfirmDeleteOpen(open);
-          // If the dialog is being closed and we're not in the process of deleting,
-          // we need to ensure we don't leave any lingering state
-          if (!open && !isDeleting) {
-            // This helps prevent any lingering overlay issues
-            setTimeout(() => {
-              // The timeout gives the animation time to complete
-              // before we make any further state changes
-            }, 300);
-          }
-        }}
-      >
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-100">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
-              This action cannot be undone. This will permanently delete the
-              area cost and remove all references to it from the database.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel 
-              onClick={() => setConfirmDeleteOpen(false)}
-              className="bg-slate-800 text-blue-700 border-slate-700 hover:bg-slate-700 hover:text-white"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-red-700 hover:bg-red-800 text-white"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
               )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={onClose}
+                className="text-blue-700 border-slate-700 hover:bg-slate-800 hover:text-white"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-blue-700 hover:bg-blue-800"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 };
 
