@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { MachineType } from "@/hooks/useMachineTypes";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { supabase } from "@/lib/supabaseClient";
@@ -32,7 +31,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [photoURL, setPhotoURL] = useState<string | null>(null);
@@ -47,13 +45,11 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     if (machine) {
       setName(machine.name || "");
       setDescription(machine.description || "");
-      setIsActive(machine.is_active);
       setPhotoURL(machine.photo_url);
       setPreviewUrl(machine.photo_url);
     } else {
       setName("");
       setDescription("");
-      setIsActive(true);
       setPhotoURL(null);
       setPreviewUrl(null);
     }
@@ -94,7 +90,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
           .update({
             name,
             description,
-            is_active: isActive,
             photo_url: photoURL,
           })
           .eq("machine_type_id", machine.machine_type_id);
@@ -108,7 +103,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
         const { error } = await supabase.from("machine_types").insert({
           name,
           description,
-          is_active: isActive,
           photo_url: photoURL,
         });
 
@@ -182,15 +176,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 min-h-[100px]"
               placeholder="Enter machine description"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label htmlFor="isActive" className="text-white cursor-pointer">Active</Label>
-            <Switch
-              id="isActive"
-              checked={isActive}
-              onCheckedChange={setIsActive}
             />
           </div>
 

@@ -32,7 +32,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [isActive, setIsActive] = useState(true);
   const [alwaysIncluded, setAlwaysIncluded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -48,14 +47,12 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
     if (software) {
       setName(software.name || "");
       setDescription(software.description || "");
-      setIsActive(software.is_active);
       setAlwaysIncluded(software.always_included);
       setPhotoURL(software.photo_url);
       setPreviewUrl(software.photo_url);
     } else {
       setName("");
       setDescription("");
-      setIsActive(true);
       setAlwaysIncluded(false);
       setPhotoURL(null);
       setPreviewUrl(null);
@@ -97,7 +94,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
           .update({
             name,
             description,
-            is_active: isActive,
             always_included: alwaysIncluded,
             photo_url: photoURL,
           })
@@ -112,7 +108,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
         const { error } = await supabase.from("software_types").insert({
           name,
           description,
-          is_active: isActive,
           always_included: alwaysIncluded,
           photo_url: photoURL,
         });
@@ -187,15 +182,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 min-h-[100px]"
               placeholder="Enter software description"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label htmlFor="isActive" className="text-white cursor-pointer">Active</Label>
-            <Switch
-              id="isActive"
-              checked={isActive}
-              onCheckedChange={setIsActive}
             />
           </div>
 
