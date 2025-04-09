@@ -14,7 +14,6 @@ import {
   TableCell
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Save, Edit2 } from "lucide-react";
 
 const TrainingOffersTab = () => {
   const { offersMatrix, loading, error, fetchOffers, updateTrainingHours } = useTrainingOffers();
@@ -170,34 +169,15 @@ const TrainingOffersTab = () => {
                             )}
                             autoFocus
                           />
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="ml-1 h-7 w-7 hover:bg-emerald-900/50 hover:text-emerald-400"
-                            onClick={() => handleSaveCell(row.machineId, cell.planId)}
-                          >
-                            <Save className="h-4 w-4" />
-                          </Button>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-center group">
-                          <span className={`px-3 py-1 rounded-md ${
-                            cell.hoursRequired > 0 ? 'bg-blue-900/30 text-blue-300 font-medium' : 'text-gray-500'
-                          }`}>
+                        <div 
+                          className="px-3 py-1 rounded-md cursor-pointer hover:bg-slate-700/50 transition-colors"
+                          title="Double-click to edit"
+                        >
+                          <span className={cell.hoursRequired > 0 ? 'bg-blue-900/30 text-blue-300 font-medium px-3 py-1 rounded-md' : 'text-gray-500'}>
                             {cell.hoursRequired}
                           </span>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="ml-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-900/30 hover:text-blue-300"
-                            onClick={() => handleCellDoubleClick(
-                              row.machineId, 
-                              cell.planId, 
-                              cell.hoursRequired
-                            )}
-                          >
-                            <Edit2 className="h-3 w-3" />
-                          </Button>
                         </div>
                       )}
                     </TableCell>
@@ -208,9 +188,8 @@ const TrainingOffersTab = () => {
           </TableBody>
         </Table>
       </div>
-      <div className="mt-4 text-sm text-gray-400 flex items-center gap-2">
-        <Edit2 className="h-4 w-4" /> 
-        <span>Double-click on a cell or click the edit icon to modify training hours</span>
+      <div className="mt-4 text-sm text-gray-400">
+        <span>Double-click on a cell to edit, press Enter to save, or Escape to cancel</span>
       </div>
     </div>
   );
