@@ -90,6 +90,7 @@ export const useTrainingTopics = (
         const topicsWithType: TrainingTopic[] = data.map((topic: any) => ({
           ...topic,
           software_type_id: topic.software_type_id || null,
+          machine_type_id: topic.machine_type_id || null,
           item_type: topic.item_type || itemType // Preserve existing or set new
         }));
         setTopics(topicsWithType);
@@ -137,9 +138,20 @@ export const useTrainingTopics = (
         }
       }
 
+      // Define type for new topic with required fields
+      type NewTopic = {
+        requirement_id: number;
+        plan_id: number;
+        topic_text: string;
+        item_type: string;
+        updated_at: string;
+        machine_type_id?: number | null;
+        software_type_id?: number | null;
+      };
+
       // Determine which column to set based on itemType
-      const newTopic: any = {
-        requirement_id: reqId,
+      const newTopic: NewTopic = {
+        requirement_id: reqId as number,
         plan_id: planId,
         topic_text: topicText,
         item_type: itemType,
