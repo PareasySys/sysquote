@@ -26,7 +26,7 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
       
       console.log("Fetching machines for quote:", quoteId);
       
-      // Use raw SQL query through rpc to bypass TypeScript limitations
+      // Use RPC call to get quote machines
       const { data, error: fetchError } = await supabase
         .rpc('get_quote_machines', { quote_id_param: quoteId });
       
