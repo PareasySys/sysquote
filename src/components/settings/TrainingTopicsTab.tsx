@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useMachineTypes } from "@/hooks/useMachineTypes";
 import { useSoftwareTypes } from "@/hooks/useSoftwareTypes"; 
@@ -238,7 +237,6 @@ const TrainingTopicsTab: React.FC = () => {
                                   ) : (
                                     <CardContent className="p-4 bg-slate-800/50">
                                       <div className="mb-4">
-                                        <div className="font-medium text-gray-300 mb-3">Topics</div>
                                         <div className="space-y-1 max-h-[250px] overflow-y-auto pr-1">
                                           {topics.length === 0 ? (
                                             <div className="text-gray-400 text-sm italic">
@@ -335,7 +333,6 @@ const TrainingTopicsTab: React.FC = () => {
                                   ) : (
                                     <CardContent className="p-4 bg-slate-800/50">
                                       <div className="mb-4">
-                                        <div className="font-medium text-gray-300 mb-3">Topics</div>
                                         <div className="space-y-1 max-h-[250px] overflow-y-auto pr-1">
                                           {topics.length === 0 ? (
                                             <div className="text-gray-400 text-sm italic">
