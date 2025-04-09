@@ -1,6 +1,7 @@
 
 import React, { useState } from "react";
 import { useMachineTypes } from "@/hooks/useMachineTypes";
+import { useSoftwareTypes } from "@/hooks/useSoftwareTypes"; 
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { useTrainingTopics, TrainingTopic } from "@/hooks/useTrainingTopics";
 import { Button } from "@/components/ui/button";
@@ -8,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trash, Plus, Edit, Save, X, Book, List } from "lucide-react";
+import { Trash, Plus, Edit, Save, X, Server, Database, List, Cpu, HardDrive } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface TopicItemProps {
   topic: TrainingTopic;
@@ -78,11 +80,15 @@ const TopicItem: React.FC<TopicItemProps> = ({ topic, onDelete, onUpdate }) => {
 
 const TrainingTopicsTab: React.FC = () => {
   const { machines, loading: machinesLoading } = useMachineTypes();
+  const { software, loading: softwareLoading } = useSoftwareTypes();
   const { plans, loading: plansLoading } = useTrainingPlans();
-  const [expandedMachineId, setExpandedMachineId] = useState<number | null>(null);
+  
+  const [activeTab, setActiveTab] = useState<string>("machines");
+  const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
   const [expandedPlanId, setExpandedPlanId] = useState<number | null>(null);
-  const [selectedMachineId, setSelectedMachineId] = useState<number | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
   const [newTopic, setNewTopic] = useState("");
   
   const { 
@@ -91,36 +97,40 @@ const TrainingTopicsTab: React.FC = () => {
     addTopic, 
     deleteTopic, 
     updateTopic 
-  } = useTrainingTopics(selectedMachineId || undefined, selectedPlanId || undefined);
+  } = useTrainingTopics(selectedItemId || undefined, selectedPlanId || undefined, selectedItemType || undefined);
 
-  const handleMachineSelect = (machineId: number) => {
-    if (expandedMachineId === machineId) {
-      setExpandedMachineId(null);
+  const handleItemSelect = (itemId: number, itemType: string) => {
+    if (expandedItemId === itemId && selectedItemType === itemType) {
+      setExpandedItemId(null);
       setExpandedPlanId(null);
-      setSelectedMachineId(null);
+      setSelectedItemId(null);
       setSelectedPlanId(null);
+      setSelectedItemType(null);
     } else {
-      setExpandedMachineId(machineId);
+      setExpandedItemId(itemId);
       setExpandedPlanId(null);
-      setSelectedMachineId(null);
+      setSelectedItemId(null);
       setSelectedPlanId(null);
+      setSelectedItemType(itemType);
     }
   };
   
-  const handlePlanSelect = (machineId: number, planId: number) => {
-    if (expandedPlanId === planId && expandedMachineId === machineId) {
+  const handlePlanSelect = (itemId: number, planId: number, itemType: string) => {
+    if (expandedPlanId === planId && expandedItemId === itemId && selectedItemType === itemType) {
       setExpandedPlanId(null);
-      setSelectedMachineId(null);
+      setSelectedItemId(null);
       setSelectedPlanId(null);
+      setSelectedItemType(null);
     } else {
       setExpandedPlanId(planId);
-      setSelectedMachineId(machineId);
+      setSelectedItemId(itemId);
       setSelectedPlanId(planId);
+      setSelectedItemType(itemType);
     }
   };
   
   const handleAddTopic = async () => {
-    if (!newTopic.trim() || !selectedMachineId || !selectedPlanId) return;
+    if (!newTopic.trim() || !selectedItemId || !selectedPlanId || !selectedItemType) return;
     
     const success = await addTopic(newTopic);
     if (success) {
@@ -144,7 +154,7 @@ const TrainingTopicsTab: React.FC = () => {
     }
   };
   
-  if (machinesLoading || plansLoading) {
+  if (machinesLoading || plansLoading || softwareLoading) {
     return (
       <div className="p-4">
         <TextShimmerWave
@@ -166,104 +176,220 @@ const TrainingTopicsTab: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-100">Training Topics</h2>
         <div className="text-sm text-gray-400">
-          Manage specific topics for each machine-plan combination
+          Manage specific topics for each machine/software-plan combination
         </div>
       </div>
       
-      <div className="grid grid-cols-1 gap-4">
-        {machines.map((machine) => (
-          <Card key={machine.machine_type_id} className="bg-slate-800/80 border-slate-700/50">
-            <Accordion type="single" collapsible value={expandedMachineId === machine.machine_type_id ? machine.machine_type_id.toString() : ""}>
-              <AccordionItem value={machine.machine_type_id.toString()} className="border-0">
-                <AccordionTrigger 
-                  onClick={() => handleMachineSelect(machine.machine_type_id)}
-                  className="px-4 py-3 hover:bg-slate-700/30 text-gray-100"
-                >
-                  <span className="flex items-center gap-2">
-                    <Book className="w-5 h-5 text-blue-400" />
-                    {machine.name}
-                  </span>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="px-4 pb-3 space-y-2">
-                    {plans.map((plan) => (
-                      <Card key={plan.plan_id} className="bg-slate-700/50 border-slate-600/50">
-                        <Accordion type="single" collapsible value={
-                          expandedPlanId === plan.plan_id && expandedMachineId === machine.machine_type_id 
-                            ? `${machine.machine_type_id}-${plan.plan_id}` 
-                            : ""
-                        }>
-                          <AccordionItem value={`${machine.machine_type_id}-${plan.plan_id}`} className="border-0">
-                            <AccordionTrigger
-                              onClick={() => handlePlanSelect(machine.machine_type_id, plan.plan_id)}
-                              className="px-4 py-2 hover:bg-slate-600/30 text-gray-200"
-                            >
-                              <span className="flex items-center gap-2">
-                                <List className="w-4 h-4 text-green-400" />
-                                {plan.name}
-                              </span>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              {topicsLoading ? (
-                                <div className="p-4 text-center text-sm text-gray-400">
-                                  Loading topics...
-                                </div>
-                              ) : (
-                                <CardContent className="p-4 bg-slate-800/50">
-                                  <div className="mb-4">
-                                    <div className="font-medium text-gray-300 mb-3">Topics</div>
-                                    <div className="space-y-1 max-h-[250px] overflow-y-auto pr-1">
-                                      {topics.length === 0 ? (
-                                        <div className="text-gray-400 text-sm italic">
-                                          No topics defined yet
-                                        </div>
-                                      ) : (
-                                        topics.map((topic) => (
-                                          <TopicItem 
-                                            key={topic.topic_id}
-                                            topic={topic}
-                                            onDelete={handleDeleteTopic}
-                                            onUpdate={handleUpdateTopic}
-                                          />
-                                        ))
-                                      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+        <TabsList className="bg-slate-700/50 mb-2">
+          <TabsTrigger 
+            value="machines" 
+            className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+          >
+            Machines
+          </TabsTrigger>
+          <TabsTrigger 
+            value="software" 
+            className="data-[state=active]:bg-green-600 data-[state=active]:text-white"
+          >
+            Software
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="machines" className="mt-0">
+          <div className="grid grid-cols-1 gap-4">
+            {machines.map((machine) => (
+              <Card key={machine.machine_type_id} className="bg-slate-800/80 border-slate-700/50">
+                <Accordion type="single" collapsible value={expandedItemId === machine.machine_type_id && selectedItemType === "machine" ? machine.machine_type_id.toString() : ""}>
+                  <AccordionItem value={machine.machine_type_id.toString()} className="border-0">
+                    <AccordionTrigger 
+                      onClick={() => handleItemSelect(machine.machine_type_id, "machine")}
+                      className="px-4 py-3 hover:bg-slate-700/30 text-gray-100"
+                    >
+                      <span className="flex items-center gap-2">
+                        <HardDrive className="w-5 h-5 text-blue-400" />
+                        {machine.name}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="px-4 pb-3 space-y-2">
+                        {plans.map((plan) => (
+                          <Card key={plan.plan_id} className="bg-slate-700/50 border-slate-600/50">
+                            <Accordion type="single" collapsible value={
+                              expandedPlanId === plan.plan_id && expandedItemId === machine.machine_type_id && selectedItemType === "machine"
+                                ? `${machine.machine_type_id}-${plan.plan_id}` 
+                                : ""
+                            }>
+                              <AccordionItem value={`${machine.machine_type_id}-${plan.plan_id}`} className="border-0">
+                                <AccordionTrigger
+                                  onClick={() => handlePlanSelect(machine.machine_type_id, plan.plan_id, "machine")}
+                                  className="px-4 py-2 hover:bg-slate-600/30 text-gray-200"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <List className="w-4 h-4 text-green-400" />
+                                    {plan.name}
+                                  </span>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  {topicsLoading ? (
+                                    <div className="p-4 text-center text-sm text-gray-400">
+                                      Loading topics...
                                     </div>
-                                  </div>
-                                  
-                                  <div className="flex gap-2">
-                                    <Input
-                                      placeholder="Add new topic..."
-                                      value={newTopic}
-                                      onChange={(e) => setNewTopic(e.target.value)}
-                                      className="flex-1 bg-slate-700 border-slate-600 text-gray-200"
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleAddTopic();
-                                      }}
-                                    />
-                                    <Button 
-                                      onClick={handleAddTopic} 
-                                      disabled={!newTopic.trim()}
-                                      size="sm"
-                                      className="gap-1"
-                                    >
-                                      <Plus size={16} />
-                                      Add
-                                    </Button>
-                                  </div>
-                                </CardContent>
-                              )}
-                            </AccordionContent>
-                          </AccordionItem>
-                        </Accordion>
-                      </Card>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </Card>
-        ))}
-      </div>
+                                  ) : (
+                                    <CardContent className="p-4 bg-slate-800/50">
+                                      <div className="mb-4">
+                                        <div className="font-medium text-gray-300 mb-3">Topics</div>
+                                        <div className="space-y-1 max-h-[250px] overflow-y-auto pr-1">
+                                          {topics.length === 0 ? (
+                                            <div className="text-gray-400 text-sm italic">
+                                              No topics defined yet
+                                            </div>
+                                          ) : (
+                                            topics.map((topic) => (
+                                              <TopicItem 
+                                                key={topic.topic_id}
+                                                topic={topic}
+                                                onDelete={handleDeleteTopic}
+                                                onUpdate={handleUpdateTopic}
+                                              />
+                                            ))
+                                          )}
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex gap-2">
+                                        <Input
+                                          placeholder="Add new topic..."
+                                          value={newTopic}
+                                          onChange={(e) => setNewTopic(e.target.value)}
+                                          className="flex-1 bg-slate-700 border-slate-600 text-gray-200"
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleAddTopic();
+                                          }}
+                                        />
+                                        <Button 
+                                          onClick={handleAddTopic} 
+                                          disabled={!newTopic.trim()}
+                                          size="sm"
+                                          className="gap-1"
+                                        >
+                                          <Plus size={16} />
+                                          Add
+                                        </Button>
+                                      </div>
+                                    </CardContent>
+                                  )}
+                                </AccordionContent>
+                              </AccordionItem>
+                            </Accordion>
+                          </Card>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="software" className="mt-0">
+          <div className="grid grid-cols-1 gap-4">
+            {software.map((softwareItem) => (
+              <Card key={softwareItem.software_type_id} className="bg-slate-800/80 border-slate-700/50">
+                <Accordion type="single" collapsible value={expandedItemId === softwareItem.software_type_id && selectedItemType === "software" ? softwareItem.software_type_id.toString() : ""}>
+                  <AccordionItem value={softwareItem.software_type_id.toString()} className="border-0">
+                    <AccordionTrigger 
+                      onClick={() => handleItemSelect(softwareItem.software_type_id, "software")}
+                      className="px-4 py-3 hover:bg-slate-700/30 text-gray-100"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Database className="w-5 h-5 text-green-400" />
+                        {softwareItem.name}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="px-4 pb-3 space-y-2">
+                        {plans.map((plan) => (
+                          <Card key={plan.plan_id} className="bg-slate-700/50 border-slate-600/50">
+                            <Accordion type="single" collapsible value={
+                              expandedPlanId === plan.plan_id && expandedItemId === softwareItem.software_type_id && selectedItemType === "software"
+                                ? `${softwareItem.software_type_id}-${plan.plan_id}` 
+                                : ""
+                            }>
+                              <AccordionItem value={`${softwareItem.software_type_id}-${plan.plan_id}`} className="border-0">
+                                <AccordionTrigger
+                                  onClick={() => handlePlanSelect(softwareItem.software_type_id, plan.plan_id, "software")}
+                                  className="px-4 py-2 hover:bg-slate-600/30 text-gray-200"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <List className="w-4 h-4 text-green-400" />
+                                    {plan.name}
+                                  </span>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  {topicsLoading ? (
+                                    <div className="p-4 text-center text-sm text-gray-400">
+                                      Loading topics...
+                                    </div>
+                                  ) : (
+                                    <CardContent className="p-4 bg-slate-800/50">
+                                      <div className="mb-4">
+                                        <div className="font-medium text-gray-300 mb-3">Topics</div>
+                                        <div className="space-y-1 max-h-[250px] overflow-y-auto pr-1">
+                                          {topics.length === 0 ? (
+                                            <div className="text-gray-400 text-sm italic">
+                                              No topics defined yet
+                                            </div>
+                                          ) : (
+                                            topics.map((topic) => (
+                                              <TopicItem 
+                                                key={topic.topic_id}
+                                                topic={topic}
+                                                onDelete={handleDeleteTopic}
+                                                onUpdate={handleUpdateTopic}
+                                              />
+                                            ))
+                                          )}
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex gap-2">
+                                        <Input
+                                          placeholder="Add new topic..."
+                                          value={newTopic}
+                                          onChange={(e) => setNewTopic(e.target.value)}
+                                          className="flex-1 bg-slate-700 border-slate-600 text-gray-200"
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleAddTopic();
+                                          }}
+                                        />
+                                        <Button 
+                                          onClick={handleAddTopic} 
+                                          disabled={!newTopic.trim()}
+                                          size="sm"
+                                          className="gap-1"
+                                        >
+                                          <Plus size={16} />
+                                          Add
+                                        </Button>
+                                      </div>
+                                    </CardContent>
+                                  )}
+                                </AccordionContent>
+                              </AccordionItem>
+                            </Accordion>
+                          </Card>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

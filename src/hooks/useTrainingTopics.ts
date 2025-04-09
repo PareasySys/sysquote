@@ -10,31 +10,41 @@ export interface TrainingTopic {
   display_order: number | null;
   created_at: string;
   updated_at: string;
-  machine_type_id: number;
-  plan_id: number;
+  machine_type_id: number | null;
+  plan_id: number | null;
+  software_type_id?: number | null;
+  item_type?: string; // "machine" or "software"
 }
 
 export interface TrainingRequirementWithTopics {
   requirement_id: number;
-  machine_type_id: number;
+  machine_type_id?: number | null;
+  software_type_id?: number | null;
   plan_id: number;
   topics: TrainingTopic[];
 }
 
-export const useTrainingTopics = (machineTypeId?: number, planId?: number) => {
+export const useTrainingTopics = (
+  itemId?: number, 
+  planId?: number, 
+  itemType?: string // "machine" or "software"
+) => {
   const [topics, setTopics] = useState<TrainingTopic[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [requirementId, setRequirementId] = useState<number | null>(null);
 
   const fetchRequirement = async () => {
-    if (!machineTypeId || !planId) return null;
+    if (!itemId || !planId || !itemType) return null;
     
     try {
+      const tableName = itemType === "machine" ? 'machine_training_requirements' : 'software_training_requirements';
+      const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
+      
       const { data, error } = await supabase
-        .from('machine_training_requirements')
+        .from(tableName)
         .select('id')
-        .eq('machine_type_id', machineTypeId)
+        .eq(columnName, itemId)
         .eq('plan_id', planId)
         .maybeSingle();
       
@@ -48,7 +58,7 @@ export const useTrainingTopics = (machineTypeId?: number, planId?: number) => {
   };
 
   const fetchTopics = async () => {
-    if (!machineTypeId || !planId) {
+    if (!itemId || !planId || !itemType) {
       setTopics([]);
       setLoading(false);
       return;
@@ -58,22 +68,30 @@ export const useTrainingTopics = (machineTypeId?: number, planId?: number) => {
       setLoading(true);
       setError(null);
       
-      console.log(`Fetching training topics for machine type ${machineTypeId} and plan ${planId}`);
+      console.log(`Fetching training topics for ${itemType} ${itemId} and plan ${planId}`);
       
-      // Fetch topics directly using machine_type_id and plan_id
+      // Determine which column to query based on itemType
+      const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
+      
+      // Fetch topics using the appropriate column
       const { data, error: fetchError } = await supabase
         .from('training_topics')
         .select('*')
-        .eq('machine_type_id', machineTypeId)
+        .eq(columnName, itemId)
         .eq('plan_id', planId)
         .order('display_order', { ascending: true, nullsFirst: true });
       
       if (fetchError) throw fetchError;
       
       console.log("Training topics fetched:", data);
-      // Ensure each fetched topic has the machine_type_id and plan_id properties
+      
+      // Set item_type on each topic
       if (data) {
-        setTopics(data as TrainingTopic[]);
+        const topicsWithType = data.map((topic: any) => ({
+          ...topic,
+          item_type: itemType
+        })) as TrainingTopic[];
+        setTopics(topicsWithType);
       } else {
         setTopics([]);
       }
@@ -91,18 +109,21 @@ export const useTrainingTopics = (machineTypeId?: number, planId?: number) => {
   };
 
   const addTopic = async (topicText: string): Promise<boolean> => {
-    if (!machineTypeId || !planId) return false;
+    if (!itemId || !planId || !itemType) return false;
 
     try {
       // Check if we need to create a requirement first
       let reqId = requirementId;
       
       if (!reqId) {
-        // Create a new requirement
+        // Create a new requirement based on item type
+        const tableName = itemType === "machine" ? 'machine_training_requirements' : 'software_training_requirements';
+        const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
+        
         const { data: newReq, error: reqError } = await supabase
-          .from('machine_training_requirements')
+          .from(tableName)
           .insert({
-            machine_type_id: machineTypeId,
+            [columnName]: itemId,
             plan_id: planId,
             resource_id: null
           })
@@ -115,9 +136,12 @@ export const useTrainingTopics = (machineTypeId?: number, planId?: number) => {
         }
       }
 
+      // Determine which column to set based on itemType
+      const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
+      
       const newTopic = {
         requirement_id: reqId,
-        machine_type_id: machineTypeId,
+        [columnName]: itemId,
         plan_id: planId,
         topic_text: topicText,
         updated_at: new Date().toISOString()
@@ -131,8 +155,13 @@ export const useTrainingTopics = (machineTypeId?: number, planId?: number) => {
       if (insertError) throw insertError;
       
       if (data && data[0]) {
-        // Make sure we're adding a complete TrainingTopic object
-        setTopics(prev => [...prev, data[0] as TrainingTopic]);
+        // Make sure we're adding a complete TrainingTopic object with item_type
+        const addedTopic = {
+          ...data[0],
+          item_type: itemType
+        } as TrainingTopic;
+        
+        setTopics(prev => [...prev, addedTopic]);
         return true;
       }
       
@@ -188,7 +217,7 @@ export const useTrainingTopics = (machineTypeId?: number, planId?: number) => {
 
   useEffect(() => {
     fetchTopics();
-  }, [machineTypeId, planId]);
+  }, [itemId, planId, itemType]);
 
   return {
     topics,
