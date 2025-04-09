@@ -230,7 +230,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[800px] bg-slate-900 border-slate-800 text-slate-100">
+        <DialogContent className="sm:max-w-[800px] bg-slate-900 border-slate-800 text-slate-100 overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>
               {machine ? "Edit Machine Type" : "Add New Machine Type"}
@@ -333,15 +333,19 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
                             value={getResourceForPlan(plan.plan_id)?.toString() || ''}
                             onValueChange={(value) => handleResourceSelect(plan.plan_id, parseInt(value))}
                           >
-                            <SelectTrigger className="w-[180px] bg-slate-700 border-slate-600">
+                            <SelectTrigger className="w-[180px] bg-slate-700 border-slate-600 text-white">
                               <SelectValue placeholder="Select a resource" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
+                            <SelectContent 
+                              position="popper" 
+                              className="bg-slate-800 border-slate-700 text-slate-100 z-[1000]"
+                              sideOffset={5}
+                            >
                               {resources.map((resource) => (
                                 <SelectItem 
                                   key={resource.resource_id} 
                                   value={resource.resource_id.toString()}
-                                  className="hover:bg-slate-700"
+                                  className="text-slate-100 hover:bg-slate-700 focus:bg-slate-700 focus:text-white"
                                 >
                                   {resource.name}
                                 </SelectItem>
