@@ -1,15 +1,17 @@
 
 import React, { useState } from "react";
 import { useResources, Resource } from "@/hooks/useResources";
+import { useResourceIcons } from "@/hooks/useResourceIcons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import ResourceModal from "@/components/resources/ResourceModal";
-import { supabase } from "@/lib/supabaseClient";
+import { Layout } from "lucide-react";
 
 const ResourcesTab = () => {
   const { resources, loading, error, fetchResources } = useResources();
+  const { icons } = useResourceIcons();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
 
@@ -60,12 +62,10 @@ const ResourcesTab = () => {
     );
   }
 
+  // Find the icon URL from the icons list using resource icon_name
   const getIconUrl = (iconName?: string) => {
     if (!iconName) return null;
-    
-    return supabase.storage
-      .from('resource_icons')
-      .getPublicUrl(`${iconName}`).data.publicUrl;
+    return icons.find(icon => icon.name === iconName)?.url || null;
   };
 
   return (
@@ -104,30 +104,30 @@ const ResourcesTab = () => {
         {resources.map((resource) => (
           <div key={resource.resource_id} className="w-full">
             <AspectRatio ratio={3/4} className="w-full">
-              <Card className="relative overflow-hidden h-full cursor-default w-full border border-white/5 bg-slate-800/80">
+              <Card className="relative overflow-hidden h-full cursor-default w-full border-0">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
                 
-                <div className="p-4 flex flex-col items-center justify-center h-full">
-                  {resource.icon_name && (
-                    <div className="mb-3">
-                      <img 
-                        src={getIconUrl(resource.icon_name) || "/placeholder.svg"} 
-                        alt={resource.name}
-                        className="w-12 h-12 object-contain"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = "/placeholder.svg";
-                        }}
-                      />
-                    </div>
+                <div className="bg-slate-800 w-full h-full flex items-center justify-center">
+                  {resource.icon_name && getIconUrl(resource.icon_name) ? (
+                    <img 
+                      src={getIconUrl(resource.icon_name)} 
+                      alt={resource.name} 
+                      className="w-full h-full object-contain p-8"
+                      onError={(e) => {
+                        console.error(`Error loading icon: ${getIconUrl(resource.icon_name!)}`);
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/placeholder.svg";
+                      }}
+                    />
+                  ) : (
+                    <Layout className="text-slate-500 w-16 h-16" />
                   )}
-                  
-                  <div className="text-xl font-bold text-center text-gray-200">${resource.hourly_rate.toFixed(2)}</div>
-                  <div className="text-xs text-gray-400 mt-1">hourly rate</div>
                 </div>
                 
                 <div className="absolute bottom-0 left-0 right-0 p-2 z-20">
                   <h3 className="text-sm font-semibold text-white mb-1">{resource.name}</h3>
+                  <div className="text-xl font-bold text-center text-gray-200">${resource.hourly_rate.toFixed(2)}</div>
+                  <div className="text-xs text-gray-400 mt-1">hourly rate</div>
                 </div>
                 
                 <Button
