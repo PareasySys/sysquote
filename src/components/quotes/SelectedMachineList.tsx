@@ -66,43 +66,55 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
     fetchSavedPlanHours();
   }, [quoteId]);
 
-  // Fetch training offers data (default hours) for each machine AFTER we've loaded saved hours
+  // Effect to trigger recalculation when machines change
   useEffect(() => {
-    const fetchTrainingOffers = async () => {
-      if (machines.length === 0 || !initialDataLoaded) return;
+    if (initialDataLoaded) {
+      fetchTrainingOffersAndCalculate();
+    }
+  }, [machines, initialDataLoaded]); // This will run when machines array changes (add/remove)
 
-      try {
-        const machineIds = machines.map(m => m.machine_type_id);
-        
-        const { data, error } = await supabase
-          .from('training_offers')
-          .select('*')
-          .in('machine_type_id', machineIds);
-          
-        if (error) throw error;
-        
-        // Process initial hours from training_offers
-        if (data) {
-          const initialHours = data.map(offer => ({
-            machineId: offer.machine_type_id,
-            planId: offer.plan_id,
-            hours: offer.hours_required || 0
-          }));
-          
-          setTrainingHours(initialHours);
-          
-          // Only calculate totals from machine hours if we didn't load them from the database
-          if (Object.keys(totalsByPlan).length === 0) {
-            calculatePlanTotals(initialHours);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching training offers:", err);
+  // Fetch training offers data and calculate hours
+  const fetchTrainingOffersAndCalculate = async () => {
+    if (machines.length === 0) {
+      // If no machines, set all plans to 0 hours and save to database
+      if (plans.length > 0 && quoteId) {
+        const zeroHours: Record<number, number> = {};
+        plans.forEach(plan => {
+          zeroHours[plan.plan_id] = 0;
+        });
+        setTotalsByPlan(zeroHours);
+        savePlanTotalsToDatabase(zeroHours);
       }
-    };
-    
-    fetchTrainingOffers();
-  }, [machines, initialDataLoaded]);
+      return;
+    }
+
+    try {
+      const machineIds = machines.map(m => m.machine_type_id);
+      
+      const { data, error } = await supabase
+        .from('training_offers')
+        .select('*')
+        .in('machine_type_id', machineIds);
+        
+      if (error) throw error;
+      
+      // Process initial hours from training_offers
+      if (data) {
+        const initialHours = data.map(offer => ({
+          machineId: offer.machine_type_id,
+          planId: offer.plan_id,
+          hours: offer.hours_required || 0
+        }));
+        
+        setTrainingHours(initialHours);
+        
+        // Calculate totals from machine hours
+        calculatePlanTotals(initialHours);
+      }
+    } catch (err) {
+      console.error("Error fetching training offers:", err);
+    }
+  };
   
   // Calculate total hours for each plan across all machines
   const calculatePlanTotals = (hours: TrainingHours[]) => {
@@ -112,6 +124,7 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
       totals[item.planId] = (totals[item.planId] || 0) + item.hours;
     });
     
+    console.log("Calculated new plan totals:", totals);
     setTotalsByPlan(totals);
     
     // Save the plan totals to the database
@@ -135,6 +148,8 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
         training_hours: totals[planId] || 0,
         updated_at: new Date().toISOString()
       }));
+      
+      console.log("Saving plan totals to database:", upsertData);
       
       const { error } = await supabase
         .from('quote_training_plan_hours')
@@ -221,7 +236,7 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
                 </div>
               </div>
 
-              {/* Training Plans Icons - moved to the same row with machine name, aligned right */}
+              {/* Training Plans Icons */}
               <div className="flex flex-wrap gap-2 justify-end">
                 {!plansLoading && plans.map(plan => {
                   const hours = getHours(machine.machine_type_id, plan.plan_id);
