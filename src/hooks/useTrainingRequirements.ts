@@ -62,7 +62,7 @@ export const useTrainingRequirements = (
           durationDays += weekendAdjustment;
         }
         
-        // Use simple spacing algorithm for start days if not available
+        // Use simple spacing algorithm for start days
         const startDay = (index + 1) * 5; 
         
         return {

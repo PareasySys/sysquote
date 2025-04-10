@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 
@@ -96,7 +97,6 @@ export const savePlanningDetail = async (
       throw new Error("Quote ID and Plan ID are required");
     }
     
-    // REMOVED DUPLICATE CHECK - Always insert a new row regardless if data already exists
     // For existing records (with ID), update them
     if (detail.id) {
       const { data, error } = await supabase
@@ -118,7 +118,7 @@ export const savePlanningDetail = async (
       
       return data && data.length > 0 ? { ...detail, ...data[0] } : null;
     } else {
-      // For new records, always insert a new row
+      // Always insert a new row - no duplicate checking
       const { data, error } = await supabase
         .from("planning_details")
         .insert({
@@ -235,7 +235,7 @@ export const syncMachinePlanningDetails = async (
     }
     
     // For each selected machine ID and each training plan, create a new planning_details entry
-    // without checking for duplicates
+    // Always insert new records regardless of duplicates
     for (const machineId of selectedMachineIds) {
       for (const plan of plans) {
         // Find the corresponding training requirement for this machine-plan combination
@@ -257,7 +257,7 @@ export const syncMachinePlanningDetails = async (
         const hoursRequired = trainingOffer?.hours_required || 0;
         
         try {
-          // Always create a new planning detail record without checking for duplicates
+          // Create a new planning detail - no duplicate checking
           const planningDetail: PlanningDetail = {
             quote_id: quoteId,
             plan_id: plan.plan_id,
