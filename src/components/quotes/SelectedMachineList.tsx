@@ -1,13 +1,16 @@
+
 import React from "react";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trash } from "lucide-react";
+
 interface SelectedMachineListProps {
   machines: QuoteMachine[];
   onRemove: (machineTypeId: number) => void;
   loading?: boolean;
 }
+
 const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
   machines,
   onRemove,
@@ -18,6 +21,7 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
         No machines selected. Please add machines from the selection panel.
       </div>;
   }
+  
   return <div className="space-y-2">
       {machines.map(machine => <Card key={machine.machine_type_id} className="bg-slate-800/80 border border-white/5 p-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -38,8 +42,16 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
             </div>
           </div>
           
-          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+            onClick={() => onRemove(machine.machine_type_id)}
+          >
+            <Trash className="h-4 w-4" />
+          </Button>
         </Card>)}
     </div>;
 };
+
 export default SelectedMachineList;

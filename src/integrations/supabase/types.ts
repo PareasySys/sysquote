@@ -147,6 +147,48 @@ export type Database = {
           },
         ]
       }
+      quote_training_plan_hours: {
+        Row: {
+          created_at: string | null
+          id: number
+          plan_id: number
+          quote_id: string
+          training_hours: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          plan_id: number
+          quote_id: string
+          training_hours?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          plan_id?: number
+          quote_id?: string
+          training_hours?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_training_plan_hours_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "quote_training_plan_hours_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["quote_id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           area_id: number | null
@@ -476,6 +518,15 @@ export type Database = {
           machine_type_id: number
           created_at: string
           machine_details: Json
+        }[]
+      }
+      get_quote_training_hours: {
+        Args: { quote_id_param: string }
+        Returns: {
+          plan_id: number
+          plan_name: string
+          icon_name: string
+          training_hours: number
         }[]
       }
       get_quote_with_machines: {

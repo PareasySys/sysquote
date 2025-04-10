@@ -20,6 +20,7 @@ import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import MachineSelector from "@/components/quotes/MachineSelector";
 import SelectedMachineList from "@/components/quotes/SelectedMachineList";
 import QuoteTrainingTopics from "@/components/quotes/QuoteTrainingTopics";
+import TrainingHoursSummary from "@/components/quotes/TrainingHoursSummary";
 import { useQuoteMachines } from "@/hooks/useQuoteMachines";
 import { Input } from "@/components/ui/input";
 import { useGeographicAreas } from "@/hooks/useGeographicAreas";
@@ -412,11 +413,16 @@ const QuoteConfigPage: React.FC = () => {
                   )}
                 </Card>
                 
-                {/* Replace the placeholder with actual training topics component */}
+                {/* Add TrainingHoursSummary component */}
+                <TrainingHoursSummary quoteId={quoteId} />
+                
+                {/* Training topics component */}
                 {selectedMachines.length > 0 ? (
-                  <QuoteTrainingTopics selectedMachines={selectedMachines} />
+                  <div className="mt-6">
+                    <QuoteTrainingTopics selectedMachines={selectedMachines} />
+                  </div>
                 ) : (
-                  <Card className="bg-slate-800/80 border border-white/5 p-4">
+                  <Card className="bg-slate-800/80 border border-white/5 p-4 mt-6">
                     <h2 className="text-xl font-semibold mb-4 text-gray-200">Training Topics</h2>
                     <div className="text-gray-400 p-4 text-center border border-dashed border-gray-700 rounded-lg">
                       Select machines to view applicable training topics
