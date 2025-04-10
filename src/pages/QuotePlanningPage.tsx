@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,40 +19,12 @@ import { useQuoteTrainingHours } from "@/hooks/useQuoteTrainingHours";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { useResources } from "@/hooks/useResources"; 
 import { supabase } from "@/integrations/supabase/client";
-
-// Import the timeline components
-import Timeline from 'react-calendar-timeline';
-// Make sure this CSS import works
-import 'react-calendar-timeline/lib/Timeline.css';
+import TrainingGanttChart, { TrainingTask } from "@/components/planning/TrainingGanttChart";
 import moment from 'moment';
 
 interface WeekendSettings {
   workOnSaturday: boolean;
   workOnSunday: boolean;
-}
-
-interface TimelineGroup {
-  id: number;
-  title: string;
-}
-
-interface TimelineItem {
-  id: string;
-  group: number;
-  title: string;
-  start_time: number;
-  end_time: number;
-  canMove: boolean;
-  canResize: boolean;
-  canChangeGroup: boolean;
-  itemProps: {
-    style: {
-      background: string;
-      color: string;
-      borderRadius: string;
-      padding: string;
-    }
-  }
 }
 
 interface QuoteWithWeekendSettings {
@@ -87,8 +58,7 @@ const QuotePlanningPage: React.FC = () => {
   const { plans, loading: plansLoading } = useTrainingPlans();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [groups, setGroups] = useState<TimelineGroup[]>([]);
-  const [items, setItems] = useState<TimelineItem[]>([]);
+  const [tasks, setTasks] = useState<TrainingTask[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [workOnWeekends, setWorkOnWeekends] = useState<WeekendSettings>({
     workOnSaturday: false,
@@ -106,7 +76,7 @@ const QuotePlanningPage: React.FC = () => {
     planTotals[plan.plan_id] = plan.training_hours;
   });
 
-  // Set up the generic calendar - 12 months with 30 days each
+  // Set up the generic calendar dates
   const startDate = moment().startOf('year').toDate();
   const endDate = moment().add(1, 'year').toDate();
 
@@ -120,23 +90,20 @@ const QuotePlanningPage: React.FC = () => {
       setSelectedPlanId(plans[0].plan_id);
     }
     
-    prepareResourceGroups();
     fetchQuoteSettings();
-  }, [user, quoteId, plans, resources]);
+  }, [user, quoteId, plans]);
 
   useEffect(() => {
     if (selectedPlanId) {
       fetchTrainingData(selectedPlanId);
     }
-  }, [selectedPlanId, workOnWeekends]);
+  }, [selectedPlanId, workOnWeekends, resources]);
 
   const fetchQuoteSettings = async () => {
     if (!quoteId) return;
     
     try {
       // Check if there are custom columns in the quotes table
-      // Since work_on_saturday and work_on_sunday might not exist yet in the schema
-      // we'll use a more generic select first to check columns
       const { data, error: fetchError } = await supabase
         .from("quotes")
         .select("*")
@@ -146,7 +113,6 @@ const QuotePlanningPage: React.FC = () => {
       if (fetchError) throw fetchError;
       
       // Use optional chaining and nullish coalescing to safely access properties
-      // that might not exist in the database schema yet
       const quoteData = data as QuoteWithWeekendSettings;
       
       setWorkOnWeekends({
@@ -159,28 +125,14 @@ const QuotePlanningPage: React.FC = () => {
       setError(err.message || "Failed to load quote settings");
     }
   };
-
-  const prepareResourceGroups = () => {
-    if (!resources || resources.length === 0) return;
-    
-    // Transform resources into timeline groups format
-    const formattedGroups = resources.map(resource => ({
-      id: resource.resource_id,
-      title: resource.name // Using name instead of resource_name
-    }));
-    
-    setGroups(formattedGroups);
-  };
   
   const fetchTrainingData = async (planId: number) => {
-    if (!quoteId) return;
+    if (!quoteId || !resources || resources.length === 0) return;
     
     try {
       setLoading(true);
       
       // Get training requirements for the quote and plan
-      // Since quote_training_requirements might not exist, we'll use a more general query
-      // This would need to be adjusted to match your actual database schema
       const { data, error } = await supabase
         .from('training_requirements')
         .select(`
@@ -206,9 +158,9 @@ const QuotePlanningPage: React.FC = () => {
         software_types: req.item_type === 'software' ? { name: `Software ${req.item_id}` } : undefined
       }));
       
-      // Generate timeline items from the requirements data
-      const timelineItems = generateTimelineItems(requirements);
-      setItems(timelineItems);
+      // Generate Gantt tasks from the requirements data
+      const ganttTasks = generateGanttTasks(requirements);
+      setTasks(ganttTasks);
     } catch (err: any) {
       console.error("Error fetching training data:", err);
       setError(err.message || "Failed to load training data");
@@ -217,10 +169,10 @@ const QuotePlanningPage: React.FC = () => {
     }
   };
 
-  // Generate timeline items with scheduling logic
-  const generateTimelineItems = (requirements: TrainingRequirement[]): TimelineItem[] => {
+  // Generate Gantt tasks from training requirements
+  const generateGanttTasks = (requirements: TrainingRequirement[]): TrainingTask[] => {
     const maxHoursPerDay = 8;
-    const items: TimelineItem[] = [];
+    const tasks: TrainingTask[] = [];
     
     // Group requirements by resource
     const resourceRequirements: {[key: number]: TrainingRequirement[]} = {};
@@ -234,10 +186,15 @@ const QuotePlanningPage: React.FC = () => {
     
     // For each resource, schedule their requirements
     Object.entries(resourceRequirements).forEach(([resourceId, reqs]) => {
+      const resourceIdNum = parseInt(resourceId);
+      // Find resource name
+      const resource = resources.find(r => r.resource_id === resourceIdNum);
+      const resourceName = resource ? resource.name : `Resource ${resourceId}`;
+      
       let currentDay = 1; // Start at day 1
       let hoursScheduledToday = 0;
       
-      reqs.forEach((req, index) => {
+      reqs.forEach((req) => {
         const taskName = req.machine_type_id 
           ? req.machine_types?.name || 'Machine Training'
           : req.software_types?.name || 'Software Training';
@@ -262,28 +219,21 @@ const QuotePlanningPage: React.FC = () => {
           );
           
           if (hoursToScheduleToday > 0) {
-            // Convert days to milliseconds for the timeline
+            // Convert days to dates for the Gantt chart
             const startTime = moment(startDate).add(currentDay - 1, 'days')
-              .add(hoursScheduledToday, 'hours').valueOf();
+              .add(hoursScheduledToday, 'hours').toDate();
             const endTime = moment(startDate).add(currentDay - 1, 'days')
-              .add(hoursScheduledToday + hoursToScheduleToday, 'hours').valueOf();
+              .add(hoursScheduledToday + hoursToScheduleToday, 'hours').toDate();
             
-            items.push({
-              id: `${req.requirement_id}-${items.length}`,
-              group: parseInt(resourceId),
-              title: taskName,
-              start_time: startTime,
-              end_time: endTime,
-              canMove: false,
-              canResize: false,
-              canChangeGroup: false,
-              itemProps: {
-                style: {
-                  background: req.machine_type_id ? '#3b82f6' : '#10b981',
-                  color: 'white',
-                  borderRadius: '4px',
-                  padding: '2px 4px',
-                }
+            tasks.push({
+              id: `${req.requirement_id}-${tasks.length}`,
+              resourceId: resourceIdNum,
+              resourceName: resourceName,
+              taskName: taskName,
+              startTime: startTime,
+              endTime: endTime,
+              styles: {
+                backgroundColor: req.machine_type_id ? '#3b82f6' : '#10b981'
               }
             });
             
@@ -300,7 +250,7 @@ const QuotePlanningPage: React.FC = () => {
       });
     });
     
-    return items;
+    return tasks;
   };
 
   const handleSignOut = async () => {
@@ -456,39 +406,9 @@ const QuotePlanningPage: React.FC = () => {
                           </p>
                         </div>
 
-                        {loading ? (
-                          <div className="p-4 text-center">
-                            <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg">
-                              Loading schedule data...
-                            </TextShimmerWave>
-                          </div>
-                        ) : (
-                          <div className="mt-4 bg-slate-900 p-2 rounded-md border border-slate-700">
-                            <Timeline
-                              groups={groups}
-                              items={items}
-                              defaultTimeStart={startDate}
-                              defaultTimeEnd={endDate}
-                              minZoom={60 * 60 * 24 * 7 * 1000} // min zoom is 1 week
-                              maxZoom={60 * 60 * 24 * 30 * 2 * 1000} // max zoom is 2 months
-                              canMove={false}
-                              canResize={false}
-                              stackItems
-                              itemHeightRatio={0.8}
-                              lineHeight={40}
-                              sidebarWidth={200}
-                              itemTouchSendsClick={false}
-                              timeSteps={{
-                                second: 1,
-                                minute: 1,
-                                hour: 1,
-                                day: 1,
-                                month: 1,
-                                year: 1
-                              }}
-                            />
-                          </div>
-                        )}
+                        <div className="mt-4 bg-slate-900 p-2 rounded-md border border-slate-700">
+                          <TrainingGanttChart tasks={tasks} loading={loading} />
+                        </div>
                       </div>
                     </TabsContent>
                   ))}

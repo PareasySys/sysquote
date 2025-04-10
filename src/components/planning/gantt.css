@@ -1,0 +1,52 @@
+
+/* Custom styling for gantt-task-react to match our dark theme */
+.gantt-container .gantt-chart * {
+  box-sizing: border-box;
+}
+
+.gantt-container .gantt-chart {
+  font-family: inherit;
+  color: #e2e8f0;
+}
+
+.gantt-container .gantt-chart-table_header {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
+.gantt-container .gantt-chart-calendar_header {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
+.gantt-container .gantt-chart-table_row:nth-child(even) {
+  background-color: #0f172a;
+}
+
+.gantt-container .gantt-chart-table_row:nth-child(odd) {
+  background-color: #1e293b;
+}
+
+.gantt-container .gantt-chart-grid-vertical-line {
+  stroke: #334155;
+}
+
+.gantt-container .gantt-chart-grid-horizontal-line {
+  stroke: #334155;
+}
+
+.gantt-container .gantt-chart-calendar_day {
+  stroke: #475569;
+}
+
+.gantt-container .gantt-chart-calendar_weekend {
+  fill: #334155;
+}
+
+.gantt-container .gantt-chart-table-cell {
+  border-color: #334155;
+}
+
+.gantt-container .gantt-chart-header-cell {
+  border-color: #334155;
+}
