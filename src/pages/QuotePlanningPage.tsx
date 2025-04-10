@@ -20,6 +20,7 @@ import { useQuoteTrainingHours } from "@/hooks/useQuoteTrainingHours";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { useResources } from "@/hooks/useResources"; 
 import { supabase } from "@/integrations/supabase/client";
+import ResourceTrainingGantt from "@/components/gantt/ResourceTrainingGantt";
 
 interface WeekendSettings {
   workOnSaturday: boolean;
@@ -36,16 +37,6 @@ interface QuoteWithWeekendSettings {
   quote_name: string;
   work_on_saturday?: boolean;
   work_on_sunday?: boolean;
-}
-
-interface TrainingRequirement {
-  requirement_id: number;
-  machine_type_id?: number;
-  software_type_id?: number;
-  resource_id: number;
-  training_hours: number;
-  machine_types?: { name: string };
-  software_types?: { name: string };
 }
 
 const QuotePlanningPage: React.FC = () => {
@@ -85,12 +76,6 @@ const QuotePlanningPage: React.FC = () => {
     fetchQuoteSettings();
   }, [user, quoteId, plans]);
 
-  useEffect(() => {
-    if (selectedPlanId) {
-      fetchTrainingData(selectedPlanId);
-    }
-  }, [selectedPlanId, workOnWeekends, resources]);
-
   const fetchQuoteSettings = async () => {
     if (!quoteId) return;
     
@@ -113,37 +98,6 @@ const QuotePlanningPage: React.FC = () => {
     } catch (err: any) {
       console.error("Error fetching quote settings:", err);
       setError(err.message || "Failed to load quote settings");
-    }
-  };
-
-  const fetchTrainingData = async (planId: number) => {
-    if (!quoteId || !resources || resources.length === 0) return;
-    
-    try {
-      setLoading(true);
-      
-      const { data, error } = await supabase
-        .from('training_requirements')
-        .select(`
-          requirement_id,
-          item_id,
-          item_type,
-          plan_id,
-          required_resource_id,
-          training_hours
-        `)
-        .eq('plan_id', planId);
-      
-      if (error) throw error;
-      
-      // We've fetched the data, but will implement the new chart rendering later
-      console.log("Training requirements fetched:", data);
-      
-    } catch (err: any) {
-      console.error("Error fetching training data:", err);
-      setError(err.message || "Failed to load training data");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -251,7 +205,7 @@ const QuotePlanningPage: React.FC = () => {
             <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
               <p className="text-red-300">{error}</p>
               <Button 
-                onClick={() => selectedPlanId && fetchTrainingData(selectedPlanId)} 
+                onClick={() => selectedPlanId && fetchQuoteSettings()} 
                 variant="outline" 
                 className="mt-2 text-blue-300 border-blue-800 hover:bg-blue-900/50"
               >
@@ -300,11 +254,12 @@ const QuotePlanningPage: React.FC = () => {
                           </p>
                         </div>
 
-                        <div className="mt-4 bg-slate-900 p-2 rounded-md border border-slate-700">
-                          <div className="p-8 text-center">
-                            <p className="text-gray-400">Gantt chart has been removed and will be replaced with a new implementation.</p>
-                          </div>
-                        </div>
+                        <ResourceTrainingGantt
+                          quoteId={quoteId}
+                          planId={selectedPlanId}
+                          workOnSaturday={workOnWeekends.workOnSaturday}
+                          workOnSunday={workOnWeekends.workOnSunday}
+                        />
                       </div>
                     </TabsContent>
                   ))}
