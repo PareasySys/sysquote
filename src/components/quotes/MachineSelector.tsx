@@ -39,7 +39,18 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
         throw offersError;
       }
       
+      // Get all machine training requirements to find resources for each machine
+      const { data: allMachineTrainingReqs, error: reqsError } = await supabase
+        .from("machine_training_requirements")
+        .select("machine_type_id, plan_id, resource_id");
+      
+      if (reqsError) {
+        console.error("Error fetching machine training requirements:", reqsError);
+        throw reqsError;
+      }
+      
       console.log("Fetched training offers:", allTrainingOffers);
+      console.log("Fetched machine training requirements:", allMachineTrainingReqs);
       
       // First delete any planning details for machines that are no longer selected
       const { error: deleteError } = await supabase
@@ -57,10 +68,20 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
       // For each selected machine ID and each training plan, ensure there's a planning_details entry
       for (const machineId of machineIds) {
         for (const plan of plans) {
+          // Find the corresponding training requirement for this machine-plan combination
+          // to get the designated resource
+          const machineTrainingReq = allMachineTrainingReqs?.find(
+            req => req.machine_type_id === machineId && req.plan_id === plan.plan_id
+          );
+          
           // Find the corresponding training offer for this machine-plan combination
+          // to get the required hours
           const trainingOffer = allTrainingOffers?.find(
             offer => offer.machine_type_id === machineId && offer.plan_id === plan.plan_id
           );
+          
+          // Use resource ID from requirements, or null if not found
+          const resourceId = machineTrainingReq?.resource_id || null;
           
           // Default hours if no specific training offer is found
           const hoursRequired = trainingOffer?.hours_required || 0;
@@ -92,7 +113,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
                   plan_id: plan.plan_id,
                   machine_types_id: machineId,
                   software_types_id: null,
-                  resource_id: null,
+                  resource_id: resourceId,
                   allocated_hours: hoursRequired,
                   work_on_saturday: false,
                   work_on_sunday: false
@@ -103,11 +124,12 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
                 throw insertError;
               }
             } else {
-              // Ensure allocated hours are updated to match current training offer
+              // Ensure resource and allocated hours are updated to match current requirements
               console.log(`Updating planning detail for machine ${machineId}, plan ${plan.plan_id}`);
               const { error: updateError } = await supabase
                 .from("planning_details")
                 .update({
+                  resource_id: resourceId,
                   allocated_hours: hoursRequired,
                   updated_at: new Date().toISOString()
                 })

@@ -26,18 +26,6 @@ interface PlanningDetail {
   type_name: string | null;
 }
 
-interface MachineTrainingRequirement {
-  machine_type_id: number;
-  resource_id: number;
-  plan_id: number;
-}
-
-interface TrainingOffer {
-  machine_type_id: number;
-  plan_id: number;
-  hours_required: number;
-}
-
 const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
   quoteId,
   planId,
@@ -49,173 +37,12 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     loading,
     error,
     fetchRequirements,
-    saveTrainingPlanDetails
+    cleanupRemovedMachines
   } = useTrainingRequirements(quoteId, planId, workOnSaturday, workOnSunday);
 
   const [storedDetails, setStoredDetails] = useState<PlanningDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-
-  // Fetch training requirements to correlate resources with machines
-  const fetchMachineTrainingRequirements = async () => {
-    if (!planId) return [];
-    
-    try {
-      const { data, error } = await supabase
-        .from("machine_training_requirements")
-        .select("*")
-        .eq("plan_id", planId);
-      
-      if (error) {
-        console.error("Error fetching machine training requirements:", error);
-        throw error;
-      }
-      
-      return data || [];
-    } catch (err) {
-      console.error("Failed to fetch machine training requirements:", err);
-      return [];
-    }
-  };
-
-  // Fetch training offers to get allocated hours
-  const fetchTrainingOffers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("training_offers")
-        .select("*");
-      
-      if (error) {
-        console.error("Error fetching training offers:", error);
-        throw error;
-      }
-      
-      return data || [];
-    } catch (err) {
-      console.error("Failed to fetch training offers:", err);
-      return [];
-    }
-  };
-
-  // Generate and update planning details for each machine in the quote
-  const updatePlanningDetails = async () => {
-    if (!quoteId || !planId) return;
-    
-    try {
-      setDetailsLoading(true);
-      setFetchError(null);
-
-      // 1. First get machine IDs from the quote
-      const { data: quoteData, error: quoteError } = await supabase
-        .from("quotes")
-        .select("machine_type_ids")
-        .eq("quote_id", quoteId)
-        .single();
-      
-      if (quoteError) {
-        console.error("Error fetching quote data:", quoteError);
-        setFetchError(quoteError.message);
-        return;
-      }
-      
-      if (!quoteData || !quoteData.machine_type_ids || quoteData.machine_type_ids.length === 0) {
-        console.log("No machines found for this quote");
-        return;
-      }
-      
-      const machineIds = quoteData.machine_type_ids;
-      console.log("Machine IDs for this quote:", machineIds);
-      
-      // 2. Get machine training requirements to find resources for each machine
-      const machineTrainingReqs: MachineTrainingRequirement[] = await fetchMachineTrainingRequirements();
-      console.log("Machine training requirements:", machineTrainingReqs);
-      
-      // 3. Get training offers to determine hours required for each machine-plan combination
-      const trainingOffers: TrainingOffer[] = await fetchTrainingOffers();
-      console.log("Training offers:", trainingOffers);
-      
-      // 4. For each machine, ensure a planning detail exists with the correct resource and hours
-      for (const machineId of machineIds) {
-        // Find the training requirement for this machine and plan to determine resource
-        const trainingReq = machineTrainingReqs.find(
-          req => req.machine_type_id === machineId && req.plan_id === planId
-        );
-        
-        // Find the training offer for this machine and plan to determine hours
-        const trainingOffer = trainingOffers.find(
-          offer => offer.machine_type_id === machineId && offer.plan_id === planId
-        );
-        
-        const resourceId = trainingReq?.resource_id || null;
-        const allocatedHours = trainingOffer?.hours_required || 0;
-        
-        // Check if a record exists for this machine, plan, and quote
-        const { data: existingDetails, error: findError } = await supabase
-          .from("planning_details")
-          .select("id")
-          .eq("quote_id", quoteId)
-          .eq("plan_id", planId)
-          .eq("machine_types_id", machineId)
-          .maybeSingle();
-        
-        if (findError) {
-          console.error("Error checking existing planning details:", findError);
-          continue;
-        }
-        
-        try {
-          if (!existingDetails) {
-            // Create a new planning detail
-            console.log(`Creating planning detail for machine ${machineId}, plan ${planId}`);
-            const { error: insertError } = await supabase
-              .from("planning_details")
-              .insert({
-                quote_id: quoteId,
-                plan_id: planId,
-                machine_types_id: machineId,
-                software_types_id: null,
-                resource_id: resourceId,
-                allocated_hours: allocatedHours,
-                work_on_saturday: workOnSaturday,
-                work_on_sunday: workOnSunday
-              });
-            
-            if (insertError) {
-              console.error("Failed to insert planning detail:", insertError);
-            }
-          } else {
-            // Update the existing planning detail
-            console.log(`Updating planning detail for machine ${machineId}, plan ${planId}`);
-            const { error: updateError } = await supabase
-              .from("planning_details")
-              .update({
-                resource_id: resourceId,
-                allocated_hours: allocatedHours,
-                work_on_saturday: workOnSaturday,
-                work_on_sunday: workOnSunday,
-                updated_at: new Date().toISOString()
-              })
-              .eq("id", existingDetails.id);
-            
-            if (updateError) {
-              console.error("Failed to update planning detail:", updateError);
-            }
-          }
-        } catch (err) {
-          console.error("Error processing planning detail:", err);
-        }
-      }
-      
-      // Refresh the stored details after update
-      fetchStoredDetails();
-      
-    } catch (err: any) {
-      console.error("Error updating planning details:", err);
-      setFetchError(err.message || "Failed to update planning details");
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
 
   // Fetch saved planning details
   const fetchStoredDetails = async () => {
@@ -263,8 +90,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
         
         setStoredDetails(mappedDetails);
       } else {
-        // If no planning details found, create them
-        await updatePlanningDetails();
+        setStoredDetails([]);
       }
       
     } catch (err: any) {
@@ -275,7 +101,32 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     }
   };
 
-  // Refresh the data when weekend settings or plan changes
+  // Update planning details when machines, resources, or hours change
+  const updatePlanningDetails = async () => {
+    if (!quoteId || !planId) return;
+    
+    try {
+      setDetailsLoading(true);
+      setFetchError(null);
+      
+      // Make sure any orphaned planning details are cleaned up
+      await cleanupRemovedMachines();
+      
+      // Then fetch fresh data
+      await fetchStoredDetails();
+      
+      // Refresh the gantt chart requirements
+      await fetchRequirements();
+      
+    } catch (err: any) {
+      console.error("Error updating planning details:", err);
+      setFetchError(err.message || "Failed to update planning details");
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  // Refresh the data when plan changes
   useEffect(() => {
     if (quoteId && planId) {
       fetchStoredDetails();
@@ -284,7 +135,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
   
   // Update weekend settings when they change
   useEffect(() => {
-    if (quoteId && planId && (storedDetails.length > 0)) {
+    if (quoteId && planId) {
       updatePlanningDetails();
     }
   }, [workOnSaturday, workOnSunday]);

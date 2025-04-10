@@ -177,8 +177,77 @@ export const useTrainingRequirements = (
     }
   };
 
+  // Cleanup planning details for machines that have been removed
+  const cleanupRemovedMachines = async () => {
+    if (!quoteId || !planId) return;
+    
+    try {
+      console.log("Cleaning up planning details for removed machines");
+      
+      // 1. Get the current list of machine IDs from the quote
+      const { data: quote, error: quoteError } = await supabase
+        .from("quotes")
+        .select("machine_type_ids")
+        .eq("quote_id", quoteId)
+        .single();
+      
+      if (quoteError) {
+        console.error("Error fetching quote:", quoteError);
+        return;
+      }
+      
+      const currentMachineIds = quote?.machine_type_ids || [];
+      console.log("Current machine IDs:", currentMachineIds);
+      
+      // 2. Find planning details for machines that are no longer in the quote
+      const { data: orphanedDetails, error: orphanError } = await supabase
+        .from("planning_details")
+        .select("id, machine_types_id")
+        .eq("quote_id", quoteId)
+        .eq("plan_id", planId)
+        .not("machine_types_id", "is", null);
+      
+      if (orphanError) {
+        console.error("Error fetching orphaned planning details:", orphanError);
+        return;
+      }
+      
+      // 3. Filter for planning details with machine IDs not in the current selection
+      const detailsToDelete = orphanedDetails?.filter(
+        detail => detail.machine_types_id && !currentMachineIds.includes(detail.machine_types_id)
+      );
+      
+      console.log("Planning details to delete:", detailsToDelete);
+      
+      // 4. Delete the orphaned planning details
+      if (detailsToDelete && detailsToDelete.length > 0) {
+        const detailIds = detailsToDelete.map(detail => detail.id);
+        const { error: deleteError } = await supabase
+          .from("planning_details")
+          .delete()
+          .in("id", detailIds);
+        
+        if (deleteError) {
+          console.error("Error deleting orphaned planning details:", deleteError);
+          return;
+        }
+        
+        console.log(`Deleted ${detailIds.length} orphaned planning details`);
+      } else {
+        console.log("No orphaned planning details to delete");
+      }
+    } catch (err) {
+      console.error("Error cleaning up planning details:", err);
+    }
+  };
+
   useEffect(() => {
     fetchRequirements();
+    
+    // When quote, plan, or weekend settings change, clean up any orphaned planning details
+    if (quoteId && planId) {
+      cleanupRemovedMachines();
+    }
   }, [quoteId, planId, workOnSaturday, workOnSunday]);
 
   return {
@@ -186,6 +255,7 @@ export const useTrainingRequirements = (
     loading,
     error,
     fetchRequirements,
-    saveTrainingPlanDetails
+    saveTrainingPlanDetails,
+    cleanupRemovedMachines
   };
 };
