@@ -40,7 +40,7 @@ export const useTrainingRequirements = (
         .select(`
           id,
           resource_id,
-          resources:resource_id (name),
+          resources (name),
           allocated_hours,
           machine_types_id,
           software_types_id
@@ -61,38 +61,15 @@ export const useTrainingRequirements = (
         return;
       }
       
-      // Now get additional resource information if needed
-      const resourceIds = planningDetails
-        .map(detail => detail.resource_id)
-        .filter(id => id !== null) as number[];
-        
-      const { data: resourcesData, error: resourcesError } = await supabase
-        .from("resources")
-        .select("resource_id, name")
-        .in("resource_id", resourceIds.length > 0 ? resourceIds : [0]);
-        
-      if (resourcesError) {
-        console.error("Error fetching resources:", resourcesError);
-        // Don't throw, we can continue with partial data
-      }
-      
-      // Create a map of resource id to name for quick lookups
-      const resourceMap = new Map<number, string>();
-      (resourcesData || []).forEach(resource => {
-        resourceMap.set(resource.resource_id, resource.name);
-      });
-      
       // Transform planning details into training requirements
       const transformedRequirements: TrainingRequirement[] = planningDetails.map((detail, index) => {
         const resourceId = detail.resource_id || 0;
-        // Get resource name from the resources table data if available
-        const resourceName = resourceMap.get(resourceId) || 
-                            (detail.resources?.name || "Unassigned");
-                            
+        const resourceName = detail.resources?.name || "Unassigned";
         const hours = detail.allocated_hours || 0;
         
         // Calculate duration in days (assuming 8 hours per working day)
         let durationDays = Math.ceil(hours / 8);
+        if (durationDays < 1) durationDays = 1;
         
         // If not working on weekends, extend duration to account for skipped days
         if (!workOnSaturday || !workOnSunday) {
@@ -219,20 +196,23 @@ export const useTrainingRequirements = (
       
       console.log("Planning details to delete:", detailsToDelete);
       
-      // 4. Delete the orphaned planning details
+      // 4. Delete the orphaned planning details one by one
       if (detailsToDelete && detailsToDelete.length > 0) {
-        const detailIds = detailsToDelete.map(detail => detail.id);
-        const { error: deleteError } = await supabase
-          .from("planning_details")
-          .delete()
-          .in("id", detailIds);
-        
-        if (deleteError) {
-          console.error("Error deleting orphaned planning details:", deleteError);
-          return;
+        for (const detail of detailsToDelete) {
+          const { error: deleteError } = await supabase
+            .from("planning_details")
+            .delete()
+            .eq("id", detail.id);
+          
+          if (deleteError) {
+            console.error(`Error deleting orphaned planning detail ${detail.id}:`, deleteError);
+            // Continue with other deletions
+          } else {
+            console.log(`Deleted orphaned planning detail ${detail.id}`);
+          }
         }
         
-        console.log(`Deleted ${detailIds.length} orphaned planning details`);
+        console.log(`Processed ${detailsToDelete.length} orphaned planning details`);
       } else {
         console.log("No orphaned planning details to delete");
       }

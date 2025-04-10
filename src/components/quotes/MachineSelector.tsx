@@ -52,17 +52,40 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
       console.log("Fetched training offers:", allTrainingOffers);
       console.log("Fetched machine training requirements:", allMachineTrainingReqs);
       
-      // First delete any planning details for machines that are no longer selected
-      const { error: deleteError } = await supabase
+      // First get all existing planning details for this quote
+      const { data: existingDetails, error: fetchError } = await supabase
         .from("planning_details")
-        .delete()
+        .select("id, machine_types_id")
         .eq("quote_id", quoteId)
-        .neq("machine_types_id", null) // Only delete machine-related records
-        .not("machine_types_id", "in", `(${machineIds.length > 0 ? machineIds.join(",") : 0})`);
+        .not("machine_types_id", "is", null);
         
-      if (deleteError) {
-        console.error("Error deleting planning details:", deleteError);
-        throw deleteError;
+      if (fetchError) {
+        console.error("Error fetching existing planning details:", fetchError);
+        throw fetchError;
+      }
+      
+      // Find details that should be deleted (machine no longer selected)
+      const detailsToDelete = (existingDetails || []).filter(
+        detail => !machineIds.includes(detail.machine_types_id || 0)
+      );
+      
+      // Delete machine-related planning details that are no longer needed
+      if (detailsToDelete.length > 0) {
+        const detailIds = detailsToDelete.map(detail => detail.id);
+        
+        for (const id of detailIds) {
+          const { error: deleteError } = await supabase
+            .from("planning_details")
+            .delete()
+            .eq("id", id);
+          
+          if (deleteError) {
+            console.error(`Error deleting planning detail ${id}:`, deleteError);
+            // Continue with other deletions even if one fails
+          }
+        }
+        
+        console.log(`Deleted ${detailIds.length} planning details for removed machines`);
       }
       
       // For each selected machine ID and each training plan, ensure there's a planning_details entry
@@ -121,7 +144,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
                 
               if (insertError) {
                 console.error("Error inserting planning detail:", insertError);
-                throw insertError;
+                // Continue with other operations
               }
             } else {
               // Ensure resource and allocated hours are updated to match current requirements
@@ -137,12 +160,12 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
                 
               if (updateError) {
                 console.error("Error updating planning detail:", updateError);
-                throw updateError;
+                // Continue with other operations
               }
             }
           } catch (err) {
             console.error("Error processing planning detail:", err);
-            toast.error("Failed to update planning details");
+            // Continue with other operations
           }
         }
       }

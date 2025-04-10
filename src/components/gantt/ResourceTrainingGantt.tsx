@@ -52,6 +52,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       setDetailsLoading(true);
       setFetchError(null);
       
+      // Join with resources table to get resource names
       const { data, error } = await supabase
         .from("planning_details")
         .select(`
