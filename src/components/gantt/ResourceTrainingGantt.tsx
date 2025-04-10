@@ -43,8 +43,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       setPlanningDetails(details);
       
       // Transform planning details into training requirements
-      // Each planning detail record will be treated as a unique requirement,
-      // even if there are duplicates for the same resource
+      // Each planning detail record will be treated as a unique requirement
       const transformedRequirements: TrainingRequirement[] = details.map((detail, index) => {
         const resourceId = detail.resource_id || 0;
         const resourceName = detail.resource_name || "Unassigned";
@@ -63,7 +62,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
           durationDays += weekendAdjustment;
         }
         
-        // Use simple spacing algorithm for start days if not available
+        // Use simple spacing algorithm for start days
         // For duplicate resources, space them out a bit more to avoid overlaps
         const startDay = (index + 1) * 5; 
         

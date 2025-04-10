@@ -43,7 +43,6 @@ export const useTrainingRequirements = (
       }
       
       // Transform planning details into training requirements
-      // When there are duplicates (same resource_id), we'll still create separate entries
       // Each planning detail record will be treated as a unique training requirement
       const transformedRequirements: TrainingRequirement[] = planningDetails.map((detail, index) => {
         const resourceId = detail.resource_id || 0;

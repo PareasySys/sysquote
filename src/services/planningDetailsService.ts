@@ -96,9 +96,9 @@ export const savePlanningDetail = async (
       throw new Error("Quote ID and Plan ID are required");
     }
     
-    // Check if this is an update (has ID) or a new record
+    // REMOVED DUPLICATE CHECK - Always insert a new row regardless if data already exists
+    // For existing records (with ID), update them
     if (detail.id) {
-      // Update existing record
       const { data, error } = await supabase
         .from("planning_details")
         .update({
@@ -118,7 +118,7 @@ export const savePlanningDetail = async (
       
       return data && data.length > 0 ? { ...detail, ...data[0] } : null;
     } else {
-      // For new records, always insert a new row (allow duplicates for same quote_id, plan_id, resource_id)
+      // For new records, always insert a new row
       const { data, error } = await supabase
         .from("planning_details")
         .insert({
@@ -234,7 +234,8 @@ export const syncMachinePlanningDetails = async (
       }
     }
     
-    // For each selected machine ID and each training plan, ensure there's a planning_details entry
+    // For each selected machine ID and each training plan, create a new planning_details entry
+    // without checking for duplicates
     for (const machineId of selectedMachineIds) {
       for (const plan of plans) {
         // Find the corresponding training requirement for this machine-plan combination
@@ -255,22 +256,8 @@ export const syncMachinePlanningDetails = async (
         // Default hours if no specific training offer is found
         const hoursRequired = trainingOffer?.hours_required || 0;
         
-        // Check if there's already a planning detail for this machine-plan combination
-        const { data: existingDetail, error: checkError } = await supabase
-          .from("planning_details")
-          .select("id, allocated_hours, resource_id")
-          .eq("quote_id", quoteId)
-          .eq("plan_id", plan.plan_id)
-          .eq("machine_types_id", machineId)
-          .maybeSingle();
-          
-        if (checkError) {
-          console.error("Error checking existing planning details:", checkError);
-          continue; // Skip to next item, don't throw
-        }
-        
         try {
-          // Create or update the planning detail
+          // Always create a new planning detail record without checking for duplicates
           const planningDetail: PlanningDetail = {
             quote_id: quoteId,
             plan_id: plan.plan_id,
@@ -281,10 +268,6 @@ export const syncMachinePlanningDetails = async (
             work_on_saturday: false,
             work_on_sunday: false
           };
-          
-          if (existingDetail) {
-            planningDetail.id = existingDetail.id;
-          }
           
           await savePlanningDetail(planningDetail);
         } catch (err) {
