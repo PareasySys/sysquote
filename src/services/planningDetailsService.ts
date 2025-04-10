@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 
@@ -119,64 +118,27 @@ export const savePlanningDetail = async (
       
       return data && data.length > 0 ? { ...detail, ...data[0] } : null;
     } else {
-      // Check if a record with the same unique key already exists
-      const { data: existingData, error: checkError } = await supabase
+      // For new records, always insert a new row (allow duplicates for same quote_id, plan_id, resource_id)
+      const { data, error } = await supabase
         .from("planning_details")
-        .select("id")
-        .eq("quote_id", detail.quote_id)
-        .eq("plan_id", detail.plan_id)
-        .eq("resource_id", detail.resource_id || null)
-        .maybeSingle();
+        .insert({
+          quote_id: detail.quote_id,
+          plan_id: detail.plan_id,
+          resource_id: detail.resource_id,
+          machine_types_id: detail.machine_types_id,
+          software_types_id: detail.software_types_id,
+          allocated_hours: detail.allocated_hours,
+          work_on_saturday: detail.work_on_saturday || false,
+          work_on_sunday: detail.work_on_sunday || false
+        })
+        .select();
       
-      if (checkError) {
-        console.error("Error checking for existing planning detail:", checkError);
-        throw checkError;
+      if (error) {
+        console.error("Error creating planning detail:", error);
+        throw error;
       }
       
-      // If record exists, update it instead of trying to insert
-      if (existingData) {
-        const { data: updatedData, error: updateError } = await supabase
-          .from("planning_details")
-          .update({
-            machine_types_id: detail.machine_types_id,
-            software_types_id: detail.software_types_id,
-            allocated_hours: detail.allocated_hours,
-            work_on_saturday: detail.work_on_saturday || false,
-            work_on_sunday: detail.work_on_sunday || false,
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", existingData.id)
-          .select();
-        
-        if (updateError) {
-          console.error("Error updating existing planning detail:", updateError);
-          throw updateError;
-        }
-        
-        return updatedData && updatedData.length > 0 ? { ...detail, ...updatedData[0] } : null;
-      } else {
-        // Create new record
-        const { data, error } = await supabase
-          .from("planning_details")
-          .insert({
-            quote_id: detail.quote_id,
-            plan_id: detail.plan_id,
-            resource_id: detail.resource_id,
-            machine_types_id: detail.machine_types_id,
-            software_types_id: detail.software_types_id,
-            allocated_hours: detail.allocated_hours,
-            work_on_saturday: detail.work_on_saturday || false,
-            work_on_sunday: detail.work_on_sunday || false
-          })
-          .select();
-        
-        if (error) {
-          console.error("Error creating planning detail:", error);
-          throw error;
-        }
-        
-        return data && data.length > 0 ? { ...detail, ...data[0] } : null;
-      }
+      return data && data.length > 0 ? { ...detail, ...data[0] } : null;
     }
     
   } catch (err: any) {
