@@ -34,18 +34,16 @@ export const useTrainingRequirements = (
       setLoading(true);
       setError(null);
       
-      // Fetch planning details that match the current quote and plan
+      // First check if we can join with resources table
       const { data: planningDetails, error: detailsError } = await supabase
         .from("planning_details")
         .select(`
           id,
           resource_id,
-          resources (name),
+          resources:resource_id (name),
           allocated_hours,
           machine_types_id,
-          software_types_id,
-          start_day,
-          duration_days
+          software_types_id
         `)
         .eq("quote_id", quoteId)
         .eq("plan_id", planId);
@@ -63,9 +61,34 @@ export const useTrainingRequirements = (
         return;
       }
       
+      // Now get additional resource information if needed
+      const resourceIds = planningDetails
+        .map(detail => detail.resource_id)
+        .filter(id => id !== null) as number[];
+        
+      const { data: resourcesData, error: resourcesError } = await supabase
+        .from("resources")
+        .select("resource_id, name")
+        .in("resource_id", resourceIds.length > 0 ? resourceIds : [0]);
+        
+      if (resourcesError) {
+        console.error("Error fetching resources:", resourcesError);
+        // Don't throw, we can continue with partial data
+      }
+      
+      // Create a map of resource id to name for quick lookups
+      const resourceMap = new Map<number, string>();
+      (resourcesData || []).forEach(resource => {
+        resourceMap.set(resource.resource_id, resource.name);
+      });
+      
       // Transform planning details into training requirements
       const transformedRequirements: TrainingRequirement[] = planningDetails.map((detail, index) => {
-        const resourceName = detail.resources?.name || "Unassigned";
+        const resourceId = detail.resource_id || 0;
+        // Get resource name from the resources table data if available
+        const resourceName = resourceMap.get(resourceId) || 
+                            (detail.resources?.name || "Unassigned");
+                            
         const hours = detail.allocated_hours || 0;
         
         // Calculate duration in days (assuming 8 hours per working day)
@@ -80,14 +103,18 @@ export const useTrainingRequirements = (
           durationDays += weekendAdjustment;
         }
         
+        // Use simple spacing algorithm for start days if not available
+        const startDay = (index + 1) * 5; 
+        
         return {
           requirement_id: index + 1,
-          resource_id: detail.resource_id || 0,
+          resource_id: resourceId,
           resource_name: resourceName,
           training_hours: hours,
-          // Use stored start day if available, otherwise use a simple spacing algorithm
-          start_day: detail.start_day || (index + 1) * 5,
-          duration_days: detail.duration_days || durationDays || 1
+          // Use calculated start day
+          start_day: startDay,
+          // Use calculated duration
+          duration_days: durationDays || 1
         };
       });
       
@@ -133,8 +160,6 @@ export const useTrainingRequirements = (
             .from("planning_details")
             .update({
               allocated_hours: item.training_hours,
-              start_day: item.start_day,
-              duration_days: item.duration_days,
               work_on_saturday: workOnSaturday,
               work_on_sunday: workOnSunday,
               updated_at: new Date().toISOString()
