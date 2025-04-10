@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +9,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, Edit, Save } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, Edit, Save, Calendar } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card } from "@/components/ui/card";
@@ -139,6 +140,10 @@ const QuoteConfigPage: React.FC = () => {
 
   const handleBackToDashboard = () => {
     navigate("/home");
+  };
+
+  const handleGoToPlanning = () => {
+    navigate(`/quote/${quoteId}/planning`);
   };
 
   const handleEditToggle = () => {
@@ -346,18 +351,28 @@ const QuoteConfigPage: React.FC = () => {
                 )}
               </div>
               
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={handleEditToggle}
-                className="text-gray-400 hover:text-gray-200"
-              >
-                {isEditing ? (
-                  <Save className="h-5 w-5" />
-                ) : (
-                  <Edit className="h-5 w-5" />
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={handleGoToPlanning}
+                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Go to Planning
+                </Button>
+                
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={handleEditToggle}
+                  className="text-gray-400 hover:text-gray-200"
+                >
+                  {isEditing ? (
+                    <Save className="h-5 w-5" />
+                  ) : (
+                    <Edit className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
           

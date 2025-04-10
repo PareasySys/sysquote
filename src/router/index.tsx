@@ -8,6 +8,7 @@ import NotFoundPage from "@/pages/NotFoundPage";
 import ProfileSettingsPage from "@/pages/ProfileSettingsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import QuoteConfigPage from "@/pages/QuoteConfigPage";
+import QuotePlanningPage from "@/pages/QuotePlanningPage";
 import PrivateRoute from "./PrivateRoute";
 
 const Router = () => {
@@ -46,6 +47,12 @@ const Router = () => {
       path: "/quote/:quoteId/config",
       element: <PrivateRoute>
                 <QuoteConfigPage />
+               </PrivateRoute>
+    },
+    {
+      path: "/quote/:quoteId/planning",
+      element: <PrivateRoute>
+                <QuotePlanningPage />
                </PrivateRoute>
     },
     {
