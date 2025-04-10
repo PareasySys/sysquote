@@ -51,8 +51,7 @@ export const useTrainingOffers = () => {
       
       console.log("Fetching training offers...");
       
-      // Use any type as a workaround for the missing type definition
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("training_offers")
         .select("*");
       
@@ -81,7 +80,7 @@ export const useTrainingOffers = () => {
 
       if (existingOffer) {
         // Update existing record
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from("training_offers")
           .update({ 
             hours_required,
@@ -92,7 +91,7 @@ export const useTrainingOffers = () => {
         if (error) throw error;
       } else {
         // Create new record
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from("training_offers")
           .insert({
             machine_type_id,
@@ -105,10 +104,53 @@ export const useTrainingOffers = () => {
       
       // Refetch to update state
       await fetchOffers();
+      
+      // Also update any planning_details that use this machine type and plan
+      await updatePlanningDetailsHours(machine_type_id, plan_id, hours_required);
+      
       toast.success("Training hours updated successfully");
     } catch (err: any) {
       console.error("Error updating training hours:", err);
       toast.error("Failed to update training hours");
+    }
+  };
+  
+  // Update planning_details allocated_hours when training offers change
+  const updatePlanningDetailsHours = async (
+    machine_type_id: number,
+    plan_id: number,
+    hours_required: number
+  ) => {
+    try {
+      // Get all planning details that match this machine type and plan
+      const { data, error } = await supabase
+        .from("planning_details")
+        .select("*")
+        .eq("plan_id", plan_id)
+        .eq("machine_types_id", machine_type_id);
+      
+      if (error) throw error;
+      
+      if (!data || data.length === 0) return;
+      
+      console.log(`Updating ${data.length} planning details with new hours: ${hours_required}`);
+      
+      // Update each planning detail with the new allocated hours
+      for (const detail of data) {
+        const { error: updateError } = await supabase
+          .from("planning_details")
+          .update({ 
+            allocated_hours: hours_required,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", detail.id);
+          
+        if (updateError) {
+          console.error("Error updating planning detail:", updateError);
+        }
+      }
+    } catch (err) {
+      console.error("Error updating planning details hours:", err);
     }
   };
 

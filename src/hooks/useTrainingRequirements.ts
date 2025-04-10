@@ -53,19 +53,54 @@ export const useTrainingRequirements = (
         return;
       }
       
-      // Apply weekend settings (adjust duration if working on weekends)
+      // Get quote machine types to fetch training offers
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('quotes')
+        .select('machine_type_ids')
+        .eq('quote_id', quoteId)
+        .single();
+      
+      if (quoteError) throw quoteError;
+      
+      const machineTypeIds = quoteData?.machine_type_ids || [];
+      
+      // Fetch training offers for these machine types and the selected plan
+      const { data: trainingOffers, error: offersError } = await supabase
+        .from('training_offers')
+        .select('machine_type_id, resource_id, hours_required')
+        .eq('plan_id', planId)
+        .in('machine_type_id', machineTypeIds);
+      
+      if (offersError) throw offersError;
+      
+      console.log("Training offers fetched:", trainingOffers);
+      
+      // Apply weekend settings and map training hours from offers when available
       const adjustedRequirements = data.map((req: TrainingRequirement) => {
         let adjustedDuration = req.duration_days;
+        let trainingHours = req.training_hours;
+        
+        // Find if we have a specific training offer for this resource
+        const matchingOffer = trainingOffers?.find(
+          offer => offer.resource_id === req.resource_id
+        );
+        
+        if (matchingOffer) {
+          trainingHours = matchingOffer.hours_required;
+          // Recalculate duration based on training hours
+          adjustedDuration = Math.ceil(trainingHours / 8);
+        }
         
         // If not working on weekends, extend duration to account for skipped days
         if (!workOnSaturday || !workOnSunday) {
           const daysOff = (!workOnSaturday && !workOnSunday) ? 2 : 1;
-          const weekendAdjustment = Math.floor(req.duration_days / 5) * daysOff;
+          const weekendAdjustment = Math.floor(adjustedDuration / 5) * daysOff;
           adjustedDuration += weekendAdjustment;
         }
         
         return {
           ...req,
+          training_hours: trainingHours,
           duration_days: adjustedDuration
         };
       });
