@@ -75,18 +75,22 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       console.log("Stored planning details:", data);
       
       // Map the data to our expected format
-      const mappedDetails: PlanningDetail[] = data.map(item => ({
-        id: item.id,
-        resource_id: item.resource_id,
-        resource_name: item.resources?.name || "Unassigned",
-        allocated_hours: item.allocated_hours,
-        machine_types_id: item.machine_types_id,
-        software_types_id: item.software_types_id,
-        type_name: item.machine_types ? item.machine_types.name : 
-                  (item.software_types ? item.software_types.name : null)
-      }));
-      
-      setStoredDetails(mappedDetails);
+      if (data) {
+        const mappedDetails: PlanningDetail[] = data.map(item => ({
+          id: item.id,
+          resource_id: item.resource_id,
+          resource_name: item.resources?.name || "Unassigned",
+          allocated_hours: item.allocated_hours,
+          machine_types_id: item.machine_types_id,
+          software_types_id: item.software_types_id,
+          type_name: item.machine_types ? item.machine_types.name : 
+                    (item.software_types ? item.software_types.name : null)
+        }));
+        
+        setStoredDetails(mappedDetails);
+      } else {
+        setStoredDetails([]);
+      }
       
     } catch (err: any) {
       console.error("Error fetching planning details:", err);

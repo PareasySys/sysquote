@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useMachineTypes } from "./useMachineTypes";
 import { useTrainingPlans } from "./useTrainingPlans";
@@ -108,10 +108,12 @@ export const useTrainingOffers = () => {
       // Also update any planning_details that use this machine type and plan
       await updatePlanningDetailsForAllQuotes(machine_type_id, plan_id, hours_required);
       
-      toast.success("Training hours updated successfully");
+      toast.success("Training hours updated");
+      return true;
     } catch (err: any) {
       console.error("Error updating training hours:", err);
-      toast.error("Failed to update training hours");
+      toast.error(err.message || "Failed to update training hours");
+      return false;
     }
   };
   
@@ -128,7 +130,10 @@ export const useTrainingOffers = () => {
         .select("quote_id")
         .contains('machine_type_ids', [machine_type_id]);
       
-      if (quotesError) throw quotesError;
+      if (quotesError) {
+        console.error("Error finding quotes with machine:", quotesError);
+        return;
+      }
       
       if (!quotesWithMachine || quotesWithMachine.length === 0) return;
       
@@ -136,45 +141,56 @@ export const useTrainingOffers = () => {
       
       // For each quote that has this machine, update its planning details
       for (const quote of quotesWithMachine) {
-        // Get all planning details for this quote, machine type, and plan
-        const { data: planningDetails, error: detailsError } = await supabase
-          .from("planning_details")
-          .select("id")
-          .eq("quote_id", quote.quote_id)
-          .eq("plan_id", plan_id)
-          .eq("machine_types_id", machine_type_id);
-        
-        if (detailsError) throw detailsError;
-        
-        if (!planningDetails || planningDetails.length === 0) {
-          // If no planning details exist for this combination, create one
-          await supabase
+        try {
+          // Get all planning details for this quote, machine type, and plan
+          const { data: planningDetails, error: detailsError } = await supabase
             .from("planning_details")
-            .insert({
-              quote_id: quote.quote_id,
-              plan_id: plan_id,
-              machine_types_id: machine_type_id,
-              software_types_id: null,
-              resource_id: null,
-              allocated_hours: hours_required,
-              work_on_saturday: false,
-              work_on_sunday: false
-            });
-        } else {
-          // Update each planning detail with the new allocated hours
-          for (const detail of planningDetails) {
-            const { error: updateError } = await supabase
+            .select("id")
+            .eq("quote_id", quote.quote_id)
+            .eq("plan_id", plan_id)
+            .eq("machine_types_id", machine_type_id);
+          
+          if (detailsError) {
+            console.error(`Error checking planning details for quote ${quote.quote_id}:`, detailsError);
+            continue;
+          }
+          
+          if (!planningDetails || planningDetails.length === 0) {
+            // If no planning details exist for this combination, create one
+            const { error: insertError } = await supabase
               .from("planning_details")
-              .update({ 
+              .insert({
+                quote_id: quote.quote_id,
+                plan_id: plan_id,
+                machine_types_id: machine_type_id,
+                software_types_id: null,
+                resource_id: null,
                 allocated_hours: hours_required,
-                updated_at: new Date().toISOString()
-              })
-              .eq("id", detail.id);
+                work_on_saturday: false,
+                work_on_sunday: false
+              });
               
-            if (updateError) {
-              console.error("Error updating planning detail:", updateError);
+            if (insertError) {
+              console.error(`Error creating planning detail for quote ${quote.quote_id}:`, insertError);
+            }
+          } else {
+            // Update each planning detail with the new allocated hours
+            for (const detail of planningDetails) {
+              const { error: updateError } = await supabase
+                .from("planning_details")
+                .update({ 
+                  allocated_hours: hours_required,
+                  updated_at: new Date().toISOString()
+                })
+                .eq("id", detail.id);
+                
+              if (updateError) {
+                console.error(`Error updating planning detail ${detail.id}:`, updateError);
+              }
             }
           }
+        } catch (err) {
+          console.error(`Error processing quote ${quote.quote_id}:`, err);
         }
       }
       
