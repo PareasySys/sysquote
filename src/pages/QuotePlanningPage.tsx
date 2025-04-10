@@ -477,7 +477,6 @@ const QuotePlanningPage: React.FC = () => {
                               itemHeightRatio={0.8}
                               lineHeight={40}
                               sidebarWidth={200}
-                              showCursorLine
                               itemTouchSendsClick={false}
                               timeSteps={{
                                 second: 1,
