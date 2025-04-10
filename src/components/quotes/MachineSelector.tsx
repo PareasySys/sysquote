@@ -22,6 +22,113 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
   const { machines, loading, error } = useMachineTypes();
   const { plans } = useTrainingPlans();
 
+  // Function to create planning details for all machines and plans when selection changes
+  const updatePlanningDetails = async (machineIds: number[]) => {
+    if (!quoteId) return;
+    
+    try {
+      console.log("Updating planning details for all machines and plans");
+      
+      // Get all training offers to get hours_required for each machine-plan combination
+      const { data: allTrainingOffers, error: offersError } = await supabase
+        .from("training_offers")
+        .select("machine_type_id, plan_id, hours_required");
+        
+      if (offersError) throw offersError;
+      
+      // First delete any planning details for machines that are no longer selected
+      const { error: deleteError } = await supabase
+        .from("planning_details")
+        .delete()
+        .eq("quote_id", quoteId)
+        .neq("machine_types_id", null) // Only delete machine-related records
+        .not("machine_types_id", "in", `(${machineIds.join(",")})`);
+        
+      if (deleteError) throw deleteError;
+      
+      // For each machine-plan combination, create or update planning details
+      for (const machineId of machineIds) {
+        for (const plan of plans) {
+          // Find the corresponding training offer for this machine-plan combination
+          const trainingOffer = allTrainingOffers?.find(
+            offer => offer.machine_type_id === machineId && offer.plan_id === plan.plan_id
+          );
+          
+          // Default hours if no specific training offer is found
+          const hoursRequired = trainingOffer?.hours_required || 0;
+          
+          // Check if there's already a planning detail for this machine-plan combination
+          const { data: existingDetail, error: checkError } = await supabase
+            .from("planning_details")
+            .select("id")
+            .eq("quote_id", quoteId)
+            .eq("plan_id", plan.plan_id)
+            .eq("machine_types_id", machineId)
+            .maybeSingle();
+            
+          if (checkError) throw checkError;
+          
+          // Get resources that can train on this machine type for this plan
+          const { data: resources, error: resourcesError } = await supabase
+            .from("machine_training_requirements")
+            .select("resource_id")
+            .eq("machine_type_id", machineId)
+            .eq("plan_id", plan.plan_id);
+            
+          if (resourcesError) throw resourcesError;
+          
+          // If no planning detail exists, create one for each resource or a default one
+          if (!existingDetail) {
+            if (resources && resources.length > 0) {
+              // Create planning details for each resource that can train on this machine
+              for (const resource of resources) {
+                if (resource.resource_id) {
+                  await supabase.from("planning_details").insert({
+                    quote_id: quoteId,
+                    plan_id: plan.plan_id,
+                    machine_types_id: machineId,
+                    software_types_id: null,
+                    resource_id: resource.resource_id,
+                    allocated_hours: hoursRequired,
+                    work_on_saturday: false,
+                    work_on_sunday: false
+                  });
+                }
+              }
+            } else {
+              // If no specific resources are assigned, create a default entry
+              await supabase.from("planning_details").insert({
+                quote_id: quoteId,
+                plan_id: plan.plan_id,
+                machine_types_id: machineId,
+                software_types_id: null,
+                resource_id: null,
+                allocated_hours: hoursRequired,
+                work_on_saturday: false,
+                work_on_sunday: false
+              });
+            }
+          } else {
+            // If a planning detail already exists, update the hours if they're different
+            await supabase
+              .from("planning_details")
+              .update({
+                allocated_hours: hoursRequired,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", existingDetail.id);
+          }
+        }
+      }
+      
+      console.log("Planning details updated for all machines and plans");
+      
+    } catch (err: any) {
+      console.error("Error updating planning details:", err);
+      toast.error("Failed to update planning details");
+    }
+  };
+
   const toggleMachineSelection = async (machineTypeId: number) => {
     const updatedSelection = selectedMachineIds.includes(machineTypeId)
       ? selectedMachineIds.filter(id => id !== machineTypeId)
@@ -30,91 +137,16 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
     // Auto-save machine selection
     onSave(updatedSelection);
     
-    if (!quoteId) return;
-
-    try {
-      if (selectedMachineIds.includes(machineTypeId) && !updatedSelection.includes(machineTypeId)) {
-        // Machine was removed - delete all planning details for this machine
-        console.log("Removing planning details for machine:", machineTypeId);
-        
-        const { error } = await supabase
-          .from("planning_details")
-          .delete()
-          .eq("quote_id", quoteId)
-          .eq("machine_types_id", machineTypeId);
-          
-        if (error) throw error;
-        toast.success("Planning details for machine removed");
-      } 
-      else if (!selectedMachineIds.includes(machineTypeId) && updatedSelection.includes(machineTypeId)) {
-        // Machine was added - create planning details for all training plans
-        console.log("Adding planning details for machine:", machineTypeId);
-        
-        // Get all training offers for this machine type to get the hours_required
-        const { data: trainingOffers, error: offersError } = await supabase
-          .from("training_offers")
-          .select("plan_id, hours_required")
-          .eq("machine_type_id", machineTypeId);
-          
-        if (offersError) throw offersError;
-        
-        // Process each training plan
-        for (const plan of plans) {
-          // Find matching training offer for this plan and machine
-          const offer = trainingOffers?.find(o => o.plan_id === plan.plan_id);
-          const hoursRequired = offer ? offer.hours_required : 0;
-          
-          // Get resources that can train on this machine type for this plan
-          const { data: requirements, error: requirementsError } = await supabase
-            .from("machine_training_requirements")
-            .select("resource_id")
-            .eq("machine_type_id", machineTypeId)
-            .eq("plan_id", plan.plan_id);
-            
-          if (requirementsError) throw requirementsError;
-          
-          // For each resource that can train on this machine, create a planning detail
-          if (requirements && requirements.length > 0) {
-            for (const requirement of requirements) {
-              if (requirement.resource_id) {
-                // Insert planning detail for this resource and machine
-                await supabase.from("planning_details").insert({
-                  quote_id: quoteId,
-                  plan_id: plan.plan_id,
-                  machine_types_id: machineTypeId,
-                  software_types_id: null,
-                  resource_id: requirement.resource_id,
-                  allocated_hours: hoursRequired,
-                  work_on_saturday: false,
-                  work_on_sunday: false
-                });
-              }
-            }
-            console.log(`Created planning details for machine ${machineTypeId} with plan ${plan.plan_id}`);
-          } else {
-            // If no specific resources are assigned for training this machine,
-            // create a default entry with no resource assigned
-            await supabase.from("planning_details").insert({
-              quote_id: quoteId,
-              plan_id: plan.plan_id,
-              machine_types_id: machineTypeId,
-              software_types_id: null,
-              resource_id: null,
-              allocated_hours: hoursRequired,
-              work_on_saturday: false,
-              work_on_sunday: false
-            });
-            console.log(`Created default planning detail for machine ${machineTypeId} with plan ${plan.plan_id}`);
-          }
-        }
-        
-        toast.success("Planning details for machine created");
-      }
-    } catch (err: any) {
-      console.error("Error managing planning details:", err);
-      toast.error("Failed to update planning details");
-    }
+    // Update planning details for all machines and plans
+    await updatePlanningDetails(updatedSelection);
   };
+
+  // Initial setup of planning details when component mounts
+  useEffect(() => {
+    if (quoteId && selectedMachineIds.length > 0 && plans.length > 0) {
+      updatePlanningDetails(selectedMachineIds);
+    }
+  }, [quoteId, plans.length]);
 
   const isSelected = (machineTypeId: number) => selectedMachineIds.includes(machineTypeId);
 

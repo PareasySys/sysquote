@@ -125,7 +125,7 @@ export const useTrainingOffers = () => {
       // Get all planning details that match this machine type and plan
       const { data, error } = await supabase
         .from("planning_details")
-        .select("*")
+        .select("id")
         .eq("plan_id", plan_id)
         .eq("machine_types_id", machine_type_id);
       

@@ -119,15 +119,12 @@ export type Database = {
         Row: {
           allocated_hours: number
           created_at: string
-          duration_days: number
           id: string
           machine_types_id: number | null
           plan_id: number
           quote_id: string
-          resource_category: string | null
           resource_id: number | null
           software_types_id: number | null
-          start_day: number
           updated_at: string
           work_on_saturday: boolean
           work_on_sunday: boolean
@@ -135,15 +132,12 @@ export type Database = {
         Insert: {
           allocated_hours?: number
           created_at?: string
-          duration_days?: number
           id?: string
           machine_types_id?: number | null
           plan_id: number
           quote_id: string
-          resource_category?: string | null
           resource_id?: number | null
           software_types_id?: number | null
-          start_day?: number
           updated_at?: string
           work_on_saturday?: boolean
           work_on_sunday?: boolean
@@ -151,15 +145,12 @@ export type Database = {
         Update: {
           allocated_hours?: number
           created_at?: string
-          duration_days?: number
           id?: string
           machine_types_id?: number | null
           plan_id?: number
           quote_id?: string
-          resource_category?: string | null
           resource_id?: number | null
           software_types_id?: number | null
-          start_day?: number
           updated_at?: string
           work_on_saturday?: boolean
           work_on_sunday?: boolean
