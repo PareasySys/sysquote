@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -353,14 +352,6 @@ const QuoteConfigPage: React.FC = () => {
               
               <div className="flex items-center gap-2">
                 <Button 
-                  onClick={handleGoToPlanning}
-                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-                >
-                  <Calendar className="h-4 w-4" />
-                  Go to Planning
-                </Button>
-                
-                <Button 
                   variant="ghost" 
                   size="icon"
                   onClick={handleEditToggle}
@@ -430,6 +421,16 @@ const QuoteConfigPage: React.FC = () => {
                 {selectedMachines.length > 0 ? (
                   <div className="mt-6">
                     <QuoteTrainingTopics selectedMachines={selectedMachines} />
+                    
+                    <div className="mt-6 flex justify-center">
+                      <Button 
+                        onClick={handleGoToPlanning}
+                        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-3 py-6 px-8 rounded-xl text-lg font-medium"
+                      >
+                        <Calendar className="h-5 w-5" />
+                        Go to Planning
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <Card className="bg-slate-800/80 border border-white/5 p-4 mt-6">
