@@ -28,11 +28,48 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
   const { plans, loading: plansLoading } = useTrainingPlans();
   const [trainingHours, setTrainingHours] = useState<TrainingHours[]>([]);
   const [totalsByPlan, setTotalsByPlan] = useState<Record<number, number>>({});
+  const [initialDataLoaded, setInitialDataLoaded] = useState<boolean>(false);
 
-  // Fetch training offers data (default hours) for each machine
+  // Fetch saved hours from quote_training_plan_hours first
+  useEffect(() => {
+    const fetchSavedPlanHours = async () => {
+      if (!quoteId) return;
+      
+      try {
+        console.log("Fetching saved training hours for quote:", quoteId);
+        const { data, error } = await supabase
+          .from('quote_training_plan_hours')
+          .select('*')
+          .eq('quote_id', quoteId);
+          
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          console.log("Fetched saved training hours:", data);
+          
+          // Store the total hours by plan
+          const savedTotalsByPlan: Record<number, number> = {};
+          data.forEach(item => {
+            savedTotalsByPlan[item.plan_id] = item.training_hours || 0;
+          });
+          
+          setTotalsByPlan(savedTotalsByPlan);
+        }
+        
+      } catch (err) {
+        console.error("Error fetching saved plan hours:", err);
+      }
+      
+      setInitialDataLoaded(true);
+    };
+    
+    fetchSavedPlanHours();
+  }, [quoteId]);
+
+  // Fetch training offers data (default hours) for each machine AFTER we've loaded saved hours
   useEffect(() => {
     const fetchTrainingOffers = async () => {
-      if (machines.length === 0) return;
+      if (machines.length === 0 || !initialDataLoaded) return;
 
       try {
         const machineIds = machines.map(m => m.machine_type_id);
@@ -54,59 +91,18 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
           
           setTrainingHours(initialHours);
           
-          // Calculate total hours per plan
-          calculatePlanTotals(initialHours);
+          // Only calculate totals from machine hours if we didn't load them from the database
+          if (Object.keys(totalsByPlan).length === 0) {
+            calculatePlanTotals(initialHours);
+          }
         }
       } catch (err) {
         console.error("Error fetching training offers:", err);
       }
     };
-
-    // If we have a quoteId, fetch saved hours from quote_training_plan_hours
-    const fetchSavedHours = async () => {
-      if (!quoteId || machines.length === 0) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('quote_training_plan_hours')
-          .select('*')
-          .eq('quote_id', quoteId);
-          
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          // Override with saved hours from the quote
-          const savedHours = data.map(item => ({
-            machineId: -1, // We'll match this with machine later
-            planId: item.plan_id,
-            hours: item.training_hours || 0
-          }));
-          
-          // Update hours with saved data
-          setTrainingHours(prev => {
-            const updatedHours = [...prev];
-            savedHours.forEach(saved => {
-              const index = updatedHours.findIndex(h => h.planId === saved.planId);
-              if (index >= 0) {
-                updatedHours[index].hours = saved.hours;
-              } else {
-                updatedHours.push(saved);
-              }
-            });
-            return updatedHours;
-          });
-          
-          // Recalculate totals
-          calculatePlanTotals(trainingHours);
-        }
-      } catch (err) {
-        console.error("Error fetching saved hours:", err);
-      }
-    };
     
     fetchTrainingOffers();
-    fetchSavedHours();
-  }, [machines, quoteId]);
+  }, [machines, initialDataLoaded]);
   
   // Calculate total hours for each plan across all machines
   const calculatePlanTotals = (hours: TrainingHours[]) => {
