@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
 import { Card } from "@/components/ui/card";
@@ -116,6 +117,41 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
     });
     
     setTotalsByPlan(totals);
+    
+    // Save the plan totals to the database
+    if (quoteId) {
+      savePlanTotalsToDatabase(totals);
+    }
+  };
+  
+  // Save total hours by plan to the database
+  const savePlanTotalsToDatabase = async (totals: Record<number, number>) => {
+    if (!quoteId) return;
+    
+    try {
+      // Get all plans to ensure we save totals for each one
+      const planIds = plans.map(p => p.plan_id);
+      
+      // Create upsert payload for all plans
+      const upsertData = planIds.map(planId => ({
+        quote_id: quoteId,
+        plan_id: planId,
+        training_hours: totals[planId] || 0,
+        updated_at: new Date().toISOString()
+      }));
+      
+      const { error } = await supabase
+        .from('quote_training_plan_hours')
+        .upsert(upsertData, {
+          onConflict: 'quote_id,plan_id'
+        });
+      
+      if (error) throw error;
+      
+    } catch (err) {
+      console.error("Error saving plan totals:", err);
+      toast.error("Failed to save training plan totals");
+    }
   };
   
   // Update hours for a specific machine and plan
@@ -134,39 +170,11 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
         updated.push({ machineId, planId, hours: safeHours });
       }
       
-      // Recalculate plan totals
+      // Recalculate plan totals, which will also save to database
       calculatePlanTotals(updated);
       
       return updated;
     });
-    
-    // Save to database if quoteId is available
-    if (quoteId) {
-      saveHoursToDB(machineId, planId, safeHours);
-    }
-  };
-  
-  // Save hours to the database
-  const saveHoursToDB = async (machineId: number, planId: number, hours: number) => {
-    if (!quoteId) return;
-    
-    try {
-      const { error } = await supabase
-        .from('quote_training_plan_hours')
-        .upsert({
-          quote_id: quoteId,
-          plan_id: planId,
-          training_hours: hours,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'quote_id,plan_id'
-        });
-        
-      if (error) throw error;
-    } catch (err) {
-      console.error("Error saving training hours:", err);
-      toast.error("Failed to save training hours");
-    }
   };
   
   // Get hours for a specific machine and plan
@@ -263,13 +271,6 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
               </div>
             );
           })}
-        </div>
-        <div className="mt-2 pt-2 border-t border-white/10 flex justify-end">
-          <div className="text-xs text-gray-400">
-            Grand Total: <span className="text-gray-200 font-medium">
-              {Object.values(totalsByPlan).reduce((sum, hours) => sum + hours, 0)}h
-            </span>
-          </div>
         </div>
       </Card>
     </div>;
