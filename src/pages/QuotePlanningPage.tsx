@@ -21,7 +21,6 @@ import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { useResources } from "@/hooks/useResources"; 
 import { supabase } from "@/integrations/supabase/client";
 import TrainingGanttChart, { TrainingTask } from "@/components/planning/TrainingGanttChart";
-import moment from 'moment';
 
 interface WeekendSettings {
   workOnSaturday: boolean;
@@ -167,6 +166,7 @@ const QuotePlanningPage: React.FC = () => {
     const maxHoursPerDay = 8;
     const tasks: TrainingTask[] = [];
     
+    // Group requirements by resource
     const resourceRequirements: {[key: number]: TrainingRequirement[]} = {};
     requirements.forEach(req => {
       const resourceId = req.resource_id;
@@ -190,12 +190,13 @@ const QuotePlanningPage: React.FC = () => {
       currentDay = 1;
       let hoursScheduledToday = 0;
       
-      reqs.forEach((req) => {
-        const taskName = req.machine_type_id 
-          ? req.machine_types?.name || 'Machine Training'
-          : req.software_types?.name || 'Software Training';
-        
-        let hoursRemaining = req.training_hours;
+      // Consolidate all training hours for this resource into one task
+      let totalHours = reqs.reduce((sum, req) => sum + Number(req.training_hours), 0);
+      
+      // If we have hours to schedule for this resource
+      if (totalHours > 0) {
+        let daysNeeded = 0;
+        let hoursRemaining = totalHours;
         
         while (hoursRemaining > 0) {
           if (
@@ -225,30 +226,10 @@ const QuotePlanningPage: React.FC = () => {
           );
           
           if (hoursToScheduleToday > 0) {
-            // Create a date for this task in our generic calendar
-            const taskDate = new Date(2025, currentMonth - 1, currentDay);
-            const startTime = new Date(taskDate);
-            startTime.setHours(8 + hoursScheduledToday); // Start at 8 AM + any hours already scheduled
-            
-            const endTime = new Date(taskDate);
-            endTime.setHours(8 + hoursScheduledToday + hoursToScheduleToday);
-            
-            tasks.push({
-              id: `${req.requirement_id}-${tasks.length}`,
-              resourceId: resourceIdNum,
-              resourceName: resourceName,
-              taskName: taskName,
-              startTime: startTime,
-              endTime: endTime,
-              styles: {
-                backgroundColor: req.machine_type_id ? '#3b82f6' : '#10b981'
-              }
-            });
-            
+            daysNeeded++;
             hoursRemaining -= hoursToScheduleToday;
-            hoursScheduledToday += hoursToScheduleToday;
             
-            if (hoursScheduledToday >= maxHoursPerDay) {
+            if (hoursScheduledToday + hoursToScheduleToday >= maxHoursPerDay) {
               currentDay++;
               
               // Check if we need to advance to the next month (assuming 30 days per month)
@@ -263,10 +244,28 @@ const QuotePlanningPage: React.FC = () => {
               }
               
               hoursScheduledToday = 0;
+            } else {
+              hoursScheduledToday += hoursToScheduleToday;
             }
           }
         }
-      });
+        
+        // Create a single task for this resource spanning the necessary days
+        const startTaskDate = new Date(2025, 0, 1); // January 1, 2025 (Month 1, Day 1)
+        const endTaskDate = new Date(2025, 0, 1 + daysNeeded); // Add the necessary days
+        
+        tasks.push({
+          id: `task-${resourceIdNum}`,
+          resourceId: resourceIdNum,
+          resourceName: resourceName,
+          taskName: `${resourceName} Training`, // This won't be displayed in the chart
+          startTime: startTaskDate,
+          endTime: endTaskDate,
+          styles: {
+            backgroundColor: '#3b82f6'
+          }
+        });
+      }
     });
     
     return tasks;

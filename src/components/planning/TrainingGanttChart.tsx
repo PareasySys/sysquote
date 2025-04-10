@@ -60,13 +60,13 @@ const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading,
   const ganttTasks: Task[] = displayTasks.map(task => {
     return {
       id: task.id,
-      name: task.taskName, // Remove duration info
+      name: task.resourceName, // Show resource name as the task name in the left column
       start: new Date(task.startTime),
       end: new Date(task.endTime),
       progress: 0,
       type: 'task',
       isDisabled: true,
-      project: task.resourceName,
+      project: task.resourceName, // Use resource name as the project name
       styles: {
         backgroundColor: task.styles?.backgroundColor || '#3b82f6',
         progressColor: task.styles?.progressColor || '#60a5fa',
@@ -101,7 +101,7 @@ const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading,
         <Gantt
           tasks={ganttTasks}
           viewMode={view}
-          listCellWidth="250px"
+          listCellWidth="180px"
           columnWidth={60}
           locale="en-US"
           barCornerRadius={4}

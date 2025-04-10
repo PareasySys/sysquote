@@ -61,6 +61,7 @@
 .gantt-container .gantt-chart-list-item {
   padding: 8px 12px;
   font-weight: 500;
+  color: #f8fafc; /* White font for better readability */
 }
 
 /* Better styling for task bars */
