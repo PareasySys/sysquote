@@ -98,7 +98,7 @@ const TrainingTopicsTab: React.FC = () => {
     updateTopic 
   } = useTrainingTopics(selectedItemId || undefined, selectedPlanId || undefined, selectedItemType || undefined);
 
-  const handleItemSelect = (itemId: number, itemType: string) => {
+  const handleItemSelect = (itemId: number, itemType: "machine" | "software") => {
     if (expandedItemId === itemId && selectedItemType === itemType) {
       setExpandedItemId(null);
       setExpandedPlanId(null);
@@ -114,7 +114,7 @@ const TrainingTopicsTab: React.FC = () => {
     }
   };
   
-  const handlePlanSelect = (itemId: number, planId: number, itemType: string) => {
+  const handlePlanSelect = (itemId: number, planId: number, itemType: "machine" | "software") => {
     if (expandedPlanId === planId && expandedItemId === itemId && selectedItemType === itemType) {
       setExpandedPlanId(null);
       setSelectedItemId(null);

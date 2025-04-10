@@ -38,10 +38,12 @@ export const useQuoteTrainingHours = (quoteId?: string) => {
 
       console.log("Training hours data:", data);
       
-      setTrainingHours(data || []);
+      // Ensure data matches our TrainingPlanHours interface
+      const typedData: TrainingPlanHours[] = data || [];
+      setTrainingHours(typedData);
       
       // Calculate total hours
-      const total = (data || []).reduce((sum, item) => sum + (item.training_hours || 0), 0);
+      const total = (typedData).reduce((sum, item) => sum + (item.training_hours || 0), 0);
       setTotalHours(total);
     } catch (err: any) {
       console.error("Error fetching training hours:", err);
