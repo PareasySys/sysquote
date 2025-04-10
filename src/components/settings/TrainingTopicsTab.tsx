@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,25 +23,20 @@ export default function TrainingTopicsTab() {
   const { software, loading: softwareLoading } = useSoftwareTypes();
   const { plans, loading: plansLoading } = useTrainingPlans();
   
-  // Expanded state for machines and plans
   const [expandedMachines, setExpandedMachines] = useState<{[key: number]: boolean}>({});
   const [expandedPlans, setExpandedPlans] = useState<{[key: string]: boolean}>({});
   
-  // Selected states for current machine, plan, and type
   const [selectedMachineId, setSelectedMachineId] = useState<number | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<"machine" | "software" | null>(null);
   
-  // Topic management state
   const [newTopic, setNewTopic] = useState<string>('');
   const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
   const [editedTopicText, setEditedTopicText] = useState<string>('');
   
-  // Topic data by machine/software and plan
   const [topicsByItemAndPlan, setTopicsByItemAndPlan] = useState<{[key: string]: any[]}>({});
   const [loadingTopics, setLoadingTopics] = useState<{[key: string]: boolean}>({});
   
-  // Handles toggling the expansion state of a machine
   const toggleMachine = (machineId: number, itemType: "machine" | "software") => {
     setExpandedMachines(prev => ({
       ...prev,
@@ -56,7 +50,6 @@ export default function TrainingTopicsTab() {
     }
   };
   
-  // Handles toggling the expansion state of a plan within a machine
   const togglePlan = (machineId: number, planId: number, itemType: "machine" | "software") => {
     const key = `${itemType}-${machineId}-plan-${planId}`;
     
@@ -70,14 +63,12 @@ export default function TrainingTopicsTab() {
       setSelectedPlanId(planId);
       setSelectedItemType(itemType);
       
-      // Fetch topics for this combination if not already loaded
       if (!topicsByItemAndPlan[key] && !loadingTopics[key]) {
         fetchTopicsForItemAndPlan(machineId, planId, itemType);
       }
     }
   };
   
-  // Fetch topics for a specific item and plan
   const fetchTopicsForItemAndPlan = async (itemId: number, planId: number, itemType: string) => {
     const key = `${itemType}-${itemId}-plan-${planId}`;
     
@@ -117,7 +108,6 @@ export default function TrainingTopicsTab() {
     }
   };
   
-  // Handle adding a new topic
   const handleAddTopic = async () => {
     if (!newTopic.trim() || !selectedMachineId || !selectedPlanId || !selectedItemType) {
       toast.error("Please select a machine and plan, and enter a topic");
@@ -159,7 +149,6 @@ export default function TrainingTopicsTab() {
     }
   };
   
-  // Handle editing a topic
   const handleStartEdit = (topicId: number, currentText: string) => {
     setEditingTopicId(topicId);
     setEditedTopicText(currentText);
@@ -184,7 +173,6 @@ export default function TrainingTopicsTab() {
       
       if (error) throw error;
       
-      // Update the topic in local state
       if (selectedMachineId && selectedPlanId && selectedItemType) {
         const key = `${selectedItemType}-${selectedMachineId}-plan-${selectedPlanId}`;
         
@@ -205,7 +193,6 @@ export default function TrainingTopicsTab() {
     }
   };
   
-  // Handle deleting a topic
   const handleDeleteTopic = async (topicId: number) => {
     if (!window.confirm('Are you sure you want to delete this topic?')) return;
     
@@ -217,7 +204,6 @@ export default function TrainingTopicsTab() {
       
       if (error) throw error;
       
-      // Remove the topic from local state
       if (selectedMachineId && selectedPlanId && selectedItemType) {
         const key = `${selectedItemType}-${selectedMachineId}-plan-${selectedPlanId}`;
         
@@ -234,12 +220,11 @@ export default function TrainingTopicsTab() {
     }
   };
   
-  // Loading state check
   const isLoading = machinesLoading || softwareLoading || plansLoading;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-      <div className="md:col-span-4">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 w-full px-4">
+      <div className="md:col-span-12">
         <Card className="bg-slate-800/80 border border-white/5 p-4">
           <h3 className="text-xl font-semibold mb-4 text-gray-200">Machines</h3>
           {machinesLoading ? (
