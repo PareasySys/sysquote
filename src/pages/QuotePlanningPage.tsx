@@ -16,11 +16,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuoteTrainingHours } from "@/hooks/useQuoteTrainingHours";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { useResources } from "@/hooks/useResources"; 
 import { supabase } from "@/integrations/supabase/client";
 import ResourceTrainingGantt from "@/components/gantt/ResourceTrainingGantt";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 interface WeekendSettings {
   workOnSaturday: boolean;
@@ -55,13 +57,6 @@ const QuotePlanningPage: React.FC = () => {
   });
 
   const { resources } = useResources();
-
-  const { trainingHours, totalHours, loading: hoursLoading } = useQuoteTrainingHours(quoteId);
-
-  const planTotals: Record<number, number> = {};
-  trainingHours.forEach(plan => {
-    planTotals[plan.plan_id] = plan.training_hours;
-  });
 
   useEffect(() => {
     if (!user) {
@@ -108,6 +103,32 @@ const QuotePlanningPage: React.FC = () => {
 
   const handleBackToQuote = () => {
     navigate(`/quote/${quoteId}/config`);
+  };
+
+  const updateWeekendSettings = async (key: 'workOnSaturday' | 'workOnSunday', value: boolean) => {
+    if (!quoteId) return;
+    
+    const newSettings = { ...workOnWeekends, [key]: value };
+    setWorkOnWeekends(newSettings);
+    
+    try {
+      const { error: updateError } = await supabase
+        .from('quotes')
+        .update({ 
+          work_on_saturday: newSettings.workOnSaturday,
+          work_on_sunday: newSettings.workOnSunday
+        })
+        .eq('quote_id', quoteId);
+      
+      if (updateError) throw updateError;
+      
+      toast.success(`Weekend schedule updated`);
+    } catch (err: any) {
+      console.error("Error updating weekend settings:", err);
+      toast.error("Failed to update weekend settings");
+      // Revert the UI change
+      setWorkOnWeekends(workOnWeekends);
+    }
   };
 
   const sidebarLinks = [
@@ -205,7 +226,7 @@ const QuotePlanningPage: React.FC = () => {
             <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
               <p className="text-red-300">{error}</p>
               <Button 
-                onClick={() => selectedPlanId && fetchQuoteSettings()} 
+                onClick={fetchQuoteSettings} 
                 variant="outline" 
                 className="mt-2 text-blue-300 border-blue-800 hover:bg-blue-900/50"
               >
@@ -215,6 +236,28 @@ const QuotePlanningPage: React.FC = () => {
           ) : (
             <div>
               <Card className="bg-slate-800/80 border border-white/5 p-4 mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold text-gray-200">Weekend Settings</h2>
+                  <div className="flex gap-6">
+                    <div className="flex items-center gap-2">
+                      <Switch 
+                        id="work-on-saturday" 
+                        checked={workOnWeekends.workOnSaturday}
+                        onCheckedChange={(checked) => updateWeekendSettings('workOnSaturday', checked)}
+                      />
+                      <Label htmlFor="work-on-saturday" className="text-gray-300">Work on Saturday</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch 
+                        id="work-on-sunday" 
+                        checked={workOnWeekends.workOnSunday}
+                        onCheckedChange={(checked) => updateWeekendSettings('workOnSunday', checked)}
+                      />
+                      <Label htmlFor="work-on-sunday" className="text-gray-300">Work on Sunday</Label>
+                    </div>
+                  </div>
+                </div>
+
                 <Tabs 
                   defaultValue={plans && plans.length > 0 ? plans[0].plan_id.toString() : ""} 
                   onValueChange={(value) => setSelectedPlanId(parseInt(value))}
@@ -234,11 +277,6 @@ const QuotePlanningPage: React.FC = () => {
                           className="data-[state=active]:bg-blue-600"
                         >
                           {plan.name}
-                          {planTotals[plan.plan_id] && (
-                            <span className="ml-2 bg-blue-700 text-white text-xs px-1.5 py-0.5 rounded-md">
-                              {planTotals[plan.plan_id]}h
-                            </span>
-                          )}
                         </TabsTrigger>
                       ))
                     )}
@@ -249,9 +287,6 @@ const QuotePlanningPage: React.FC = () => {
                       <div className="mt-4">
                         <div className="mb-4">
                           <h3 className="text-xl font-semibold text-gray-200">{plan.name} Plan</h3>
-                          <p className="text-gray-400 mt-1">
-                            {planTotals[plan.plan_id] ? `${planTotals[plan.plan_id]} training hours` : 'Loading hours...'}
-                          </p>
                         </div>
 
                         <ResourceTrainingGantt

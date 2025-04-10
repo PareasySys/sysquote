@@ -48,6 +48,13 @@ const GanttChart: React.FC<GanttChartProps> = ({
     return Array.from({ length: 30 }, (_, i) => i + 1);
   }, []);
 
+  // Calculate which day of the month a particular day falls on
+  const getDayPosition = (day: number): { month: number, dayOfMonth: number } => {
+    const month = Math.floor((day - 1) / 30) + 1; // 1-based month
+    const dayOfMonth = ((day - 1) % 30) + 1; // 1-based day of month
+    return { month, dayOfMonth };
+  };
+
   if (loading) {
     return (
       <div className="gantt-loading">
@@ -128,13 +135,12 @@ const GanttChart: React.FC<GanttChartProps> = ({
               
               {/* Render tasks for this resource */}
               {group.requirements.map(req => {
-                // Calculate position
-                const startDay = req.start_day || 1;
-                const duration = req.duration_days || 1;
+                // Calculate position based on the custom calendar (12 months x 30 days)
+                const { month, dayOfMonth } = getDayPosition(req.start_day);
                 
-                // Convert to pixels
-                const left = (startDay - 1) * 30; // 30px per day
-                const width = duration * 30;
+                // Convert to pixels for positioning
+                const left = ((month - 1) * 30 + (dayOfMonth - 1)) * 30; // 30px per day
+                const width = req.duration_days * 30; // 30px per day
                 
                 return (
                   <div
@@ -143,9 +149,9 @@ const GanttChart: React.FC<GanttChartProps> = ({
                     style={{
                       left: `${left}px`,
                       width: `${width}px`,
-                      backgroundColor: getRandomColor(req.resource_id)
+                      backgroundColor: getResourceColor(req.resource_id)
                     }}
-                    title={`Resource: ${req.resource_name}, Hours: ${req.training_hours}`}
+                    title={`Resource: ${req.resource_name}, Hours: ${req.training_hours}, Start: Month ${month}, Day ${dayOfMonth}, Duration: ${req.duration_days} days`}
                   >
                     {req.training_hours}H
                   </div>
@@ -160,7 +166,7 @@ const GanttChart: React.FC<GanttChartProps> = ({
 };
 
 // Helper function to generate consistent colors based on resource ID
-function getRandomColor(id: number): string {
+function getResourceColor(id: number): string {
   // Fixed set of colors for consistency
   const colors = [
     '#3B82F6', // Blue

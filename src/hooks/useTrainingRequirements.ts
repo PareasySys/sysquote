@@ -6,13 +6,10 @@ import { toast } from "sonner";
 export interface TrainingRequirement {
   requirement_id: number;
   resource_id: number;
-  item_id: number;
-  item_type: string;
-  plan_id: number;
+  resource_name: string;
   training_hours: number;
-  start_day?: number; // Calculated start day (1-360)
-  duration_days?: number; // Duration in days
-  resource_name?: string; // Will be populated from join
+  start_day: number;
+  duration_days: number;
 }
 
 export const useTrainingRequirements = (
@@ -37,54 +34,41 @@ export const useTrainingRequirements = (
       setLoading(true);
       setError(null);
       
-      // Fetch requirements and join with resources to get names
-      const { data, error } = await supabase
-        .from('training_requirements')
-        .select(`
-          requirement_id,
-          item_id,
-          item_type,
-          plan_id,
-          required_resource_id,
-          training_hours,
-          resources:required_resource_id(resource_id, name)
-        `)
-        .eq('plan_id', planId);
+      // Call the new database function to get requirements
+      const { data, error: fetchError } = await supabase
+        .rpc('get_quote_training_requirements', {
+          quote_id_param: quoteId,
+          plan_id_param: planId
+        });
       
-      if (error) throw error;
+      if (fetchError) throw fetchError;
       
-      if (!data) {
+      console.log("Training requirements fetched:", data);
+      
+      if (!data || data.length === 0) {
         setRequirements([]);
+        setLoading(false);
         return;
       }
       
-      // Transform the data to include resource names and calculate days
-      const transformedData = data.map((req, index) => {
-        // Calculate position on timeline
-        // For demo purposes, we're spacing items out evenly
-        // In a real app, you would use actual start dates
-        const startDay = index * 10 + 1; // Simple spacing algorithm
+      // Apply weekend settings (adjust duration if working on weekends)
+      const adjustedRequirements = data.map((req: TrainingRequirement) => {
+        let adjustedDuration = req.duration_days;
         
-        // Calculate duration based on hours (simplified)
-        // In real app, this would be based on actual duration data
-        const hoursPerDay = 8; // Assume 8 hours per day
-        const durationDays = Math.ceil(req.training_hours / hoursPerDay);
+        // If not working on weekends, extend duration to account for skipped days
+        if (!workOnSaturday || !workOnSunday) {
+          const daysOff = (!workOnSaturday && !workOnSunday) ? 2 : 1;
+          const weekendAdjustment = Math.floor(req.duration_days / 5) * daysOff;
+          adjustedDuration += weekendAdjustment;
+        }
         
         return {
-          requirement_id: req.requirement_id,
-          resource_id: req.required_resource_id,
-          resource_name: req.resources?.name || `Resource ${req.required_resource_id}`,
-          item_id: req.item_id,
-          item_type: req.item_type,
-          plan_id: req.plan_id,
-          training_hours: req.training_hours,
-          start_day: startDay,
-          duration_days: durationDays
+          ...req,
+          duration_days: adjustedDuration
         };
       });
       
-      setRequirements(transformedData);
-      
+      setRequirements(adjustedRequirements);
     } catch (err: any) {
       console.error("Error fetching training requirements:", err);
       setError(err.message || "Failed to load training requirements");
