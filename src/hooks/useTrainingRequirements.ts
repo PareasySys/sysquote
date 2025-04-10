@@ -73,8 +73,8 @@ export const useTrainingRequirements = (
       
       setRequirements(adjustedRequirements);
       
-      // Save to planning_view table
-      await savePlanningItems(adjustedRequirements, planId, workOnSaturday, workOnSunday);
+      // Save to training_plan_details table
+      await saveTrainingPlanDetails(adjustedRequirements, planId, workOnSaturday, workOnSunday);
     } catch (err: any) {
       console.error("Error fetching training requirements:", err);
       setError(err.message || "Failed to load training requirements");
@@ -84,8 +84,8 @@ export const useTrainingRequirements = (
     }
   };
   
-  // Save planning items to the database
-  const savePlanningItems = async (
+  // Save training plan details to the database
+  const saveTrainingPlanDetails = async (
     items: TrainingRequirement[], 
     planId: number, 
     workOnSaturday: boolean,
@@ -94,27 +94,25 @@ export const useTrainingRequirements = (
     if (!quoteId) return;
     
     try {
-      // First, delete existing planning items for this quote and plan
+      // First, delete existing training plan details for this quote and plan
       const { error: deleteError } = await supabase
-        .from('planning_view')
+        .from('training_plan_details')
         .delete()
         .match({ quote_id: quoteId, plan_id: planId });
       
       if (deleteError) throw deleteError;
       
-      // Insert each requirement as a planning item
+      // Insert each requirement as a training plan detail
       for (const item of items) {
         const { error: insertError } = await supabase.rpc(
-          'save_quote_planning_item',
+          'save_training_plan_detail',
           {
             p_quote_id: quoteId,
-            p_reference_id: uuidv4(),
             p_plan_id: planId,
-            p_machine_type_id: null,
-            p_software_type_id: null,
-            p_area_id: null,
+            p_resource_category: 'Machine', // Default to Machine for now
+            p_type_id: null, // Will be populated when we have proper type assignments
             p_resource_id: item.resource_id,
-            p_training_hours: item.training_hours,
+            p_allocated_hours: item.training_hours,
             p_start_day: item.start_day,
             p_duration_days: item.duration_days,
             p_work_on_saturday: workOnSaturday,
@@ -125,9 +123,9 @@ export const useTrainingRequirements = (
         if (insertError) throw insertError;
       }
       
-      console.log("Planning items saved successfully");
+      console.log("Training plan details saved successfully");
     } catch (err: any) {
-      console.error("Error saving planning items:", err);
+      console.error("Error saving training plan details:", err);
       // Don't show toast here as it would appear for each tab change
     }
   };
@@ -141,6 +139,6 @@ export const useTrainingRequirements = (
     loading,
     error,
     fetchRequirements,
-    savePlanningItems
+    saveTrainingPlanDetails
   };
 };

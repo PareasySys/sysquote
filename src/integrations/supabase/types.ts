@@ -115,103 +115,6 @@ export type Database = {
         }
         Relationships: []
       }
-      planning_view: {
-        Row: {
-          area_id: number | null
-          created_at: string
-          duration_days: number | null
-          id: string
-          machine_type_id: number | null
-          plan_id: number | null
-          quote_id: string
-          reference_id: string | null
-          resource_id: number | null
-          software_type_id: number | null
-          start_day: number | null
-          training_hours: number | null
-          updated_at: string
-          work_on_saturday: boolean | null
-          work_on_sunday: boolean | null
-        }
-        Insert: {
-          area_id?: number | null
-          created_at?: string
-          duration_days?: number | null
-          id?: string
-          machine_type_id?: number | null
-          plan_id?: number | null
-          quote_id: string
-          reference_id?: string | null
-          resource_id?: number | null
-          software_type_id?: number | null
-          start_day?: number | null
-          training_hours?: number | null
-          updated_at?: string
-          work_on_saturday?: boolean | null
-          work_on_sunday?: boolean | null
-        }
-        Update: {
-          area_id?: number | null
-          created_at?: string
-          duration_days?: number | null
-          id?: string
-          machine_type_id?: number | null
-          plan_id?: number | null
-          quote_id?: string
-          reference_id?: string | null
-          resource_id?: number | null
-          software_type_id?: number | null
-          start_day?: number | null
-          training_hours?: number | null
-          updated_at?: string
-          work_on_saturday?: boolean | null
-          work_on_sunday?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "planning_view_area_id_fkey"
-            columns: ["area_id"]
-            isOneToOne: false
-            referencedRelation: "area_costs"
-            referencedColumns: ["area_id"]
-          },
-          {
-            foreignKeyName: "planning_view_machine_type_id_fkey"
-            columns: ["machine_type_id"]
-            isOneToOne: false
-            referencedRelation: "machine_types"
-            referencedColumns: ["machine_type_id"]
-          },
-          {
-            foreignKeyName: "planning_view_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "training_plans"
-            referencedColumns: ["plan_id"]
-          },
-          {
-            foreignKeyName: "planning_view_quote_id_fkey"
-            columns: ["quote_id"]
-            isOneToOne: false
-            referencedRelation: "quotes"
-            referencedColumns: ["quote_id"]
-          },
-          {
-            foreignKeyName: "planning_view_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "resources"
-            referencedColumns: ["resource_id"]
-          },
-          {
-            foreignKeyName: "planning_view_software_type_id_fkey"
-            columns: ["software_type_id"]
-            isOneToOne: false
-            referencedRelation: "software_types"
-            referencedColumns: ["software_type_id"]
-          },
-        ]
-      }
       quote_training_plan_hours: {
         Row: {
           created_at: string | null
@@ -450,6 +353,76 @@ export type Database = {
           },
         ]
       }
+      training_plan_details: {
+        Row: {
+          allocated_hours: number
+          created_at: string
+          duration_days: number
+          id: string
+          plan_id: number
+          quote_id: string
+          resource_category: string | null
+          resource_id: number | null
+          start_day: number
+          type_id: number | null
+          updated_at: string
+          work_on_saturday: boolean
+          work_on_sunday: boolean
+        }
+        Insert: {
+          allocated_hours?: number
+          created_at?: string
+          duration_days?: number
+          id?: string
+          plan_id: number
+          quote_id: string
+          resource_category?: string | null
+          resource_id?: number | null
+          start_day?: number
+          type_id?: number | null
+          updated_at?: string
+          work_on_saturday?: boolean
+          work_on_sunday?: boolean
+        }
+        Update: {
+          allocated_hours?: number
+          created_at?: string
+          duration_days?: number
+          id?: string
+          plan_id?: number
+          quote_id?: string
+          resource_category?: string | null
+          resource_id?: number | null
+          start_day?: number
+          type_id?: number | null
+          updated_at?: string
+          work_on_saturday?: boolean
+          work_on_sunday?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_plan_details_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "training_plan_details_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "training_plan_details_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["resource_id"]
+          },
+        ]
+      }
       training_plans: {
         Row: {
           created_at: string
@@ -585,6 +558,25 @@ export type Database = {
           training_hours: number
         }[]
       }
+      get_quote_training_plan_details: {
+        Args: { quote_id_param: string }
+        Returns: {
+          id: string
+          quote_id: string
+          plan_id: number
+          plan_name: string
+          resource_category: string
+          type_id: number
+          type_name: string
+          resource_id: number
+          resource_name: string
+          allocated_hours: number
+          start_day: number
+          duration_days: number
+          work_on_saturday: boolean
+          work_on_sunday: boolean
+        }[]
+      }
       get_quote_training_requirements: {
         Args: { quote_id_param: string; plan_id_param: number }
         Returns: {
@@ -620,6 +612,21 @@ export type Database = {
           p_training_hours: number
           p_start_day: number
           p_duration_days: number
+          p_work_on_saturday?: boolean
+          p_work_on_sunday?: boolean
+        }
+        Returns: string
+      }
+      save_training_plan_detail: {
+        Args: {
+          p_quote_id: string
+          p_plan_id: number
+          p_resource_category: string
+          p_type_id: number
+          p_resource_id: number
+          p_allocated_hours: number
+          p_start_day?: number
+          p_duration_days?: number
           p_work_on_saturday?: boolean
           p_work_on_sunday?: boolean
         }

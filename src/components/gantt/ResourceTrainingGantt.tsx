@@ -23,13 +23,13 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     loading,
     error,
     fetchRequirements,
-    savePlanningItems
+    saveTrainingPlanDetails
   } = useTrainingRequirements(quoteId, planId, workOnSaturday, workOnSunday);
 
   // Refresh the data when weekend settings change
   useEffect(() => {
     if (planId && requirements.length > 0) {
-      savePlanningItems(requirements, planId, workOnSaturday, workOnSunday);
+      saveTrainingPlanDetails(requirements, planId, workOnSaturday, workOnSunday);
     }
   }, [workOnSaturday, workOnSunday]);
 
