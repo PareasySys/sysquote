@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +14,9 @@ import { useMachineTypes } from '@/hooks/useMachineTypes';
 import { useSoftwareTypes } from '@/hooks/useSoftwareTypes';
 import { useTrainingPlans } from '@/hooks/useTrainingPlans';
 import { useTrainingTopics } from '@/hooks/useTrainingTopics';
-import { PlusCircle, Pencil, Save, X, Trash2, CheckSquare } from 'lucide-react';
+import { PlusCircle, Pencil, Save, X, Trash2, CheckSquare, ChevronDown, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/lib/supabaseClient';
 
 // Static items for the sidebar
 export default function TrainingTopicsTab() {
@@ -22,69 +24,142 @@ export default function TrainingTopicsTab() {
   const { software, loading: softwareLoading } = useSoftwareTypes();
   const { plans, loading: plansLoading } = useTrainingPlans();
   
-  const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
-  const [expandedPlanId, setExpandedPlanId] = useState<number | null>(null);
-  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  // Expanded state for machines and plans
+  const [expandedMachines, setExpandedMachines] = useState<{[key: number]: boolean}>({});
+  const [expandedPlans, setExpandedPlans] = useState<{[key: string]: boolean}>({});
+  
+  // Selected states for current machine, plan, and type
+  const [selectedMachineId, setSelectedMachineId] = useState<number | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<"machine" | "software" | null>(null);
   
+  // Topic management state
   const [newTopic, setNewTopic] = useState<string>('');
   const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
   const [editedTopicText, setEditedTopicText] = useState<string>('');
   
-  // Get topics for the selected item and plan
-  const { 
-    topics, 
-    loading: topicsLoading, 
-    error: topicsError, 
-    addTopic, 
-    deleteTopic, 
-    updateTopic 
-  } = useTrainingTopics(
-    selectedItemId ? [selectedItemId] : [],
-    selectedPlanId,
-    selectedItemType
-  );
-
-  const handleItemSelect = (itemId: number, itemType: "machine" | "software") => {
-    if (expandedItemId === itemId && selectedItemType === itemType) {
-      setExpandedItemId(null);
-      setExpandedPlanId(null);
-      setSelectedItemId(null);
-      setSelectedPlanId(null);
-      setSelectedItemType(null);
-    } else {
-      setExpandedItemId(itemId);
-      setExpandedPlanId(null);
-      setSelectedItemId(itemId);
-      setSelectedPlanId(null);
+  // Topic data by machine/software and plan
+  const [topicsByItemAndPlan, setTopicsByItemAndPlan] = useState<{[key: string]: any[]}>({});
+  const [loadingTopics, setLoadingTopics] = useState<{[key: string]: boolean}>({});
+  
+  // Handles toggling the expansion state of a machine
+  const toggleMachine = (machineId: number, itemType: "machine" | "software") => {
+    setExpandedMachines(prev => ({
+      ...prev,
+      [machineId]: !prev[machineId]
+    }));
+    
+    if (!expandedMachines[machineId]) {
+      setSelectedMachineId(machineId);
       setSelectedItemType(itemType);
+      setSelectedPlanId(null);
     }
   };
   
-  const handlePlanSelect = (itemId: number, planId: number, itemType: "machine" | "software") => {
-    if (expandedPlanId === planId && expandedItemId === itemId && selectedItemType === itemType) {
-      setExpandedPlanId(null);
-      setSelectedItemId(null);
-      setSelectedPlanId(null);
-      setSelectedItemType(null);
-    } else {
-      setExpandedPlanId(planId);
-      setSelectedItemId(itemId);
+  // Handles toggling the expansion state of a plan within a machine
+  const togglePlan = (machineId: number, planId: number, itemType: "machine" | "software") => {
+    const key = `${itemType}-${machineId}-plan-${planId}`;
+    
+    setExpandedPlans(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+    
+    if (!expandedPlans[key]) {
+      setSelectedMachineId(machineId);
       setSelectedPlanId(planId);
       setSelectedItemType(itemType);
+      
+      // Fetch topics for this combination if not already loaded
+      if (!topicsByItemAndPlan[key] && !loadingTopics[key]) {
+        fetchTopicsForItemAndPlan(machineId, planId, itemType);
+      }
     }
   };
   
-  const handleAddTopic = async () => {
-    if (!newTopic.trim()) return;
+  // Fetch topics for a specific item and plan
+  const fetchTopicsForItemAndPlan = async (itemId: number, planId: number, itemType: string) => {
+    const key = `${itemType}-${itemId}-plan-${planId}`;
     
-    const success = await addTopic(newTopic);
-    if (success) {
-      setNewTopic('');
+    setLoadingTopics(prev => ({
+      ...prev,
+      [key]: true
+    }));
+    
+    try {
+      console.log(`Fetching topics for ${itemType} ${itemId}, plan ${planId}`);
+      
+      const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
+      
+      const { data, error } = await supabase
+        .from('training_topics')
+        .select('*')
+        .eq(columnName, itemId)
+        .eq('plan_id', planId)
+        .order('display_order', { ascending: true, nullsFirst: true });
+        
+      if (error) throw error;
+      
+      console.log(`Topics for ${key}:`, data);
+      
+      setTopicsByItemAndPlan(prev => ({
+        ...prev,
+        [key]: data || []
+      }));
+    } catch (err) {
+      console.error(`Error fetching topics for ${key}:`, err);
+      toast.error(`Failed to load topics for ${itemType}`);
+    } finally {
+      setLoadingTopics(prev => ({
+        ...prev,
+        [key]: false
+      }));
     }
   };
   
+  // Handle adding a new topic
+  const handleAddTopic = async () => {
+    if (!newTopic.trim() || !selectedMachineId || !selectedPlanId || !selectedItemType) {
+      toast.error("Please select a machine and plan, and enter a topic");
+      return;
+    }
+    
+    const key = `${selectedItemType}-${selectedMachineId}-plan-${selectedPlanId}`;
+    
+    try {
+      const columnName = selectedItemType === "machine" ? 'machine_type_id' : 'software_type_id';
+      const newTopicData: any = {
+        topic_text: newTopic,
+        plan_id: selectedPlanId,
+        item_type: selectedItemType,
+        [columnName]: selectedMachineId,
+        requirement_id: null
+      };
+      
+      const { data, error } = await supabase
+        .from('training_topics')
+        .insert([newTopicData])
+        .select();
+      
+      if (error) throw error;
+      
+      if (data) {
+        const newTopicsList = [...(topicsByItemAndPlan[key] || []), data[0]];
+        setTopicsByItemAndPlan(prev => ({
+          ...prev,
+          [key]: newTopicsList
+        }));
+        
+        setNewTopic('');
+        toast.success("Topic added successfully");
+      }
+    } catch (err) {
+      console.error("Error adding topic:", err);
+      toast.error("Failed to add topic");
+    }
+  };
+  
+  // Handle editing a topic
   const handleStartEdit = (topicId: number, currentText: string) => {
     setEditingTopicId(topicId);
     setEditedTopicText(currentText);
@@ -96,21 +171,70 @@ export default function TrainingTopicsTab() {
   };
   
   const handleSaveEdit = async (topicId: number) => {
-    if (!editedTopicText.trim()) return;
+    if (!editedTopicText.trim()) {
+      toast.error("Topic text cannot be empty");
+      return;
+    }
     
-    const success = await updateTopic(topicId, editedTopicText);
-    if (success) {
+    try {
+      const { error } = await supabase
+        .from('training_topics')
+        .update({ topic_text: editedTopicText })
+        .eq('topic_id', topicId);
+      
+      if (error) throw error;
+      
+      // Update the topic in local state
+      if (selectedMachineId && selectedPlanId && selectedItemType) {
+        const key = `${selectedItemType}-${selectedMachineId}-plan-${selectedPlanId}`;
+        
+        setTopicsByItemAndPlan(prev => {
+          const updatedTopics = prev[key].map(topic => 
+            topic.topic_id === topicId ? { ...topic, topic_text: editedTopicText } : topic
+          );
+          return { ...prev, [key]: updatedTopics };
+        });
+      }
+      
       setEditingTopicId(null);
       setEditedTopicText('');
+      toast.success("Topic updated successfully");
+    } catch (err) {
+      console.error("Error updating topic:", err);
+      toast.error("Failed to update topic");
     }
   };
   
+  // Handle deleting a topic
   const handleDeleteTopic = async (topicId: number) => {
-    if (window.confirm('Are you sure you want to delete this topic?')) {
-      await deleteTopic(topicId);
+    if (!window.confirm('Are you sure you want to delete this topic?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('training_topics')
+        .delete()
+        .eq('topic_id', topicId);
+      
+      if (error) throw error;
+      
+      // Remove the topic from local state
+      if (selectedMachineId && selectedPlanId && selectedItemType) {
+        const key = `${selectedItemType}-${selectedMachineId}-plan-${selectedPlanId}`;
+        
+        setTopicsByItemAndPlan(prev => {
+          const updatedTopics = prev[key].filter(topic => topic.topic_id !== topicId);
+          return { ...prev, [key]: updatedTopics };
+        });
+      }
+      
+      toast.success("Topic deleted successfully");
+    } catch (err) {
+      console.error("Error deleting topic:", err);
+      toast.error("Failed to delete topic");
     }
   };
   
+  // Loading state check
   const isLoading = machinesLoading || softwareLoading || plansLoading;
 
   return (
@@ -121,18 +245,149 @@ export default function TrainingTopicsTab() {
           {machinesLoading ? (
             <p className="text-gray-400">Loading machines...</p>
           ) : (
-            <Accordion type="single" collapsible>
+            <div className="space-y-2">
               {machines.map((machine) => (
-                <AccordionItem key={machine.machine_type_id} value={machine.machine_type_id.toString()}>
-                  <AccordionTrigger 
-                    onClick={() => handleItemSelect(machine.machine_type_id, "machine")}
-                    className={selectedItemId === machine.machine_type_id && selectedItemType === "machine" ? 'font-semibold' : ''}
+                <div key={machine.machine_type_id} className="border-b border-slate-700/30 last:border-b-0">
+                  <div 
+                    className="flex items-center justify-between py-3 cursor-pointer hover:bg-slate-700/30 px-2 rounded transition-colors"
+                    onClick={() => toggleMachine(machine.machine_type_id, "machine")}
                   >
-                    {machine.name}
-                  </AccordionTrigger>
-                </AccordionItem>
+                    <span className="text-gray-200">{machine.name}</span>
+                    {expandedMachines[machine.machine_type_id] ? (
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    )}
+                  </div>
+                  
+                  {expandedMachines[machine.machine_type_id] && (
+                    <div className="pl-4 pb-2">
+                      {plansLoading ? (
+                        <p className="text-gray-400 text-sm">Loading plans...</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {plans.map((plan) => {
+                            const planKey = `machine-${machine.machine_type_id}-plan-${plan.plan_id}`;
+                            return (
+                              <div key={plan.plan_id} className="border-b border-slate-700/20 last:border-b-0">
+                                <div 
+                                  className="flex items-center justify-between py-2 cursor-pointer hover:bg-slate-700/20 px-2 rounded transition-colors"
+                                  onClick={() => togglePlan(machine.machine_type_id, plan.plan_id, "machine")}
+                                >
+                                  <span className="text-gray-300 text-sm">{plan.name}</span>
+                                  {expandedPlans[planKey] ? (
+                                    <ChevronDown className="h-3 w-3 text-gray-500" />
+                                  ) : (
+                                    <ChevronRight className="h-3 w-3 text-gray-500" />
+                                  )}
+                                </div>
+                                
+                                {expandedPlans[planKey] && (
+                                  <div className="pl-4 pr-2 py-2 bg-slate-700/10 rounded my-1">
+                                    <div className="mb-3">
+                                      <Label htmlFor={`new-topic-${planKey}`} className="text-gray-300 text-xs">Add New Topic:</Label>
+                                      <div className="flex items-center space-x-2 mt-1">
+                                        <Input
+                                          type="text"
+                                          id={`new-topic-${planKey}`}
+                                          className="bg-slate-700 border-slate-600 text-gray-200 text-xs h-8"
+                                          value={newTopic}
+                                          onChange={(e) => setNewTopic(e.target.value)}
+                                          placeholder="Enter new topic"
+                                        />
+                                        <Button 
+                                          type="button" 
+                                          variant="secondary" 
+                                          size="sm"
+                                          className="h-8"
+                                          onClick={handleAddTopic}
+                                        >
+                                          <PlusCircle className="h-3 w-3 mr-1" />
+                                          <span className="text-xs">Add</span>
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    
+                                    {loadingTopics[planKey] ? (
+                                      <p className="text-gray-400 text-xs">Loading topics...</p>
+                                    ) : (
+                                      <div className="space-y-2">
+                                        {topicsByItemAndPlan[planKey] && topicsByItemAndPlan[planKey].length > 0 ? (
+                                          topicsByItemAndPlan[planKey].map((topic) => (
+                                            <div key={topic.topic_id} className="flex items-center justify-between bg-slate-700/50 rounded p-2">
+                                              {editingTopicId === topic.topic_id ? (
+                                                <div className="flex flex-1 items-center space-x-1">
+                                                  <Input
+                                                    type="text"
+                                                    className="bg-slate-600 border-slate-500 text-gray-200 text-xs h-7"
+                                                    value={editedTopicText}
+                                                    onChange={(e) => setEditedTopicText(e.target.value)}
+                                                  />
+                                                  <div className="flex space-x-1">
+                                                    <Button 
+                                                      type="button" 
+                                                      variant="secondary" 
+                                                      size="sm"
+                                                      className="h-7"
+                                                      onClick={() => handleSaveEdit(topic.topic_id)}
+                                                    >
+                                                      <Save className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button 
+                                                      type="button" 
+                                                      variant="ghost" 
+                                                      size="sm"
+                                                      className="h-7"
+                                                      onClick={handleCancelEdit}
+                                                    >
+                                                      <X className="h-3 w-3" />
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                <>
+                                                  <span className="text-gray-300 text-xs">{topic.topic_text}</span>
+                                                  <div className="flex items-center space-x-1">
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-6 w-6"
+                                                      onClick={() => handleStartEdit(topic.topic_id, topic.topic_text)}
+                                                    >
+                                                      <Pencil className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-6 w-6"
+                                                      onClick={() => handleDeleteTopic(topic.topic_id)}
+                                                    >
+                                                      <Trash2 className="h-3 w-3 text-red-500" />
+                                                    </Button>
+                                                  </div>
+                                                </>
+                                              )}
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <p className="text-gray-400 text-xs">No topics available. Add one above!</p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
-            </Accordion>
+            </div>
           )}
         </Card>
 
@@ -141,134 +396,151 @@ export default function TrainingTopicsTab() {
           {softwareLoading ? (
             <p className="text-gray-400">Loading software...</p>
           ) : (
-            <Accordion type="single" collapsible>
+            <div className="space-y-2">
               {software.map((soft) => (
-                <AccordionItem key={soft.software_type_id} value={soft.software_type_id.toString()}>
-                  <AccordionTrigger 
-                    onClick={() => handleItemSelect(soft.software_type_id, "software")}
-                    className={selectedItemId === soft.software_type_id && selectedItemType === "software" ? 'font-semibold' : ''}
+                <div key={soft.software_type_id} className="border-b border-slate-700/30 last:border-b-0">
+                  <div 
+                    className="flex items-center justify-between py-3 cursor-pointer hover:bg-slate-700/30 px-2 rounded transition-colors"
+                    onClick={() => toggleMachine(soft.software_type_id, "software")}
                   >
-                    {soft.name}
-                  </AccordionTrigger>
-                </AccordionItem>
+                    <span className="text-gray-200">{soft.name}</span>
+                    {expandedMachines[soft.software_type_id] ? (
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    )}
+                  </div>
+                  
+                  {expandedMachines[soft.software_type_id] && (
+                    <div className="pl-4 pb-2">
+                      {plansLoading ? (
+                        <p className="text-gray-400 text-sm">Loading plans...</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {plans.map((plan) => {
+                            const planKey = `software-${soft.software_type_id}-plan-${plan.plan_id}`;
+                            return (
+                              <div key={plan.plan_id} className="border-b border-slate-700/20 last:border-b-0">
+                                <div 
+                                  className="flex items-center justify-between py-2 cursor-pointer hover:bg-slate-700/20 px-2 rounded transition-colors"
+                                  onClick={() => togglePlan(soft.software_type_id, plan.plan_id, "software")}
+                                >
+                                  <span className="text-gray-300 text-sm">{plan.name}</span>
+                                  {expandedPlans[planKey] ? (
+                                    <ChevronDown className="h-3 w-3 text-gray-500" />
+                                  ) : (
+                                    <ChevronRight className="h-3 w-3 text-gray-500" />
+                                  )}
+                                </div>
+                                
+                                {expandedPlans[planKey] && (
+                                  <div className="pl-4 pr-2 py-2 bg-slate-700/10 rounded my-1">
+                                    <div className="mb-3">
+                                      <Label htmlFor={`new-topic-${planKey}`} className="text-gray-300 text-xs">Add New Topic:</Label>
+                                      <div className="flex items-center space-x-2 mt-1">
+                                        <Input
+                                          type="text"
+                                          id={`new-topic-${planKey}`}
+                                          className="bg-slate-700 border-slate-600 text-gray-200 text-xs h-8"
+                                          value={newTopic}
+                                          onChange={(e) => setNewTopic(e.target.value)}
+                                          placeholder="Enter new topic"
+                                        />
+                                        <Button 
+                                          type="button" 
+                                          variant="secondary" 
+                                          size="sm"
+                                          className="h-8"
+                                          onClick={handleAddTopic}
+                                        >
+                                          <PlusCircle className="h-3 w-3 mr-1" />
+                                          <span className="text-xs">Add</span>
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    
+                                    {loadingTopics[planKey] ? (
+                                      <p className="text-gray-400 text-xs">Loading topics...</p>
+                                    ) : (
+                                      <div className="space-y-2">
+                                        {topicsByItemAndPlan[planKey] && topicsByItemAndPlan[planKey].length > 0 ? (
+                                          topicsByItemAndPlan[planKey].map((topic) => (
+                                            <div key={topic.topic_id} className="flex items-center justify-between bg-slate-700/50 rounded p-2">
+                                              {editingTopicId === topic.topic_id ? (
+                                                <div className="flex flex-1 items-center space-x-1">
+                                                  <Input
+                                                    type="text"
+                                                    className="bg-slate-600 border-slate-500 text-gray-200 text-xs h-7"
+                                                    value={editedTopicText}
+                                                    onChange={(e) => setEditedTopicText(e.target.value)}
+                                                  />
+                                                  <div className="flex space-x-1">
+                                                    <Button 
+                                                      type="button" 
+                                                      variant="secondary" 
+                                                      size="sm"
+                                                      className="h-7"
+                                                      onClick={() => handleSaveEdit(topic.topic_id)}
+                                                    >
+                                                      <Save className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button 
+                                                      type="button" 
+                                                      variant="ghost" 
+                                                      size="sm"
+                                                      className="h-7"
+                                                      onClick={handleCancelEdit}
+                                                    >
+                                                      <X className="h-3 w-3" />
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                <>
+                                                  <span className="text-gray-300 text-xs">{topic.topic_text}</span>
+                                                  <div className="flex items-center space-x-1">
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-6 w-6"
+                                                      onClick={() => handleStartEdit(topic.topic_id, topic.topic_text)}
+                                                    >
+                                                      <Pencil className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-6 w-6"
+                                                      onClick={() => handleDeleteTopic(topic.topic_id)}
+                                                    >
+                                                      <Trash2 className="h-3 w-3 text-red-500" />
+                                                    </Button>
+                                                  </div>
+                                                </>
+                                              )}
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <p className="text-gray-400 text-xs">No topics available. Add one above!</p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
-            </Accordion>
+            </div>
           )}
         </Card>
-      </div>
-
-      <div className="md:col-span-8">
-        {selectedItemId && selectedItemType && (
-          <Card className="bg-slate-800/80 border border-white/5 p-4">
-            <h3 className="text-xl font-semibold mb-4 text-gray-200">Training Plans</h3>
-            {plansLoading ? (
-              <p className="text-gray-400">Loading training plans...</p>
-            ) : (
-              <Accordion type="single" collapsible>
-                {plans.map((plan) => (
-                  <AccordionItem key={plan.plan_id} value={plan.plan_id.toString()}>
-                    <AccordionTrigger
-                      onClick={() => handlePlanSelect(selectedItemId, plan.plan_id, selectedItemType)}
-                      className={selectedPlanId === plan.plan_id && selectedItemId === selectedItemId && selectedItemType === selectedItemType ? 'font-semibold' : ''}
-                    >
-                      {plan.name}
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="mb-4">
-                        <Label htmlFor="new-topic" className="text-gray-300">New Topic:</Label>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <Input
-                            type="text"
-                            id="new-topic"
-                            className="bg-slate-700 border-slate-600 text-gray-200"
-                            value={newTopic}
-                            onChange={(e) => setNewTopic(e.target.value)}
-                          />
-                          <Button 
-                            type="button" 
-                            variant="secondary" 
-                            size="sm"
-                            onClick={handleAddTopic}
-                            disabled={isLoading}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add Topic
-                          </Button>
-                        </div>
-                      </div>
-
-                      {topicsLoading ? (
-                        <p className="text-gray-400">Loading topics...</p>
-                      ) : topicsError ? (
-                        <p className="text-red-400">Error: {topicsError}</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {topics.map((topic) => (
-                            <li key={topic.topic_id} className="flex items-center justify-between bg-slate-700/50 rounded p-2">
-                              {editingTopicId === topic.topic_id ? (
-                                <div className="flex items-center space-x-2">
-                                  <Input
-                                    type="text"
-                                    className="bg-slate-600 border-slate-500 text-gray-200"
-                                    value={editedTopicText}
-                                    onChange={(e) => setEditedTopicText(e.target.value)}
-                                  />
-                                  <Button 
-                                    type="button" 
-                                    variant="secondary" 
-                                    size="sm"
-                                    onClick={() => handleSaveEdit(topic.topic_id)}
-                                    disabled={isLoading}
-                                  >
-                                    <CheckSquare className="h-4 w-4 mr-2" />
-                                    Save
-                                  </Button>
-                                  <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={handleCancelEdit}
-                                    disabled={isLoading}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <>
-                                  <span className="text-gray-300">{topic.topic_text}</span>
-                                  <div className="flex items-center space-x-2">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleStartEdit(topic.topic_id, topic.topic_text)}
-                                      disabled={isLoading}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleDeleteTopic(topic.topic_id)}
-                                      disabled={isLoading}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-red-500" />
-                                    </Button>
-                                  </div>
-                                </>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            )}
-          </Card>
-        )}
       </div>
     </div>
   );
