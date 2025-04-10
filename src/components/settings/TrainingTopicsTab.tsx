@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -269,95 +270,115 @@ export default function TrainingTopicsTab() {
                                 
                                 {expandedPlans[planKey] && (
                                   <div className="pl-4 pr-2 py-2 bg-slate-700/10 rounded my-1">
-                                    <div className="mb-3">
-                                      <Label htmlFor={`new-topic-${planKey}`} className="text-gray-300 text-xs">Add New Topic:</Label>
-                                      <div className="flex items-center space-x-2 mt-1">
-                                        <Input
-                                          type="text"
-                                          id={`new-topic-${planKey}`}
-                                          className="bg-slate-700 border-slate-600 text-gray-200 text-xs h-8"
-                                          value={newTopic}
-                                          onChange={(e) => setNewTopic(e.target.value)}
-                                          placeholder="Enter new topic"
-                                        />
-                                        <Button 
-                                          type="button" 
-                                          variant="secondary" 
-                                          size="sm"
-                                          className="h-8"
-                                          onClick={handleAddTopic}
-                                        >
-                                          <PlusCircle className="h-3 w-3 mr-1" />
-                                          <span className="text-xs">Add</span>
-                                        </Button>
-                                      </div>
-                                    </div>
-                                    
                                     {loadingTopics[planKey] ? (
                                       <p className="text-gray-400 text-xs">Loading topics...</p>
                                     ) : (
                                       <div className="space-y-2">
                                         {topicsByItemAndPlan[planKey] && topicsByItemAndPlan[planKey].length > 0 ? (
-                                          topicsByItemAndPlan[planKey].map((topic) => (
-                                            <div key={topic.topic_id} className="flex items-center justify-between bg-slate-700/50 rounded p-2">
-                                              {editingTopicId === topic.topic_id ? (
-                                                <div className="flex flex-1 items-center space-x-1">
-                                                  <Input
-                                                    type="text"
-                                                    className="bg-slate-600 border-slate-500 text-gray-200 text-xs h-7"
-                                                    value={editedTopicText}
-                                                    onChange={(e) => setEditedTopicText(e.target.value)}
-                                                  />
-                                                  <div className="flex space-x-1">
-                                                    <Button 
-                                                      type="button" 
-                                                      variant="secondary" 
-                                                      size="sm"
-                                                      className="h-7"
-                                                      onClick={() => handleSaveEdit(topic.topic_id)}
-                                                    >
-                                                      <Save className="h-3 w-3" />
-                                                    </Button>
-                                                    <Button 
-                                                      type="button" 
-                                                      variant="ghost" 
-                                                      size="sm"
-                                                      className="h-7"
-                                                      onClick={handleCancelEdit}
-                                                    >
-                                                      <X className="h-3 w-3" />
-                                                    </Button>
+                                          <>
+                                            {topicsByItemAndPlan[planKey].map((topic) => (
+                                              <div key={topic.topic_id} className="flex items-center justify-between bg-slate-700/50 rounded p-2">
+                                                {editingTopicId === topic.topic_id ? (
+                                                  <div className="flex flex-1 items-center space-x-1">
+                                                    <Input
+                                                      type="text"
+                                                      className="bg-slate-600 border-slate-500 text-gray-200 text-xs h-7"
+                                                      value={editedTopicText}
+                                                      onChange={(e) => setEditedTopicText(e.target.value)}
+                                                    />
+                                                    <div className="flex space-x-1">
+                                                      <Button 
+                                                        type="button" 
+                                                        variant="secondary" 
+                                                        size="sm"
+                                                        className="h-7"
+                                                        onClick={() => handleSaveEdit(topic.topic_id)}
+                                                      >
+                                                        <Save className="h-3 w-3" />
+                                                      </Button>
+                                                      <Button 
+                                                        type="button" 
+                                                        variant="ghost" 
+                                                        size="sm"
+                                                        className="h-7"
+                                                        onClick={handleCancelEdit}
+                                                      >
+                                                        <X className="h-3 w-3" />
+                                                      </Button>
+                                                    </div>
                                                   </div>
-                                                </div>
-                                              ) : (
-                                                <>
-                                                  <span className="text-gray-300 text-xs">{topic.topic_text}</span>
-                                                  <div className="flex items-center space-x-1">
-                                                    <Button
-                                                      type="button"
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-6 w-6"
-                                                      onClick={() => handleStartEdit(topic.topic_id, topic.topic_text)}
-                                                    >
-                                                      <Pencil className="h-3 w-3" />
-                                                    </Button>
-                                                    <Button
-                                                      type="button"
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-6 w-6"
-                                                      onClick={() => handleDeleteTopic(topic.topic_id)}
-                                                    >
-                                                      <Trash2 className="h-3 w-3 text-red-500" />
-                                                    </Button>
-                                                  </div>
-                                                </>
-                                              )}
+                                                ) : (
+                                                  <>
+                                                    <span className="text-gray-300 text-xs">{topic.topic_text}</span>
+                                                    <div className="flex items-center space-x-1">
+                                                      <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-6 w-6"
+                                                        onClick={() => handleStartEdit(topic.topic_id, topic.topic_text)}
+                                                      >
+                                                        <Pencil className="h-3 w-3" />
+                                                      </Button>
+                                                      <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-6 w-6"
+                                                        onClick={() => handleDeleteTopic(topic.topic_id)}
+                                                      >
+                                                        <Trash2 className="h-3 w-3 text-red-500" />
+                                                      </Button>
+                                                    </div>
+                                                  </>
+                                                )}
+                                              </div>
+                                            ))}
+                                            
+                                            {/* Add new topic field after existing topics */}
+                                            <div className="flex items-center space-x-2 mt-2">
+                                              <Input
+                                                type="text"
+                                                className="bg-slate-700 border-slate-600 text-gray-200 text-xs h-8"
+                                                value={newTopic}
+                                                onChange={(e) => setNewTopic(e.target.value)}
+                                                placeholder="Enter new topic"
+                                              />
+                                              <Button 
+                                                type="button" 
+                                                variant="secondary" 
+                                                size="sm"
+                                                className="h-8"
+                                                onClick={handleAddTopic}
+                                              >
+                                                <PlusCircle className="h-3 w-3 mr-1" />
+                                                <span className="text-xs">Add</span>
+                                              </Button>
                                             </div>
-                                          ))
+                                          </>
                                         ) : (
-                                          <p className="text-gray-400 text-xs">No topics available. Add one above!</p>
+                                          <>
+                                            <p className="text-gray-400 text-xs mb-2">No topics available. Add one below!</p>
+                                            <div className="flex items-center space-x-2">
+                                              <Input
+                                                type="text"
+                                                className="bg-slate-700 border-slate-600 text-gray-200 text-xs h-8"
+                                                value={newTopic}
+                                                onChange={(e) => setNewTopic(e.target.value)}
+                                                placeholder="Enter new topic"
+                                              />
+                                              <Button 
+                                                type="button" 
+                                                variant="secondary" 
+                                                size="sm"
+                                                className="h-8"
+                                                onClick={handleAddTopic}
+                                              >
+                                                <PlusCircle className="h-3 w-3 mr-1" />
+                                                <span className="text-xs">Add</span>
+                                              </Button>
+                                            </div>
+                                          </>
                                         )}
                                       </div>
                                     )}
@@ -420,95 +441,115 @@ export default function TrainingTopicsTab() {
                                 
                                 {expandedPlans[planKey] && (
                                   <div className="pl-4 pr-2 py-2 bg-slate-700/10 rounded my-1">
-                                    <div className="mb-3">
-                                      <Label htmlFor={`new-topic-${planKey}`} className="text-gray-300 text-xs">Add New Topic:</Label>
-                                      <div className="flex items-center space-x-2 mt-1">
-                                        <Input
-                                          type="text"
-                                          id={`new-topic-${planKey}`}
-                                          className="bg-slate-700 border-slate-600 text-gray-200 text-xs h-8"
-                                          value={newTopic}
-                                          onChange={(e) => setNewTopic(e.target.value)}
-                                          placeholder="Enter new topic"
-                                        />
-                                        <Button 
-                                          type="button" 
-                                          variant="secondary" 
-                                          size="sm"
-                                          className="h-8"
-                                          onClick={handleAddTopic}
-                                        >
-                                          <PlusCircle className="h-3 w-3 mr-1" />
-                                          <span className="text-xs">Add</span>
-                                        </Button>
-                                      </div>
-                                    </div>
-                                    
                                     {loadingTopics[planKey] ? (
                                       <p className="text-gray-400 text-xs">Loading topics...</p>
                                     ) : (
                                       <div className="space-y-2">
                                         {topicsByItemAndPlan[planKey] && topicsByItemAndPlan[planKey].length > 0 ? (
-                                          topicsByItemAndPlan[planKey].map((topic) => (
-                                            <div key={topic.topic_id} className="flex items-center justify-between bg-slate-700/50 rounded p-2">
-                                              {editingTopicId === topic.topic_id ? (
-                                                <div className="flex flex-1 items-center space-x-1">
-                                                  <Input
-                                                    type="text"
-                                                    className="bg-slate-600 border-slate-500 text-gray-200 text-xs h-7"
-                                                    value={editedTopicText}
-                                                    onChange={(e) => setEditedTopicText(e.target.value)}
-                                                  />
-                                                  <div className="flex space-x-1">
-                                                    <Button 
-                                                      type="button" 
-                                                      variant="secondary" 
-                                                      size="sm"
-                                                      className="h-7"
-                                                      onClick={() => handleSaveEdit(topic.topic_id)}
-                                                    >
-                                                      <Save className="h-3 w-3" />
-                                                    </Button>
-                                                    <Button 
-                                                      type="button" 
-                                                      variant="ghost" 
-                                                      size="sm"
-                                                      className="h-7"
-                                                      onClick={handleCancelEdit}
-                                                    >
-                                                      <X className="h-3 w-3" />
-                                                    </Button>
+                                          <>
+                                            {topicsByItemAndPlan[planKey].map((topic) => (
+                                              <div key={topic.topic_id} className="flex items-center justify-between bg-slate-700/50 rounded p-2">
+                                                {editingTopicId === topic.topic_id ? (
+                                                  <div className="flex flex-1 items-center space-x-1">
+                                                    <Input
+                                                      type="text"
+                                                      className="bg-slate-600 border-slate-500 text-gray-200 text-xs h-7"
+                                                      value={editedTopicText}
+                                                      onChange={(e) => setEditedTopicText(e.target.value)}
+                                                    />
+                                                    <div className="flex space-x-1">
+                                                      <Button 
+                                                        type="button" 
+                                                        variant="secondary" 
+                                                        size="sm"
+                                                        className="h-7"
+                                                        onClick={() => handleSaveEdit(topic.topic_id)}
+                                                      >
+                                                        <Save className="h-3 w-3" />
+                                                      </Button>
+                                                      <Button 
+                                                        type="button" 
+                                                        variant="ghost" 
+                                                        size="sm"
+                                                        className="h-7"
+                                                        onClick={handleCancelEdit}
+                                                      >
+                                                        <X className="h-3 w-3" />
+                                                      </Button>
+                                                    </div>
                                                   </div>
-                                                </div>
-                                              ) : (
-                                                <>
-                                                  <span className="text-gray-300 text-xs">{topic.topic_text}</span>
-                                                  <div className="flex items-center space-x-1">
-                                                    <Button
-                                                      type="button"
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-6 w-6"
-                                                      onClick={() => handleStartEdit(topic.topic_id, topic.topic_text)}
-                                                    >
-                                                      <Pencil className="h-3 w-3" />
-                                                    </Button>
-                                                    <Button
-                                                      type="button"
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-6 w-6"
-                                                      onClick={() => handleDeleteTopic(topic.topic_id)}
-                                                    >
-                                                      <Trash2 className="h-3 w-3 text-red-500" />
-                                                    </Button>
-                                                  </div>
-                                                </>
-                                              )}
+                                                ) : (
+                                                  <>
+                                                    <span className="text-gray-300 text-xs">{topic.topic_text}</span>
+                                                    <div className="flex items-center space-x-1">
+                                                      <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-6 w-6"
+                                                        onClick={() => handleStartEdit(topic.topic_id, topic.topic_text)}
+                                                      >
+                                                        <Pencil className="h-3 w-3" />
+                                                      </Button>
+                                                      <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-6 w-6"
+                                                        onClick={() => handleDeleteTopic(topic.topic_id)}
+                                                      >
+                                                        <Trash2 className="h-3 w-3 text-red-500" />
+                                                      </Button>
+                                                    </div>
+                                                  </>
+                                                )}
+                                              </div>
+                                            ))}
+                                            
+                                            {/* Add new topic field after existing topics */}
+                                            <div className="flex items-center space-x-2 mt-2">
+                                              <Input
+                                                type="text"
+                                                className="bg-slate-700 border-slate-600 text-gray-200 text-xs h-8"
+                                                value={newTopic}
+                                                onChange={(e) => setNewTopic(e.target.value)}
+                                                placeholder="Enter new topic"
+                                              />
+                                              <Button 
+                                                type="button" 
+                                                variant="secondary" 
+                                                size="sm"
+                                                className="h-8"
+                                                onClick={handleAddTopic}
+                                              >
+                                                <PlusCircle className="h-3 w-3 mr-1" />
+                                                <span className="text-xs">Add</span>
+                                              </Button>
                                             </div>
-                                          ))
+                                          </>
                                         ) : (
-                                          <p className="text-gray-400 text-xs">No topics available. Add one above!</p>
+                                          <>
+                                            <p className="text-gray-400 text-xs mb-2">No topics available. Add one below!</p>
+                                            <div className="flex items-center space-x-2">
+                                              <Input
+                                                type="text"
+                                                className="bg-slate-700 border-slate-600 text-gray-200 text-xs h-8"
+                                                value={newTopic}
+                                                onChange={(e) => setNewTopic(e.target.value)}
+                                                placeholder="Enter new topic"
+                                              />
+                                              <Button 
+                                                type="button" 
+                                                variant="secondary" 
+                                                size="sm"
+                                                className="h-8"
+                                                onClick={handleAddTopic}
+                                              >
+                                                <PlusCircle className="h-3 w-3 mr-1" />
+                                                <span className="text-xs">Add</span>
+                                              </Button>
+                                            </div>
+                                          </>
                                         )}
                                       </div>
                                     )}
