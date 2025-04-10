@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,6 +54,18 @@ interface TimelineItem {
       padding: string;
     }
   }
+}
+
+interface QuoteWithWeekendSettings {
+  area_id?: number | null;
+  client_name?: string | null;
+  created_at: string;
+  created_by_user_id: string;
+  machine_type_ids?: number[] | null;
+  quote_id: string;
+  quote_name: string;
+  work_on_saturday?: boolean;
+  work_on_sunday?: boolean;
 }
 
 interface TrainingRequirement {
@@ -132,10 +145,13 @@ const QuotePlanningPage: React.FC = () => {
       
       if (fetchError) throw fetchError;
       
-      // Set defaults or use values if they exist in the data
+      // Use optional chaining and nullish coalescing to safely access properties
+      // that might not exist in the database schema yet
+      const quoteData = data as QuoteWithWeekendSettings;
+      
       setWorkOnWeekends({
-        workOnSaturday: data?.work_on_saturday ?? false,
-        workOnSunday: data?.work_on_sunday ?? false
+        workOnSaturday: quoteData?.work_on_saturday ?? false,
+        workOnSunday: quoteData?.work_on_sunday ?? false
       });
 
     } catch (err: any) {
@@ -463,7 +479,14 @@ const QuotePlanningPage: React.FC = () => {
                               sidebarWidth={200}
                               showCursorLine
                               itemTouchSendsClick={false}
-                              timeSteps={{ day: 1, month: 1, year: 1 }}
+                              timeSteps={{
+                                second: 1,
+                                minute: 1,
+                                hour: 1,
+                                day: 1,
+                                month: 1,
+                                year: 1
+                              }}
                             />
                           </div>
                         )}
