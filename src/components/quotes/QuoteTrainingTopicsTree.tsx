@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from "react";
-import { useTrainingTopics } from "@/hooks/useTrainingTopics";
+import { useTrainingTopics, TrainingTopic } from "@/hooks/useTrainingTopics";
 import { useMachineTypes } from "@/hooks/useMachineTypes";
 import { useSoftwareTypes } from "@/hooks/useSoftwareTypes";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
@@ -28,6 +28,12 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
   const [selectedNodeKey, setSelectedNodeKey] = useState<string | null>(null);
+
+  // Store all fetched topics by their item and plan
+  const [topicsByItemAndPlan, setTopicsByItemAndPlan] = useState<{
+    [key: string]: TrainingTopic[]
+  }>({});
+  const [loadingTopics, setLoadingTopics] = useState<{[key: string]: boolean}>({});
   
   // Expanded state for tree nodes
   const [expanded, setExpanded] = useState<ExpandedState>({
@@ -40,40 +46,72 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
     const selectedMachineIds = selectedMachines.map(m => m.machine_type_id);
     return machines.filter(machine => selectedMachineIds.includes(machine.machine_type_id));
   }, [machines, selectedMachines]);
-  
-  // Fetch topics based on selection
-  const { 
-    topics, 
-    loading: topicsLoading,
-  } = useTrainingTopics(
-    selectedItemId || undefined,
-    selectedPlanId || undefined,
-    selectedItemType || undefined
-  );
 
+  // Fetch topics for a specific item and plan
+  const fetchTopicsForItemAndPlan = async (itemId: number, planId: number, itemType: string) => {
+    const key = `${itemType}-${itemId}-plan-${planId}`;
+    
+    setLoadingTopics(prev => ({
+      ...prev,
+      [key]: true
+    }));
+    
+    try {
+      console.log(`Fetching topics for ${itemType} ${itemId}, plan ${planId}`);
+      
+      const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
+      
+      const { data, error } = await supabase
+        .from('training_topics')
+        .select('*')
+        .eq(columnName, itemId)
+        .eq('plan_id', planId)
+        .order('display_order', { ascending: true, nullsFirst: true });
+        
+      if (error) throw error;
+      
+      console.log(`Topics for ${key}:`, data);
+      
+      const formattedTopics = data?.map((topic: any) => ({
+        ...topic,
+        software_type_id: topic.software_type_id || null,
+        machine_type_id: topic.machine_type_id || null,
+        item_type: topic.item_type || itemType
+      })) || [];
+      
+      setTopicsByItemAndPlan(prev => ({
+        ...prev,
+        [key]: formattedTopics
+      }));
+    } catch (err) {
+      console.error(`Error fetching topics for ${key}:`, err);
+    } finally {
+      setLoadingTopics(prev => ({
+        ...prev,
+        [key]: false
+      }));
+    }
+  };
+  
   // Toggle expanded state of a node
-  const toggleExpanded = (nodeKey: string) => {
+  const toggleExpanded = (nodeKey: string, itemId?: number, planId?: number, itemType?: string) => {
+    // If this is a plan node and it's being expanded, fetch topics
+    if (itemId && planId && itemType && !expanded[nodeKey]) {
+      // Only fetch if we haven't already
+      const key = `${itemType}-${itemId}-plan-${planId}`;
+      if (!topicsByItemAndPlan[key]) {
+        fetchTopicsForItemAndPlan(itemId, planId, itemType);
+      }
+    }
+    
     setExpanded(prev => ({
       ...prev,
       [nodeKey]: !prev[nodeKey]
     }));
   };
   
-  // Select a node and load topics
-  const selectNode = (itemId: number, planId: number, itemType: string, nodeKey: string) => {
-    setSelectedItemId(itemId);
-    setSelectedPlanId(planId);
-    setSelectedItemType(itemType);
-    setSelectedNodeKey(nodeKey);
-    
-    // Ensure parent nodes are expanded
-    const itemNodeKey = `${itemType}-${itemId}`;
-    setExpanded(prev => ({
-      ...prev,
-      [itemType === 'machine' ? 'machines' : 'software']: true,
-      [itemNodeKey]: true,
-    }));
-  };
+  // Import supabase client
+  const { supabase } = require("@/lib/supabaseClient");
   
   // Render loading state
   if (machinesLoading || softwareLoading || plansLoading) {
@@ -102,159 +140,162 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
         Training Topics
       </h2>
       
-      <div className="grid grid-cols-1 gap-4">
-        {/* Tree View */}
-        <div className="bg-slate-700/30 rounded-md p-2 border border-slate-600/30">
-          <TreeView className="max-h-[60vh] overflow-y-auto pr-2">
-            {/* Machine Topics Section */}
-            <TreeNode 
-              id="machines"
-              label="Machine Topics"
-              icon={expanded['machines'] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
-              expanded={expanded['machines']}
-              onToggle={() => toggleExpanded('machines')}
-            />
-            
-            {expanded['machines'] && filteredMachines.map(machine => {
-              const machineKey = `machine-${machine.machine_type_id}`;
-              return (
-                <React.Fragment key={machineKey}>
-                  {/* Machine Type Node */}
-                  <TreeNode 
-                    id={machineKey}
-                    label={machine.name}
-                    icon={<HardDrive size={14} className="text-white" />}
-                    expanded={expanded[machineKey]}
-                    level={1}
-                    onToggle={() => toggleExpanded(machineKey)}
-                  />
+      <div className="bg-slate-700/30 rounded-md p-2 border border-slate-600/30">
+        <TreeView className="max-h-[60vh] overflow-y-auto pr-2">
+          {/* Machine Topics Section */}
+          <TreeNode 
+            id="machines"
+            label="Machine Topics"
+            icon={expanded['machines'] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
+            expanded={expanded['machines']}
+            onToggle={() => toggleExpanded('machines')}
+          />
+          
+          {expanded['machines'] && filteredMachines.map(machine => {
+            const machineKey = `machine-${machine.machine_type_id}`;
+            return (
+              <React.Fragment key={machineKey}>
+                {/* Machine Type Node */}
+                <TreeNode 
+                  id={machineKey}
+                  label={machine.name}
+                  icon={<HardDrive size={14} className="text-white" />}
+                  expanded={expanded[machineKey]}
+                  level={1}
+                  onToggle={() => toggleExpanded(machineKey)}
+                />
+                
+                {/* Plans under this machine */}
+                {expanded[machineKey] && plans.map(plan => {
+                  const planKey = `${machineKey}-plan-${plan.plan_id}`;
+                  const topicsKey = `machine-${machine.machine_type_id}-plan-${plan.plan_id}`;
                   
-                  {/* Plans under this machine */}
-                  {expanded[machineKey] && plans.map(plan => {
-                    const planKey = `${machineKey}-plan-${plan.plan_id}`;
-                    const isSelected = selectedItemId === machine.machine_type_id && 
-                                      selectedPlanId === plan.plan_id && 
-                                      selectedItemType === 'machine';
-                    
-                    return (
+                  return (
+                    <React.Fragment key={planKey}>
                       <TreeNode 
-                        key={planKey}
                         id={planKey}
                         label={plan.name}
                         icon={expanded[planKey] ? <FolderOpen size={14} className="text-white" /> : <Folder size={14} className="text-white" />}
                         expanded={expanded[planKey]}
-                        selected={isSelected}
                         level={2}
-                        onClick={() => selectNode(machine.machine_type_id, plan.plan_id, 'machine', planKey)}
-                        onToggle={() => toggleExpanded(planKey)}
+                        onToggle={() => toggleExpanded(planKey, machine.machine_type_id, plan.plan_id, 'machine')}
                       />
-                    );
-                  })}
-                  
-                  {/* Display topics when a plan is selected and expanded */}
-                  {plans.map(plan => {
-                    const planKey = `${machineKey}-plan-${plan.plan_id}`;
-                    const isCurrentPlan = selectedItemId === machine.machine_type_id && 
-                                         selectedPlanId === plan.plan_id && 
-                                         selectedItemType === 'machine';
-                    
-                    if (expanded[planKey] && isCurrentPlan && !topicsLoading && topics.length > 0) {
-                      return (
-                        <React.Fragment key={`${planKey}-topics`}>
-                          {topics.map((topic) => (
-                            <TreeNode 
-                              key={`topic-${topic.topic_id}`}
-                              id={`topic-${topic.topic_id}`}
-                              label={topic.topic_text}
-                              icon={<FileText size={14} className="text-white" />}
-                              level={3}
+                      
+                      {/* Display topics when a plan is expanded */}
+                      {expanded[planKey] && (
+                        <>
+                          {loadingTopics[topicsKey] ? (
+                            <TreeNode
+                              id={`${planKey}-loading`}
+                              label="Loading topics..."
                               isLeaf={true}
+                              level={3}
                             />
-                          ))}
-                        </React.Fragment>
-                      );
-                    }
-                    return null;
-                  })}
-                </React.Fragment>
-              );
-            })}
-            
-            {/* Software Topics Section */}
-            <TreeNode 
-              id="software"
-              label="Software Topics"
-              icon={expanded['software'] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
-              expanded={expanded['software']}
-              onToggle={() => toggleExpanded('software')}
-            />
-            
-            {expanded['software'] && software.map(softwareItem => {
-              const softwareKey = `software-${softwareItem.software_type_id}`;
-              return (
-                <React.Fragment key={softwareKey}>
-                  {/* Software Type Node */}
-                  <TreeNode 
-                    id={softwareKey}
-                    label={softwareItem.name}
-                    icon={<Database size={14} className="text-white" />}
-                    expanded={expanded[softwareKey]}
-                    level={1}
-                    onToggle={() => toggleExpanded(softwareKey)}
-                  />
+                          ) : topicsByItemAndPlan[topicsKey]?.length > 0 ? (
+                            topicsByItemAndPlan[topicsKey].map((topic) => (
+                              <TreeNode
+                                key={`topic-${topic.topic_id}`}
+                                id={`topic-${topic.topic_id}`}
+                                label={topic.topic_text}
+                                icon={<FileText size={14} className="text-white" />}
+                                isLeaf={true}
+                                level={3}
+                              />
+                            ))
+                          ) : (
+                            <TreeNode
+                              id={`${planKey}-no-topics`}
+                              label="No topics available"
+                              isLeaf={true}
+                              level={3}
+                            />
+                          )}
+                        </>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
+          
+          {/* Software Topics Section */}
+          <TreeNode 
+            id="software"
+            label="Software Topics"
+            icon={expanded['software'] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
+            expanded={expanded['software']}
+            onToggle={() => toggleExpanded('software')}
+          />
+          
+          {expanded['software'] && software.map(softwareItem => {
+            const softwareKey = `software-${softwareItem.software_type_id}`;
+            return (
+              <React.Fragment key={softwareKey}>
+                {/* Software Type Node */}
+                <TreeNode 
+                  id={softwareKey}
+                  label={softwareItem.name}
+                  icon={<Database size={14} className="text-white" />}
+                  expanded={expanded[softwareKey]}
+                  level={1}
+                  onToggle={() => toggleExpanded(softwareKey)}
+                />
+                
+                {/* Plans under this software */}
+                {expanded[softwareKey] && plans.map(plan => {
+                  const planKey = `${softwareKey}-plan-${plan.plan_id}`;
+                  const topicsKey = `software-${softwareItem.software_type_id}-plan-${plan.plan_id}`;
                   
-                  {/* Plans under this software */}
-                  {expanded[softwareKey] && plans.map(plan => {
-                    const planKey = `${softwareKey}-plan-${plan.plan_id}`;
-                    const isSelected = selectedItemId === softwareItem.software_type_id && 
-                                      selectedPlanId === plan.plan_id && 
-                                      selectedItemType === 'software';
-                    
-                    return (
+                  return (
+                    <React.Fragment key={planKey}>
                       <TreeNode 
-                        key={planKey}
                         id={planKey}
                         label={plan.name}
                         icon={expanded[planKey] ? <FolderOpen size={14} className="text-white" /> : <Folder size={14} className="text-white" />}
                         expanded={expanded[planKey]}
-                        selected={isSelected}
                         level={2}
-                        onClick={() => selectNode(softwareItem.software_type_id, plan.plan_id, 'software', planKey)}
-                        onToggle={() => toggleExpanded(planKey)}
+                        onToggle={() => toggleExpanded(planKey, softwareItem.software_type_id, plan.plan_id, 'software')}
                       />
-                    );
-                  })}
-                  
-                  {/* Display topics when a plan is selected and expanded */}
-                  {plans.map(plan => {
-                    const planKey = `${softwareKey}-plan-${plan.plan_id}`;
-                    const isCurrentPlan = selectedItemId === softwareItem.software_type_id && 
-                                         selectedPlanId === plan.plan_id && 
-                                         selectedItemType === 'software';
-                    
-                    if (expanded[planKey] && isCurrentPlan && !topicsLoading && topics.length > 0) {
-                      return (
-                        <React.Fragment key={`${planKey}-topics`}>
-                          {topics.map((topic) => (
-                            <TreeNode 
-                              key={`topic-${topic.topic_id}`}
-                              id={`topic-${topic.topic_id}`}
-                              label={topic.topic_text}
-                              icon={<FileText size={14} className="text-white" />}
-                              level={3}
+                      
+                      {/* Display topics when a plan is expanded */}
+                      {expanded[planKey] && (
+                        <>
+                          {loadingTopics[topicsKey] ? (
+                            <TreeNode
+                              id={`${planKey}-loading`}
+                              label="Loading topics..."
                               isLeaf={true}
+                              level={3}
                             />
-                          ))}
-                        </React.Fragment>
-                      );
-                    }
-                    return null;
-                  })}
-                </React.Fragment>
-              );
-            })}
-          </TreeView>
-        </div>
+                          ) : topicsByItemAndPlan[topicsKey]?.length > 0 ? (
+                            topicsByItemAndPlan[topicsKey].map((topic) => (
+                              <TreeNode
+                                key={`topic-${topic.topic_id}`}
+                                id={`topic-${topic.topic_id}`}
+                                label={topic.topic_text}
+                                icon={<FileText size={14} className="text-white" />}
+                                isLeaf={true}
+                                level={3}
+                              />
+                            ))
+                          ) : (
+                            <TreeNode
+                              id={`${planKey}-no-topics`}
+                              label="No topics available"
+                              isLeaf={true}
+                              level={3}
+                            />
+                          )}
+                        </>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
+        </TreeView>
       </div>
     </Card>
   );

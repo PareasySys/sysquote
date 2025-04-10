@@ -1,6 +1,8 @@
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight, Folder, FolderOpen, FileText } from "lucide-react";
+
 interface TreeNodeProps {
   id: string | number;
   label: string;
@@ -13,6 +15,7 @@ interface TreeNodeProps {
   onToggle?: () => void;
   className?: string;
 }
+
 const TreeNode = ({
   label,
   icon,
@@ -42,10 +45,12 @@ const TreeNode = ({
       <span className="truncate text-slate-50">{label}</span>
     </div>;
 };
+
 interface TreeViewProps {
   children: React.ReactNode;
   className?: string;
 }
+
 const TreeView = ({
   children,
   className
@@ -54,4 +59,5 @@ const TreeView = ({
       {children}
     </div>;
 };
+
 export { TreeView, TreeNode };

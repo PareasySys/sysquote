@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
@@ -105,6 +106,7 @@ export const useTrainingTopics = (
     }
   };
 
+  // Define these functions separately to avoid TypeScript circular reference
   const addTopic = async (topicText: string): Promise<boolean> => {
     if (!itemId || !planId || !itemType) return false;
 
