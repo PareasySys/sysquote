@@ -74,24 +74,25 @@ const QuotePlanningPage: React.FC = () => {
     if (!quoteId) return;
     
     try {
+      setLoading(true);
       const { data, error: fetchError } = await supabase
         .from("quotes")
-        .select("*")
+        .select("work_on_saturday, work_on_sunday")
         .eq("quote_id", quoteId)
         .single();
       
       if (fetchError) throw fetchError;
       
-      const quoteData = data as QuoteWithWeekendSettings;
-      
       setWorkOnWeekends({
-        workOnSaturday: quoteData?.work_on_saturday ?? false,
-        workOnSunday: quoteData?.work_on_sunday ?? false
+        workOnSaturday: data?.work_on_saturday ?? false,
+        workOnSunday: data?.work_on_sunday ?? false
       });
 
     } catch (err: any) {
       console.error("Error fetching quote settings:", err);
       setError(err.message || "Failed to load quote settings");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -110,13 +111,12 @@ const QuotePlanningPage: React.FC = () => {
     const newSettings = { ...workOnWeekends, [key]: value };
     setWorkOnWeekends(newSettings);
     
+    const dbKey = key === 'workOnSaturday' ? 'work_on_saturday' : 'work_on_sunday';
+    
     try {
       const { error: updateError } = await supabase
         .from('quotes')
-        .update({
-          work_on_saturday: newSettings.workOnSaturday,
-          work_on_sunday: newSettings.workOnSunday
-        })
+        .update({ [dbKey]: value })
         .eq('quote_id', quoteId);
       
       if (updateError) throw updateError;
@@ -125,6 +125,7 @@ const QuotePlanningPage: React.FC = () => {
     } catch (err: any) {
       console.error("Error updating weekend settings:", err);
       toast.error("Failed to update weekend settings");
+      
       setWorkOnWeekends(workOnWeekends);
     }
   };
