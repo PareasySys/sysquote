@@ -7,7 +7,23 @@ import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { Card } from "@/components/ui/card";
 import { TreeView, TreeNode } from "@/components/ui/tree-view";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
-import { ListChecks, HardDrive, Database, FileText, Folder, FolderOpen } from "lucide-react";
+import { 
+  ListChecks, 
+  HardDrive, 
+  Database, 
+  FileText, 
+  Folder, 
+  FolderOpen,
+  Server,
+  Cpu,
+  Monitor,
+  Printer,
+  BookOpen,
+  Code,
+  FileCode,
+  Binary,
+  Blocks
+} from "lucide-react";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -41,6 +57,28 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
     'machines': true,
     'software': true,
   });
+  
+  // Get machine icon by machine name
+  const getMachineIcon = (machineName: string) => {
+    const name = machineName.toLowerCase();
+    if (name.includes('server')) return <Server size={14} className="text-white" />;
+    if (name.includes('storage')) return <HardDrive size={14} className="text-white" />;
+    if (name.includes('processor') || name.includes('cpu')) return <Cpu size={14} className="text-white" />;
+    if (name.includes('monitor') || name.includes('display')) return <Monitor size={14} className="text-white" />;
+    if (name.includes('printer')) return <Printer size={14} className="text-white" />;
+    return <HardDrive size={14} className="text-white" />;
+  };
+  
+  // Get software icon by software name
+  const getSoftwareIcon = (softwareName: string) => {
+    const name = softwareName.toLowerCase();
+    if (name.includes('database')) return <Database size={14} className="text-white" />;
+    if (name.includes('code') || name.includes('programming')) return <Code size={14} className="text-white" />;
+    if (name.includes('file') || name.includes('document')) return <FileCode size={14} className="text-white" />;
+    if (name.includes('binary')) return <Binary size={14} className="text-white" />;
+    if (name.includes('book') || name.includes('manual')) return <BookOpen size={14} className="text-white" />;
+    return <Blocks size={14} className="text-white" />;
+  };
   
   // Filter machines to only show selected ones in the quote
   const filteredMachines = useMemo(() => {
@@ -157,7 +195,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                 <TreeNode 
                   id={machineKey}
                   label={machine.name}
-                  icon={<HardDrive size={14} className="text-white" />}
+                  icon={getMachineIcon(machine.name)}
                   expanded={expanded[machineKey]}
                   level={1}
                   onToggle={() => toggleExpanded(machineKey)}
@@ -234,7 +272,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                 <TreeNode 
                   id={softwareKey}
                   label={softwareItem.name}
-                  icon={<Database size={14} className="text-white" />}
+                  icon={getSoftwareIcon(softwareItem.name)}
                   expanded={expanded[softwareKey]}
                   level={1}
                   onToggle={() => toggleExpanded(softwareKey)}
