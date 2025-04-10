@@ -20,7 +20,6 @@ import { useQuoteTrainingHours } from "@/hooks/useQuoteTrainingHours";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { useResources } from "@/hooks/useResources"; 
 import { supabase } from "@/integrations/supabase/client";
-import TrainingGanttChart, { TrainingTask } from "@/components/planning/TrainingGanttChart";
 
 interface WeekendSettings {
   workOnSaturday: boolean;
@@ -58,7 +57,6 @@ const QuotePlanningPage: React.FC = () => {
   const { plans, loading: plansLoading } = useTrainingPlans();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<TrainingTask[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [workOnWeekends, setWorkOnWeekends] = useState<WeekendSettings>({
     workOnSaturday: false,
@@ -73,10 +71,6 @@ const QuotePlanningPage: React.FC = () => {
   trainingHours.forEach(plan => {
     planTotals[plan.plan_id] = plan.training_hours;
   });
-
-  // Generic start date for our calendar (Month 1, Day 1)
-  const startDate = new Date(2025, 0, 1); // Jan 1, 2025 as base date
-  const endDate = new Date(2025, 11, 30); // Dec 30, 2025 as end date
 
   useEffect(() => {
     if (!user) {
@@ -142,133 +136,15 @@ const QuotePlanningPage: React.FC = () => {
       
       if (error) throw error;
       
-      const requirements = (data || []).map(req => ({
-        requirement_id: req.requirement_id,
-        resource_id: req.required_resource_id,
-        training_hours: req.training_hours,
-        machine_type_id: req.item_type === 'machine' ? req.item_id : undefined,
-        software_type_id: req.item_type === 'software' ? req.item_id : undefined,
-        machine_types: req.item_type === 'machine' ? { name: `Training Item ${req.item_id}` } : undefined,
-        software_types: req.item_type === 'software' ? { name: `Software ${req.item_id}` } : undefined
-      }));
+      // We've fetched the data, but will implement the new chart rendering later
+      console.log("Training requirements fetched:", data);
       
-      const ganttTasks = generateGanttTasks(requirements);
-      setTasks(ganttTasks);
     } catch (err: any) {
       console.error("Error fetching training data:", err);
       setError(err.message || "Failed to load training data");
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateGanttTasks = (requirements: TrainingRequirement[]): TrainingTask[] => {
-    const maxHoursPerDay = 8;
-    const tasks: TrainingTask[] = [];
-    
-    // Group requirements by resource
-    const resourceRequirements: {[key: number]: TrainingRequirement[]} = {};
-    requirements.forEach(req => {
-      const resourceId = req.resource_id;
-      if (!resourceRequirements[resourceId]) {
-        resourceRequirements[resourceId] = [];
-      }
-      resourceRequirements[resourceId].push(req);
-    });
-    
-    // Generic start date (Month 1, Day 1)
-    let currentMonth = 1; // Start with Month 1
-    let currentDay = 1;   // Start with Day 1
-    
-    Object.entries(resourceRequirements).forEach(([resourceId, reqs]) => {
-      const resourceIdNum = parseInt(resourceId);
-      const resource = resources.find(r => r.resource_id === resourceIdNum);
-      const resourceName = resource ? resource.name : `Resource ${resourceId}`;
-      
-      // Reset to beginning of month for each resource
-      currentMonth = 1;
-      currentDay = 1;
-      let hoursScheduledToday = 0;
-      
-      // Consolidate all training hours for this resource into one task
-      let totalHours = reqs.reduce((sum, req) => sum + Number(req.training_hours), 0);
-      
-      // If we have hours to schedule for this resource
-      if (totalHours > 0) {
-        let daysNeeded = 0;
-        let hoursRemaining = totalHours;
-        
-        while (hoursRemaining > 0) {
-          if (
-            (currentDay % 7 === 6 && !workOnWeekends.workOnSaturday) ||
-            (currentDay % 7 === 0 && !workOnWeekends.workOnSunday)
-          ) {
-            currentDay++;
-            
-            // Check if we need to advance to the next month (assuming 30 days per month)
-            if (currentDay > 30) {
-              currentMonth++;
-              currentDay = 1;
-              
-              // Check if we've gone beyond 12 months
-              if (currentMonth > 12) {
-                break; // Stop scheduling if beyond our planning horizon
-              }
-            }
-            
-            hoursScheduledToday = 0;
-            continue;
-          }
-          
-          const hoursToScheduleToday = Math.min(
-            maxHoursPerDay - hoursScheduledToday,
-            hoursRemaining
-          );
-          
-          if (hoursToScheduleToday > 0) {
-            daysNeeded++;
-            hoursRemaining -= hoursToScheduleToday;
-            
-            if (hoursScheduledToday + hoursToScheduleToday >= maxHoursPerDay) {
-              currentDay++;
-              
-              // Check if we need to advance to the next month (assuming 30 days per month)
-              if (currentDay > 30) {
-                currentMonth++;
-                currentDay = 1;
-                
-                // Check if we've gone beyond 12 months
-                if (currentMonth > 12) {
-                  break; // Stop scheduling if beyond our planning horizon
-                }
-              }
-              
-              hoursScheduledToday = 0;
-            } else {
-              hoursScheduledToday += hoursToScheduleToday;
-            }
-          }
-        }
-        
-        // Create a single task for this resource spanning the necessary days
-        const startTaskDate = new Date(2025, 0, 1); // January 1, 2025 (Month 1, Day 1)
-        const endTaskDate = new Date(2025, 0, 1 + daysNeeded); // Add the necessary days
-        
-        tasks.push({
-          id: `task-${resourceIdNum}`,
-          resourceId: resourceIdNum,
-          resourceName: resourceName,
-          taskName: `${resourceName} Training`, // This won't be displayed in the chart
-          startTime: startTaskDate,
-          endTime: endTaskDate,
-          styles: {
-            backgroundColor: '#3b82f6'
-          }
-        });
-      }
-    });
-    
-    return tasks;
   };
 
   const handleSignOut = async () => {
@@ -425,12 +301,9 @@ const QuotePlanningPage: React.FC = () => {
                         </div>
 
                         <div className="mt-4 bg-slate-900 p-2 rounded-md border border-slate-700">
-                          <TrainingGanttChart 
-                            tasks={tasks} 
-                            loading={loading} 
-                            trainingHours={planTotals[plan.plan_id]} 
-                            planName={plan.name}
-                          />
+                          <div className="p-8 text-center">
+                            <p className="text-gray-400">Gantt chart has been removed and will be replaced with a new implementation.</p>
+                          </div>
                         </div>
                       </div>
                     </TabsContent>
