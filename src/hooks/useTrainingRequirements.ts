@@ -65,9 +65,10 @@ export const useTrainingRequirements = (
       const machineTypeIds = quoteData?.machine_type_ids || [];
       
       // Fetch training offers for these machine types and the selected plan
+      // NOTE: The training_offers table has machine_type_id, not resource_id
       const { data: trainingOffers, error: offersError } = await supabase
         .from('training_offers')
-        .select('machine_type_id, resource_id, hours_required')
+        .select('machine_type_id, hours_required')
         .eq('plan_id', planId)
         .in('machine_type_id', machineTypeIds);
       
@@ -80,16 +81,8 @@ export const useTrainingRequirements = (
         let adjustedDuration = req.duration_days;
         let trainingHours = req.training_hours;
         
-        // Find if we have a specific training offer for this resource
-        const matchingOffer = trainingOffers?.find(
-          offer => offer.resource_id === req.resource_id
-        );
-        
-        if (matchingOffer) {
-          trainingHours = matchingOffer.hours_required;
-          // Recalculate duration based on training hours
-          adjustedDuration = Math.ceil(trainingHours / 8);
-        }
+        // Since training_offers doesn't have resource_id, we can't directly match
+        // We'll need to handle this differently - for now, just use the existing hours
         
         // If not working on weekends, extend duration to account for skipped days
         if (!workOnSaturday || !workOnSunday) {
