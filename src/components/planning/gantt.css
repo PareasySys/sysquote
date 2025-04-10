@@ -69,10 +69,59 @@
   border-radius: 4px;
 }
 
-/* Month format styling */
+/* Month format styling - Replacing years with simply Month names */
 .gantt-container .gantt-chart-calendar-header-month {
   padding: 8px 0;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+/* Hide year references in calendar headers */
+.gantt-container .gantt-chart-calendar-header-month::after {
+  content: "";
+}
+
+/* Rename months by adding custom content */
+.gantt-container .gantt-chart-calendar-header-month:nth-child(1)::before {
+  content: "Month 1";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(2)::before {
+  content: "Month 2";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(3)::before {
+  content: "Month 3";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(4)::before {
+  content: "Month 4";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(5)::before {
+  content: "Month 5";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(6)::before {
+  content: "Month 6";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(7)::before {
+  content: "Month 7";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(8)::before {
+  content: "Month 8";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(9)::before {
+  content: "Month 9";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(10)::before {
+  content: "Month 10";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(11)::before {
+  content: "Month 11";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(12)::before {
+  content: "Month 12";
+}
+
+/* Hide any year text that might appear */
+.gantt-container .gantt-chart-calendar-header-month span {
+  display: none;
+}
+

@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { Gantt, Task, ViewMode } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
 import "./gantt.css"; // Import our custom styling
-import moment from "moment";
 
 export interface TrainingTask {
   id: string;
@@ -27,7 +26,8 @@ interface TrainingGanttChartProps {
 }
 
 const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading, trainingHours = 0, planName = "" }) => {
-  const [view, setView] = useState<ViewMode>(ViewMode.Month);
+  // Only use Day view
+  const view = ViewMode.Day;
   
   // Generate demo tasks if we have training hours but no tasks
   const generateDemoTasks = (): TrainingTask[] => {
@@ -44,9 +44,9 @@ const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading,
       id: "demo-task-1",
       resourceId: resourceId,
       resourceName: "Demo Resource",
-      taskName: `${planName} Training (${trainingDays} days)`,
+      taskName: `${planName} Training`,
       startTime: genericStart,
-      endTime: moment(genericStart).add(trainingDays, 'days').toDate(),
+      endTime: new Date(2025, 0, 1 + trainingDays),
       styles: {
         backgroundColor: '#3b82f6',
       }
@@ -58,20 +58,9 @@ const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading,
   
   // Convert our tasks to Gantt-compatible format
   const ganttTasks: Task[] = displayTasks.map(task => {
-    // Calculate duration in days
-    const startMoment = moment(task.startTime);
-    const endMoment = moment(task.endTime);
-    const durationDays = endMoment.diff(startMoment, 'days');
-    const durationHours = endMoment.diff(startMoment, 'hours');
-    
-    // Include days information in the task name
-    const daysInfo = durationDays > 0 
-      ? `(${durationDays} day${durationDays > 1 ? 's' : ''})`
-      : `(${durationHours} hour${durationHours > 1 ? 's' : ''})`;
-    
     return {
       id: task.id,
-      name: `${task.taskName} ${daysInfo}`,
+      name: task.taskName, // Remove duration info
       start: new Date(task.startTime),
       end: new Date(task.endTime),
       progress: 0,
@@ -108,29 +97,6 @@ const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading,
 
   return (
     <div className="gantt-container">
-      <div className="flex justify-end mb-2">
-        <div className="space-x-2">
-          <button
-            className={`px-2 py-1 text-xs rounded ${view === ViewMode.Day ? 'bg-blue-600 text-white' : 'bg-slate-700 text-gray-300'}`}
-            onClick={() => setView(ViewMode.Day)}
-          >
-            Day
-          </button>
-          <button
-            className={`px-2 py-1 text-xs rounded ${view === ViewMode.Week ? 'bg-blue-600 text-white' : 'bg-slate-700 text-gray-300'}`}
-            onClick={() => setView(ViewMode.Week)}
-          >
-            Week
-          </button>
-          <button
-            className={`px-2 py-1 text-xs rounded ${view === ViewMode.Month ? 'bg-blue-600 text-white' : 'bg-slate-700 text-gray-300'}`}
-            onClick={() => setView(ViewMode.Month)}
-          >
-            Month
-          </button>
-        </div>
-      </div>
-      
       <div className="bg-slate-800 rounded-md">
         <Gantt
           tasks={ganttTasks}
