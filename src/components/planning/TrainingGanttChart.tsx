@@ -1,7 +1,9 @@
+
 import React, { useState } from "react";
 import { Gantt, Task, ViewMode } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
 import "./gantt.css"; // Import our custom styling
+import moment from "moment";
 
 export interface TrainingTask {
   id: string;
@@ -20,13 +22,39 @@ export interface TrainingTask {
 interface TrainingGanttChartProps {
   tasks: TrainingTask[];
   loading: boolean;
+  trainingHours?: number;
+  planName?: string;
 }
 
-const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading }) => {
+const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading, trainingHours = 0, planName = "" }) => {
   const [view, setView] = useState<ViewMode>(ViewMode.Day);
   
+  // Generate demo tasks if we have training hours but no tasks
+  const generateDemoTasks = (): TrainingTask[] => {
+    if (!trainingHours || trainingHours <= 0) return [];
+    
+    // Start from tomorrow
+    const startDate = moment().add(1, 'day').startOf('day').toDate();
+    const resourceId = 1;
+    
+    return [{
+      id: "demo-task-1",
+      resourceId: resourceId,
+      resourceName: "Demo Resource",
+      taskName: `${planName} Training`,
+      startTime: startDate,
+      endTime: moment(startDate).add(trainingHours, 'hours').toDate(),
+      styles: {
+        backgroundColor: '#3b82f6',
+      }
+    }];
+  };
+  
+  // Use actual tasks if available, otherwise generate demo tasks if we have hours
+  const displayTasks = tasks.length > 0 ? tasks : generateDemoTasks();
+  
   // Convert our tasks to Gantt-compatible format
-  const ganttTasks: Task[] = tasks.map(task => ({
+  const ganttTasks: Task[] = displayTasks.map(task => ({
     id: task.id,
     name: task.taskName,
     start: new Date(task.startTime),
@@ -42,18 +70,22 @@ const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading 
     }
   }));
 
-  if (loading || tasks.length === 0) {
+  if (loading) {
     return (
       <div className="p-4 text-center">
-        {loading ? (
-          <div className="animate-pulse">
-            <div className="h-4 bg-slate-700 rounded w-3/4 mx-auto mb-2.5"></div>
-            <div className="h-4 bg-slate-700 rounded w-1/2 mx-auto mb-2.5"></div>
-            <div className="h-4 bg-slate-700 rounded w-2/3 mx-auto"></div>
-          </div>
-        ) : (
-          <p className="text-gray-400">No training tasks scheduled</p>
-        )}
+        <div className="animate-pulse">
+          <div className="h-4 bg-slate-700 rounded w-3/4 mx-auto mb-2.5"></div>
+          <div className="h-4 bg-slate-700 rounded w-1/2 mx-auto mb-2.5"></div>
+          <div className="h-4 bg-slate-700 rounded w-2/3 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (ganttTasks.length === 0) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-gray-400">No training tasks scheduled</p>
       </div>
     );
   }

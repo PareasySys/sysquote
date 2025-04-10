@@ -65,18 +65,15 @@ const QuotePlanningPage: React.FC = () => {
     workOnSunday: false
   });
 
-  // Get resources from our hook
   const { resources } = useResources();
 
   const { trainingHours, totalHours, loading: hoursLoading } = useQuoteTrainingHours(quoteId);
 
-  // Create a planTotals object from trainingHours
   const planTotals: Record<number, number> = {};
   trainingHours.forEach(plan => {
     planTotals[plan.plan_id] = plan.training_hours;
   });
 
-  // Set up the generic calendar dates
   const startDate = moment().startOf('year').toDate();
   const endDate = moment().add(1, 'year').toDate();
 
@@ -103,7 +100,6 @@ const QuotePlanningPage: React.FC = () => {
     if (!quoteId) return;
     
     try {
-      // Check if there are custom columns in the quotes table
       const { data, error: fetchError } = await supabase
         .from("quotes")
         .select("*")
@@ -112,7 +108,6 @@ const QuotePlanningPage: React.FC = () => {
       
       if (fetchError) throw fetchError;
       
-      // Use optional chaining and nullish coalescing to safely access properties
       const quoteData = data as QuoteWithWeekendSettings;
       
       setWorkOnWeekends({
@@ -125,14 +120,13 @@ const QuotePlanningPage: React.FC = () => {
       setError(err.message || "Failed to load quote settings");
     }
   };
-  
+
   const fetchTrainingData = async (planId: number) => {
     if (!quoteId || !resources || resources.length === 0) return;
     
     try {
       setLoading(true);
       
-      // Get training requirements for the quote and plan
       const { data, error } = await supabase
         .from('training_requirements')
         .select(`
@@ -147,7 +141,6 @@ const QuotePlanningPage: React.FC = () => {
       
       if (error) throw error;
       
-      // Convert the data to match our expected format
       const requirements = (data || []).map(req => ({
         requirement_id: req.requirement_id,
         resource_id: req.required_resource_id,
@@ -158,7 +151,6 @@ const QuotePlanningPage: React.FC = () => {
         software_types: req.item_type === 'software' ? { name: `Software ${req.item_id}` } : undefined
       }));
       
-      // Generate Gantt tasks from the requirements data
       const ganttTasks = generateGanttTasks(requirements);
       setTasks(ganttTasks);
     } catch (err: any) {
@@ -169,12 +161,10 @@ const QuotePlanningPage: React.FC = () => {
     }
   };
 
-  // Generate Gantt tasks from training requirements
   const generateGanttTasks = (requirements: TrainingRequirement[]): TrainingTask[] => {
     const maxHoursPerDay = 8;
     const tasks: TrainingTask[] = [];
     
-    // Group requirements by resource
     const resourceRequirements: {[key: number]: TrainingRequirement[]} = {};
     requirements.forEach(req => {
       const resourceId = req.resource_id;
@@ -184,14 +174,12 @@ const QuotePlanningPage: React.FC = () => {
       resourceRequirements[resourceId].push(req);
     });
     
-    // For each resource, schedule their requirements
     Object.entries(resourceRequirements).forEach(([resourceId, reqs]) => {
       const resourceIdNum = parseInt(resourceId);
-      // Find resource name
       const resource = resources.find(r => r.resource_id === resourceIdNum);
       const resourceName = resource ? resource.name : `Resource ${resourceId}`;
       
-      let currentDay = 1; // Start at day 1
+      let currentDay = 1;
       let hoursScheduledToday = 0;
       
       reqs.forEach((req) => {
@@ -202,24 +190,21 @@ const QuotePlanningPage: React.FC = () => {
         let hoursRemaining = req.training_hours;
         
         while (hoursRemaining > 0) {
-          // Skip weekends if configured to do so
           if (
-            (currentDay % 7 === 6 && !workOnWeekends.workOnSaturday) || // Saturday
-            (currentDay % 7 === 0 && !workOnWeekends.workOnSunday)      // Sunday
+            (currentDay % 7 === 6 && !workOnWeekends.workOnSaturday) ||
+            (currentDay % 7 === 0 && !workOnWeekends.workOnSunday)
           ) {
             currentDay++;
             hoursScheduledToday = 0;
             continue;
           }
           
-          // How many hours can be scheduled today
           const hoursToScheduleToday = Math.min(
             maxHoursPerDay - hoursScheduledToday,
             hoursRemaining
           );
           
           if (hoursToScheduleToday > 0) {
-            // Convert days to dates for the Gantt chart
             const startTime = moment(startDate).add(currentDay - 1, 'days')
               .add(hoursScheduledToday, 'hours').toDate();
             const endTime = moment(startDate).add(currentDay - 1, 'days')
@@ -240,7 +225,6 @@ const QuotePlanningPage: React.FC = () => {
             hoursRemaining -= hoursToScheduleToday;
             hoursScheduledToday += hoursToScheduleToday;
             
-            // Move to next day if this day is full
             if (hoursScheduledToday >= maxHoursPerDay) {
               currentDay++;
               hoursScheduledToday = 0;
@@ -407,7 +391,12 @@ const QuotePlanningPage: React.FC = () => {
                         </div>
 
                         <div className="mt-4 bg-slate-900 p-2 rounded-md border border-slate-700">
-                          <TrainingGanttChart tasks={tasks} loading={loading} />
+                          <TrainingGanttChart 
+                            tasks={tasks} 
+                            loading={loading} 
+                            trainingHours={planTotals[plan.plan_id]} 
+                            planName={plan.name}
+                          />
                         </div>
                       </div>
                     </TabsContent>
