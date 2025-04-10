@@ -112,9 +112,10 @@ const QuotePlanningPage: React.FC = () => {
     setWorkOnWeekends(newSettings);
     
     try {
+      // Convert keys from camelCase to snake_case for the database update
       const { error: updateError } = await supabase
         .from('quotes')
-        .update({ 
+        .update({
           work_on_saturday: newSettings.workOnSaturday,
           work_on_sunday: newSettings.workOnSunday
         })

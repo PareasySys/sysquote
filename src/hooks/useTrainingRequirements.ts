@@ -34,12 +34,14 @@ export const useTrainingRequirements = (
       setLoading(true);
       setError(null);
       
-      // Call the new database function to get requirements
-      const { data, error: fetchError } = await supabase
-        .rpc('get_quote_training_requirements', {
+      // Call the database function to get requirements
+      const { data, error: fetchError } = await supabase.rpc(
+        'get_quote_training_requirements',
+        {
           quote_id_param: quoteId,
           plan_id_param: planId
-        });
+        }
+      );
       
       if (fetchError) throw fetchError;
       

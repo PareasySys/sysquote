@@ -4,7 +4,6 @@ import "./GanttChart.css";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TrainingRequirement } from "@/hooks/useTrainingRequirements";
-import { Resource } from "@/hooks/useResources";
 
 interface GanttChartProps {
   requirements: TrainingRequirement[];
@@ -125,13 +124,11 @@ const GanttChart: React.FC<GanttChartProps> = ({
         <div className="gantt-grid">
           {resourceGroups.map(group => (
             <div key={`row-${group.resourceId}`} className="gantt-row">
-              {months.map(month => (
-                <React.Fragment key={`row-${group.resourceId}-month-${month}`}>
-                  {days.map(day => (
-                    <div key={`cell-${group.resourceId}-${month}-${day}`} className="gantt-cell"></div>
-                  ))}
-                </React.Fragment>
-              ))}
+              {months.map(month => 
+                days.map(day => (
+                  <div key={`cell-${group.resourceId}-${month}-${day}`} className="gantt-cell"></div>
+                ))
+              )}
               
               {/* Render tasks for this resource */}
               {group.requirements.map(req => {
