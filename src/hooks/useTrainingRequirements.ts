@@ -69,9 +69,7 @@ export const useTrainingRequirements = (
           resource_id: resourceId,
           resource_name: resourceName,
           training_hours: hours,
-          // Use calculated start day
           start_day: startDay,
-          // Use calculated duration
           duration_days: durationDays || 1
         };
       });

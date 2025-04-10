@@ -6,6 +6,7 @@ import MachineTypeCard from "@/components/machines/MachineTypeCard";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { syncMachinePlanningDetails } from "@/services/planningDetailsService";
+import { toast } from "sonner";
 
 interface MachineSelectorProps {
   selectedMachineIds: number[];
@@ -23,24 +24,38 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
 
   // Function to handle machine selection changes
   const toggleMachineSelection = async (machineTypeId: number) => {
-    const updatedSelection = selectedMachineIds.includes(machineTypeId)
-      ? selectedMachineIds.filter(id => id !== machineTypeId)
-      : [...selectedMachineIds, machineTypeId];
-    
-    // Auto-save machine selection
-    onSave(updatedSelection);
-    
-    // Sync planning details with our service if we have a quote ID
-    if (quoteId) {
-      await syncMachinePlanningDetails(quoteId, updatedSelection, plans);
+    try {
+      // Create a new selection array
+      const updatedSelection = selectedMachineIds.includes(machineTypeId)
+        ? selectedMachineIds.filter(id => id !== machineTypeId)
+        : [...selectedMachineIds, machineTypeId];
+      
+      // Auto-save machine selection
+      onSave(updatedSelection);
+      
+      // Sync planning details with our service if we have a quote ID
+      if (quoteId) {
+        await syncMachinePlanningDetails(quoteId, updatedSelection, plans);
+      }
+    } catch (err) {
+      console.error("Error toggling machine selection:", err);
+      toast.error("Failed to update machine selection");
     }
   };
 
   // Initial setup of planning details when component mounts
   useEffect(() => {
-    if (quoteId && selectedMachineIds.length > 0 && plans.length > 0) {
-      syncMachinePlanningDetails(quoteId, selectedMachineIds, plans);
-    }
+    const syncDetails = async () => {
+      if (quoteId && selectedMachineIds.length > 0 && plans.length > 0) {
+        try {
+          await syncMachinePlanningDetails(quoteId, selectedMachineIds, plans);
+        } catch (err) {
+          console.error("Error syncing planning details:", err);
+        }
+      }
+    };
+    
+    syncDetails();
   }, [quoteId, plans.length]);
 
   const isSelected = (machineTypeId: number) => selectedMachineIds.includes(machineTypeId);

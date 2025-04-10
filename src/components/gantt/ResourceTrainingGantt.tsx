@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { fetchPlanningDetails, PlanningDetail, updateWeekendSettings } from "@/services/planningDetailsService";
+import { fetchPlanningDetails, updateWeekendSettings } from "@/services/planningDetailsService";
 import { TrainingRequirement } from "@/hooks/useTrainingRequirements";
 
 interface ResourceTrainingGanttProps {
@@ -24,7 +24,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
   const [requirements, setRequirements] = useState<TrainingRequirement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [planningDetails, setPlanningDetails] = useState<PlanningDetail[]>([]);
+  const [planningDetails, setPlanningDetails] = useState<any[]>([]);
 
   // Fetch planning details and convert to training requirements
   const fetchRequirements = async () => {

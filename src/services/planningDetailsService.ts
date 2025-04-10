@@ -119,27 +119,64 @@ export const savePlanningDetail = async (
       
       return data && data.length > 0 ? { ...detail, ...data[0] } : null;
     } else {
-      // Create new record
-      const { data, error } = await supabase
+      // Check if a record with the same unique key already exists
+      const { data: existingData, error: checkError } = await supabase
         .from("planning_details")
-        .insert({
-          quote_id: detail.quote_id,
-          plan_id: detail.plan_id,
-          resource_id: detail.resource_id,
-          machine_types_id: detail.machine_types_id,
-          software_types_id: detail.software_types_id,
-          allocated_hours: detail.allocated_hours,
-          work_on_saturday: detail.work_on_saturday || false,
-          work_on_sunday: detail.work_on_sunday || false
-        })
-        .select();
+        .select("id")
+        .eq("quote_id", detail.quote_id)
+        .eq("plan_id", detail.plan_id)
+        .eq("resource_id", detail.resource_id || null)
+        .maybeSingle();
       
-      if (error) {
-        console.error("Error creating planning detail:", error);
-        throw error;
+      if (checkError) {
+        console.error("Error checking for existing planning detail:", checkError);
+        throw checkError;
       }
       
-      return data && data.length > 0 ? { ...detail, ...data[0] } : null;
+      // If record exists, update it instead of trying to insert
+      if (existingData) {
+        const { data: updatedData, error: updateError } = await supabase
+          .from("planning_details")
+          .update({
+            machine_types_id: detail.machine_types_id,
+            software_types_id: detail.software_types_id,
+            allocated_hours: detail.allocated_hours,
+            work_on_saturday: detail.work_on_saturday || false,
+            work_on_sunday: detail.work_on_sunday || false,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", existingData.id)
+          .select();
+        
+        if (updateError) {
+          console.error("Error updating existing planning detail:", updateError);
+          throw updateError;
+        }
+        
+        return updatedData && updatedData.length > 0 ? { ...detail, ...updatedData[0] } : null;
+      } else {
+        // Create new record
+        const { data, error } = await supabase
+          .from("planning_details")
+          .insert({
+            quote_id: detail.quote_id,
+            plan_id: detail.plan_id,
+            resource_id: detail.resource_id,
+            machine_types_id: detail.machine_types_id,
+            software_types_id: detail.software_types_id,
+            allocated_hours: detail.allocated_hours,
+            work_on_saturday: detail.work_on_saturday || false,
+            work_on_sunday: detail.work_on_sunday || false
+          })
+          .select();
+        
+        if (error) {
+          console.error("Error creating planning detail:", error);
+          throw error;
+        }
+        
+        return data && data.length > 0 ? { ...detail, ...data[0] } : null;
+      }
     }
     
   } catch (err: any) {
@@ -271,30 +308,23 @@ export const syncMachinePlanningDetails = async (
         }
         
         try {
-          // If no planning detail exists, create one
-          if (!existingDetail) {
-            await savePlanningDetail({
-              quote_id: quoteId,
-              plan_id: plan.plan_id,
-              machine_types_id: machineId,
-              software_types_id: null,
-              resource_id: resourceId,
-              allocated_hours: hoursRequired,
-              work_on_saturday: false,
-              work_on_sunday: false
-            });
-          } else if (existingDetail.allocated_hours !== hoursRequired || 
-                    existingDetail.resource_id !== resourceId) {
-            // Only update if values have changed
-            await savePlanningDetail({
-              id: existingDetail.id,
-              quote_id: quoteId,
-              plan_id: plan.plan_id,
-              machine_types_id: machineId,
-              resource_id: resourceId,
-              allocated_hours: hoursRequired
-            });
+          // Create or update the planning detail
+          const planningDetail: PlanningDetail = {
+            quote_id: quoteId,
+            plan_id: plan.plan_id,
+            machine_types_id: machineId,
+            software_types_id: null,
+            resource_id: resourceId,
+            allocated_hours: hoursRequired,
+            work_on_saturday: false,
+            work_on_sunday: false
+          };
+          
+          if (existingDetail) {
+            planningDetail.id = existingDetail.id;
           }
+          
+          await savePlanningDetail(planningDetail);
         } catch (err) {
           console.error("Error processing planning detail:", err);
           // Continue with other operations
