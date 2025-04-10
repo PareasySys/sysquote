@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
 import { Card } from "@/components/ui/card";
@@ -188,7 +187,7 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
       {machines.map(machine => (
         <div key={machine.machine_type_id} className="space-y-2">
           <Card className="bg-slate-800/80 border border-white/5 p-3">
-            <div className="flex items-center mb-3">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-slate-700 rounded flex-shrink-0 overflow-hidden">
                   {machine.photo_url ? 
@@ -217,11 +216,9 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
                   }
                 </div>
               </div>
-            </div>
-            
-            {/* Training Plans Section - Horizontal Layout */}
-            <div className="border-t border-white/10 pt-3">
-              <div className="flex flex-wrap gap-3">
+
+              {/* Training Plans Icons - moved to the same row with machine name, aligned right */}
+              <div className="flex flex-wrap gap-2 justify-end">
                 {!plansLoading && plans.map(plan => {
                   const hours = getHours(machine.machine_type_id, plan.plan_id);
                   const iconUrl = plan.icon_name ? 
@@ -229,7 +226,7 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
                     null;
                     
                   return (
-                    <div key={plan.plan_id} className="flex items-center gap-1 bg-slate-700/50 rounded p-2">
+                    <div key={plan.plan_id} className="flex items-center gap-1 bg-slate-700/50 rounded p-1">
                       {iconUrl ? 
                         <img src={iconUrl} alt={plan.name} className="w-5 h-5" title={plan.name} /> : 
                         <div className="w-5 h-5 bg-gray-600 rounded-full"></div>
