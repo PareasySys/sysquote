@@ -115,35 +115,94 @@ export type Database = {
         }
         Relationships: []
       }
-      plan_specific_costs: {
+      planning_view: {
         Row: {
-          cost_type: string
-          cost_value: number
+          area_id: number | null
           created_at: string
-          plan_cost_id: number
-          plan_id: number
+          duration_days: number | null
+          id: string
+          machine_type_id: number | null
+          plan_id: number | null
+          quote_id: string
+          reference_id: string | null
+          resource_id: number | null
+          software_type_id: number | null
+          start_day: number | null
+          training_hours: number | null
+          updated_at: string
         }
         Insert: {
-          cost_type: string
-          cost_value: number
+          area_id?: number | null
           created_at?: string
-          plan_cost_id?: number
-          plan_id: number
+          duration_days?: number | null
+          id?: string
+          machine_type_id?: number | null
+          plan_id?: number | null
+          quote_id: string
+          reference_id?: string | null
+          resource_id?: number | null
+          software_type_id?: number | null
+          start_day?: number | null
+          training_hours?: number | null
+          updated_at?: string
         }
         Update: {
-          cost_type?: string
-          cost_value?: number
+          area_id?: number | null
           created_at?: string
-          plan_cost_id?: number
-          plan_id?: number
+          duration_days?: number | null
+          id?: string
+          machine_type_id?: number | null
+          plan_id?: number | null
+          quote_id?: string
+          reference_id?: string | null
+          resource_id?: number | null
+          software_type_id?: number | null
+          start_day?: number | null
+          training_hours?: number | null
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "plan_specific_costs_plan_id_fkey"
+            foreignKeyName: "planning_view_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "area_costs"
+            referencedColumns: ["area_id"]
+          },
+          {
+            foreignKeyName: "planning_view_machine_type_id_fkey"
+            columns: ["machine_type_id"]
+            isOneToOne: false
+            referencedRelation: "machine_types"
+            referencedColumns: ["machine_type_id"]
+          },
+          {
+            foreignKeyName: "planning_view_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "training_plans"
             referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "planning_view_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "planning_view_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["resource_id"]
+          },
+          {
+            foreignKeyName: "planning_view_software_type_id_fkey"
+            columns: ["software_type_id"]
+            isOneToOne: false
+            referencedRelation: "software_types"
+            referencedColumns: ["software_type_id"]
           },
         ]
       }
@@ -208,6 +267,8 @@ export type Database = {
           machine_type_ids: number[] | null
           quote_id: string
           quote_name: string
+          work_on_saturday: boolean | null
+          work_on_sunday: boolean | null
         }
         Insert: {
           area_id?: number | null
@@ -217,6 +278,8 @@ export type Database = {
           machine_type_ids?: number[] | null
           quote_id?: string
           quote_name: string
+          work_on_saturday?: boolean | null
+          work_on_sunday?: boolean | null
         }
         Update: {
           area_id?: number | null
@@ -226,6 +289,8 @@ export type Database = {
           machine_type_ids?: number[] | null
           quote_id?: string
           quote_name?: string
+          work_on_saturday?: boolean | null
+          work_on_sunday?: boolean | null
         }
         Relationships: [
           {
@@ -406,54 +471,6 @@ export type Database = {
         }
         Relationships: []
       }
-      training_requirements: {
-        Row: {
-          created_at: string
-          item_id: number
-          item_type: string
-          lesson_details: string | null
-          plan_id: number
-          required_resource_id: number
-          requirement_id: number
-          training_hours: number
-        }
-        Insert: {
-          created_at?: string
-          item_id: number
-          item_type: string
-          lesson_details?: string | null
-          plan_id: number
-          required_resource_id: number
-          requirement_id?: number
-          training_hours: number
-        }
-        Update: {
-          created_at?: string
-          item_id?: number
-          item_type?: string
-          lesson_details?: string | null
-          plan_id?: number
-          required_resource_id?: number
-          requirement_id?: number
-          training_hours?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "training_requirements_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "training_plans"
-            referencedColumns: ["plan_id"]
-          },
-          {
-            foreignKeyName: "training_requirements_required_resource_id_fkey"
-            columns: ["required_resource_id"]
-            isOneToOne: false
-            referencedRelation: "resources"
-            referencedColumns: ["resource_id"]
-          },
-        ]
-      }
       training_topics: {
         Row: {
           created_at: string
@@ -530,6 +547,27 @@ export type Database = {
           machine_details: Json
         }[]
       }
+      get_quote_planning_view: {
+        Args: { quote_id_param: string }
+        Returns: {
+          id: string
+          quote_id: string
+          reference_id: string
+          plan_id: number
+          plan_name: string
+          machine_type_id: number
+          machine_name: string
+          software_type_id: number
+          software_name: string
+          area_id: number
+          area_name: string
+          resource_id: number
+          resource_name: string
+          training_hours: number
+          start_day: number
+          duration_days: number
+        }[]
+      }
       get_quote_training_hours: {
         Args: { quote_id_param: string }
         Returns: {
@@ -561,6 +599,21 @@ export type Database = {
           machine_type_ids: number[]
           machines: Json
         }[]
+      }
+      save_quote_planning_item: {
+        Args: {
+          p_quote_id: string
+          p_reference_id: string
+          p_plan_id: number
+          p_machine_type_id: number
+          p_software_type_id: number
+          p_area_id: number
+          p_resource_id: number
+          p_training_hours: number
+          p_start_day: number
+          p_duration_days: number
+        }
+        Returns: string
       }
       update_quote_machines: {
         Args: { quote_id_param: string; machine_ids: number[] }

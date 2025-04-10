@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -112,7 +111,6 @@ const QuotePlanningPage: React.FC = () => {
     setWorkOnWeekends(newSettings);
     
     try {
-      // Convert keys from camelCase to snake_case for the database update
       const { error: updateError } = await supabase
         .from('quotes')
         .update({
@@ -127,7 +125,6 @@ const QuotePlanningPage: React.FC = () => {
     } catch (err: any) {
       console.error("Error updating weekend settings:", err);
       toast.error("Failed to update weekend settings");
-      // Revert the UI change
       setWorkOnWeekends(workOnWeekends);
     }
   };
