@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,7 +19,6 @@ import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import MachineSelector from "@/components/quotes/MachineSelector";
 import SelectedMachineList from "@/components/quotes/SelectedMachineList";
 import QuoteTrainingTopics from "@/components/quotes/QuoteTrainingTopics";
-import TrainingHoursSummary from "@/components/quotes/TrainingHoursSummary";
 import { useQuoteMachines } from "@/hooks/useQuoteMachines";
 import { Input } from "@/components/ui/input";
 import { useGeographicAreas } from "@/hooks/useGeographicAreas";
@@ -409,14 +407,11 @@ const QuoteConfigPage: React.FC = () => {
                       machines={selectedMachines}
                       onRemove={removeMachine}
                       loading={machinesLoading}
+                      quoteId={quoteId}
                     />
                   )}
                 </Card>
                 
-                {/* Add TrainingHoursSummary component */}
-                <TrainingHoursSummary quoteId={quoteId} />
-                
-                {/* Training topics component */}
                 {selectedMachines.length > 0 ? (
                   <div className="mt-6">
                     <QuoteTrainingTopics selectedMachines={selectedMachines} />
