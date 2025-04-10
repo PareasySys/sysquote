@@ -9,6 +9,7 @@ import { TreeView, TreeNode } from "@/components/ui/tree-view";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { ListChecks, HardDrive, Database, FileText, Folder, FolderOpen } from "lucide-react";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
+import { supabase } from "@/lib/supabaseClient";
 
 interface ExpandedState {
   [key: string]: boolean;
@@ -109,9 +110,6 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
       [nodeKey]: !prev[nodeKey]
     }));
   };
-  
-  // Import supabase client
-  const { supabase } = require("@/lib/supabaseClient");
   
   // Render loading state
   if (machinesLoading || softwareLoading || plansLoading) {

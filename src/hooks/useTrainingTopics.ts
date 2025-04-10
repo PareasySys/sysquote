@@ -34,6 +34,7 @@ export const useTrainingTopics = (
   const [error, setError] = useState<string | null>(null);
   const [requirementId, setRequirementId] = useState<number | null>(null);
 
+  // Define the fetchRequirement function
   const fetchRequirement = async () => {
     if (!itemId || !planId || !itemType) return null;
     
@@ -57,6 +58,7 @@ export const useTrainingTopics = (
     }
   };
 
+  // Define the fetchTopics function
   const fetchTopics = async () => {
     if (!itemId || !planId || !itemType) {
       setTopics([]);
@@ -106,7 +108,7 @@ export const useTrainingTopics = (
     }
   };
 
-  // Define these functions separately to avoid TypeScript circular reference
+  // Define the addTopic function without reference to requirementId in the signature
   const addTopic = async (topicText: string): Promise<boolean> => {
     if (!itemId || !planId || !itemType) return false;
 
@@ -186,6 +188,7 @@ export const useTrainingTopics = (
     }
   };
 
+  // Define remaining functions
   const updateTopic = async (topicId: number, topicText: string): Promise<boolean> => {
     try {
       const { error: updateError } = await supabase
