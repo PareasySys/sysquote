@@ -122,6 +122,9 @@ const QuotePlanningPage: React.FC = () => {
       if (updateError) throw updateError;
       
       toast.success(`Weekend schedule updated`);
+      
+      // The ResourceTrainingGantt component will automatically update
+      // and save the planning data when the weekend settings change
     } catch (err: any) {
       console.error("Error updating weekend settings:", err);
       toast.error("Failed to update weekend settings");

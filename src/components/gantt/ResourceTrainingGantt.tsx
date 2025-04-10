@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import GanttChart from "./GanttChart";
 import { useTrainingRequirements } from "@/hooks/useTrainingRequirements";
 import { Card } from "@/components/ui/card";
@@ -22,8 +22,16 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     requirements,
     loading,
     error,
-    fetchRequirements
+    fetchRequirements,
+    savePlanningItems
   } = useTrainingRequirements(quoteId, planId, workOnSaturday, workOnSunday);
+
+  // Refresh the data when weekend settings change
+  useEffect(() => {
+    if (planId && requirements.length > 0) {
+      savePlanningItems(requirements, planId, workOnSaturday, workOnSunday);
+    }
+  }, [workOnSaturday, workOnSunday]);
 
   if (!planId) {
     return (

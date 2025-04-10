@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
+import { v4 as uuidv4 } from 'uuid';
 
 export interface TrainingRequirement {
   requirement_id: number;
@@ -71,12 +72,63 @@ export const useTrainingRequirements = (
       });
       
       setRequirements(adjustedRequirements);
+      
+      // Save to planning_view table
+      await savePlanningItems(adjustedRequirements, planId, workOnSaturday, workOnSunday);
     } catch (err: any) {
       console.error("Error fetching training requirements:", err);
       setError(err.message || "Failed to load training requirements");
       toast.error("Failed to load training requirements");
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Save planning items to the database
+  const savePlanningItems = async (
+    items: TrainingRequirement[], 
+    planId: number, 
+    workOnSaturday: boolean,
+    workOnSunday: boolean
+  ) => {
+    if (!quoteId) return;
+    
+    try {
+      // First, delete existing planning items for this quote and plan
+      const { error: deleteError } = await supabase
+        .from('planning_view')
+        .delete()
+        .match({ quote_id: quoteId, plan_id: planId });
+      
+      if (deleteError) throw deleteError;
+      
+      // Insert each requirement as a planning item
+      for (const item of items) {
+        const { error: insertError } = await supabase.rpc(
+          'save_quote_planning_item',
+          {
+            p_quote_id: quoteId,
+            p_reference_id: uuidv4(),
+            p_plan_id: planId,
+            p_machine_type_id: null,
+            p_software_type_id: null,
+            p_area_id: null,
+            p_resource_id: item.resource_id,
+            p_training_hours: item.training_hours,
+            p_start_day: item.start_day,
+            p_duration_days: item.duration_days,
+            p_work_on_saturday: workOnSaturday,
+            p_work_on_sunday: workOnSunday
+          }
+        );
+        
+        if (insertError) throw insertError;
+      }
+      
+      console.log("Planning items saved successfully");
+    } catch (err: any) {
+      console.error("Error saving planning items:", err);
+      // Don't show toast here as it would appear for each tab change
     }
   };
 
@@ -88,6 +140,7 @@ export const useTrainingRequirements = (
     requirements,
     loading,
     error,
-    fetchRequirements
+    fetchRequirements,
+    savePlanningItems
   };
 };
