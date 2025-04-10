@@ -130,6 +130,8 @@ export type Database = {
           start_day: number | null
           training_hours: number | null
           updated_at: string
+          work_on_saturday: boolean | null
+          work_on_sunday: boolean | null
         }
         Insert: {
           area_id?: number | null
@@ -145,6 +147,8 @@ export type Database = {
           start_day?: number | null
           training_hours?: number | null
           updated_at?: string
+          work_on_saturday?: boolean | null
+          work_on_sunday?: boolean | null
         }
         Update: {
           area_id?: number | null
@@ -160,6 +164,8 @@ export type Database = {
           start_day?: number | null
           training_hours?: number | null
           updated_at?: string
+          work_on_saturday?: boolean | null
+          work_on_sunday?: boolean | null
         }
         Relationships: [
           {
@@ -566,6 +572,8 @@ export type Database = {
           training_hours: number
           start_day: number
           duration_days: number
+          work_on_saturday: boolean
+          work_on_sunday: boolean
         }[]
       }
       get_quote_training_hours: {
@@ -612,6 +620,8 @@ export type Database = {
           p_training_hours: number
           p_start_day: number
           p_duration_days: number
+          p_work_on_saturday?: boolean
+          p_work_on_sunday?: boolean
         }
         Returns: string
       }
