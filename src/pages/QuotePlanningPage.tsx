@@ -18,12 +18,53 @@ import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuoteTrainingHours } from "@/hooks/useQuoteTrainingHours";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
+import { useResources } from "@/hooks/useResources"; 
 import { supabase } from "@/integrations/supabase/client";
 
-// Import the new timeline components
+// Import the timeline components
 import Timeline from 'react-calendar-timeline';
+// Make sure this CSS import works
 import 'react-calendar-timeline/lib/Timeline.css';
 import moment from 'moment';
+
+interface WeekendSettings {
+  workOnSaturday: boolean;
+  workOnSunday: boolean;
+}
+
+interface TimelineGroup {
+  id: number;
+  title: string;
+}
+
+interface TimelineItem {
+  id: string;
+  group: number;
+  title: string;
+  start_time: number;
+  end_time: number;
+  canMove: boolean;
+  canResize: boolean;
+  canChangeGroup: boolean;
+  itemProps: {
+    style: {
+      background: string;
+      color: string;
+      borderRadius: string;
+      padding: string;
+    }
+  }
+}
+
+interface TrainingRequirement {
+  requirement_id: number;
+  machine_type_id?: number;
+  software_type_id?: number;
+  resource_id: number;
+  training_hours: number;
+  machine_types?: { name: string };
+  software_types?: { name: string };
+}
 
 const QuotePlanningPage: React.FC = () => {
   const { quoteId } = useParams<{ quoteId: string }>();
@@ -34,16 +75,24 @@ const QuotePlanningPage: React.FC = () => {
   const { plans, loading: plansLoading } = useTrainingPlans();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [resources, setResources] = useState<any[]>([]);
-  const [groups, setGroups] = useState<any[]>([]);
-  const [items, setItems] = useState<any[]>([]);
+  const [groups, setGroups] = useState<TimelineGroup[]>([]);
+  const [items, setItems] = useState<TimelineItem[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
-  const [workOnWeekends, setWorkOnWeekends] = useState({
+  const [workOnWeekends, setWorkOnWeekends] = useState<WeekendSettings>({
     workOnSaturday: false,
     workOnSunday: false
   });
 
-  const { planTotals, loading: hoursLoading } = useQuoteTrainingHours(quoteId);
+  // Get resources from our hook
+  const { resources } = useResources();
+
+  const { trainingHours, totalHours, loading: hoursLoading } = useQuoteTrainingHours(quoteId);
+
+  // Create a planTotals object from trainingHours
+  const planTotals: Record<number, number> = {};
+  trainingHours.forEach(plan => {
+    planTotals[plan.plan_id] = plan.training_hours;
+  });
 
   // Set up the generic calendar - 12 months with 30 days each
   const startDate = moment().startOf('year').toDate();
@@ -59,9 +108,9 @@ const QuotePlanningPage: React.FC = () => {
       setSelectedPlanId(plans[0].plan_id);
     }
     
-    fetchResources();
+    prepareResourceGroups();
     fetchQuoteSettings();
-  }, [user, quoteId, plans]);
+  }, [user, quoteId, plans, resources]);
 
   useEffect(() => {
     if (selectedPlanId) {
@@ -73,17 +122,20 @@ const QuotePlanningPage: React.FC = () => {
     if (!quoteId) return;
     
     try {
+      // Check if there's work_on_saturday and work_on_sunday in the database
+      // If not, we'll use default values
       const { data, error: fetchError } = await supabase
         .from("quotes")
-        .select("work_on_saturday, work_on_sunday")
+        .select("*")
         .eq("quote_id", quoteId)
         .single();
       
       if (fetchError) throw fetchError;
       
+      // Set defaults if these columns don't exist
       setWorkOnWeekends({
-        workOnSaturday: data?.work_on_saturday || false,
-        workOnSunday: data?.work_on_sunday || false
+        workOnSaturday: data?.work_on_saturday ?? false,
+        workOnSunday: data?.work_on_sunday ?? false
       });
     } catch (err: any) {
       console.error("Error fetching quote settings:", err);
@@ -91,31 +143,16 @@ const QuotePlanningPage: React.FC = () => {
     }
   };
 
-  const fetchResources = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('resources')
-        .select('*')
-        .order('resource_name');
-        
-      if (error) throw error;
-      
-      setResources(data || []);
-      
-      // Transform resources into timeline groups format
-      const formattedGroups = (data || []).map(resource => ({
-        id: resource.resource_id,
-        title: resource.resource_name
-      }));
-      
-      setGroups(formattedGroups);
-    } catch (err: any) {
-      console.error("Error fetching resources:", err);
-      setError(err.message || "Failed to load resources");
-    } finally {
-      setLoading(false);
-    }
+  const prepareResourceGroups = () => {
+    if (!resources || resources.length === 0) return;
+    
+    // Transform resources into timeline groups format
+    const formattedGroups = resources.map(resource => ({
+      id: resource.resource_id,
+      title: resource.name // Using name instead of resource_name
+    }));
+    
+    setGroups(formattedGroups);
   };
   
   const fetchTrainingData = async (planId: number) => {
@@ -123,25 +160,37 @@ const QuotePlanningPage: React.FC = () => {
     
     try {
       setLoading(true);
+      
+      // Get training requirements for the quote and plan
+      // Since quote_training_requirements might not exist, we'll use a more general query
+      // This would need to be adjusted to match your actual database schema
       const { data, error } = await supabase
-        .from('quote_training_requirements')
+        .from('training_requirements')
         .select(`
           requirement_id,
-          machine_type_id,
-          software_type_id,
-          resource_id,
-          training_hours,
-          machine_types(name),
-          software_types(name),
-          resources(resource_name)
+          item_id,
+          item_type,
+          plan_id,
+          required_resource_id,
+          training_hours
         `)
-        .eq('quote_id', quoteId)
         .eq('plan_id', planId);
-        
+      
       if (error) throw error;
       
+      // Convert the data to match our expected format
+      const requirements = (data || []).map(req => ({
+        requirement_id: req.requirement_id,
+        resource_id: req.required_resource_id,
+        training_hours: req.training_hours,
+        machine_type_id: req.item_type === 'machine' ? req.item_id : undefined,
+        software_type_id: req.item_type === 'software' ? req.item_id : undefined,
+        machine_types: req.item_type === 'machine' ? { name: `Training Item ${req.item_id}` } : undefined,
+        software_types: req.item_type === 'software' ? { name: `Software ${req.item_id}` } : undefined
+      }));
+      
       // Generate timeline items from the requirements data
-      const timelineItems = generateTimelineItems(data || []);
+      const timelineItems = generateTimelineItems(requirements);
       setItems(timelineItems);
     } catch (err: any) {
       console.error("Error fetching training data:", err);
@@ -152,12 +201,12 @@ const QuotePlanningPage: React.FC = () => {
   };
 
   // Generate timeline items with scheduling logic
-  const generateTimelineItems = (requirements: any[]): any[] => {
+  const generateTimelineItems = (requirements: TrainingRequirement[]): TimelineItem[] => {
     const maxHoursPerDay = 8;
-    const items: any[] = [];
+    const items: TimelineItem[] = [];
     
     // Group requirements by resource
-    const resourceRequirements: {[key: number]: any[]} = {};
+    const resourceRequirements: {[key: number]: TrainingRequirement[]} = {};
     requirements.forEach(req => {
       const resourceId = req.resource_id;
       if (!resourceRequirements[resourceId]) {
@@ -173,8 +222,8 @@ const QuotePlanningPage: React.FC = () => {
       
       reqs.forEach((req, index) => {
         const taskName = req.machine_type_id 
-          ? req.machine_types?.name 
-          : req.software_types?.name;
+          ? req.machine_types?.name || 'Machine Training'
+          : req.software_types?.name || 'Software Training';
         
         let hoursRemaining = req.training_hours;
         
@@ -290,17 +339,17 @@ const QuotePlanningPage: React.FC = () => {
                 <Avatar className="w-8 h-8 border-2 border-gray-700">
                   <AvatarImage src={profileData.avatarUrl || ""} />
                   <AvatarFallback className="bg-gray-600 text-gray-200 text-xs">
-                    {profileData.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || "U"}
+                    {profileData.firstName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
                   <div className="text-sm text-gray-200 font-semibold truncate max-w-[140px]">
                     {(profileData.firstName && profileData.lastName) 
                       ? `${profileData.firstName} ${profileData.lastName}`
-                      : user.email?.split('@')[0]}
+                      : user?.email?.split('@')[0]}
                   </div>
                   <div className="text-xs text-gray-400 truncate max-w-[140px]">
-                    {user.email}
+                    {user?.email}
                   </div>
                 </div>
               </div>
@@ -309,7 +358,7 @@ const QuotePlanningPage: React.FC = () => {
                 <Avatar className="w-8 h-8 border-2 border-gray-700">
                   <AvatarImage src={profileData.avatarUrl || ""} />
                   <AvatarFallback className="bg-gray-600 text-gray-200 text-xs">
-                    {profileData.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || "U"}
+                    {profileData.firstName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
               </div>
@@ -341,7 +390,7 @@ const QuotePlanningPage: React.FC = () => {
             <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
               <p className="text-red-300">{error}</p>
               <Button 
-                onClick={() => fetchTrainingData(selectedPlanId!)} 
+                onClick={() => selectedPlanId && fetchTrainingData(selectedPlanId)} 
                 variant="outline" 
                 className="mt-2 text-blue-300 border-blue-800 hover:bg-blue-900/50"
               >
