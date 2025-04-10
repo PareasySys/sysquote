@@ -131,7 +131,7 @@ export const useTrainingTopics = (
         }
       }
 
-      type NewTopic = {
+      interface NewTopic {
         requirement_id: number;
         plan_id: number;
         topic_text: string;
@@ -139,7 +139,7 @@ export const useTrainingTopics = (
         updated_at: string;
         machine_type_id?: number | null;
         software_type_id?: number | null;
-      };
+      }
 
       const newTopic: NewTopic = {
         requirement_id: reqId as number,

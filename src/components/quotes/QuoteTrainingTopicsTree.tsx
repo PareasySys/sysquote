@@ -97,12 +97,12 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
 
   return (
     <Card className="bg-slate-800/80 border border-white/5 p-4">
-      <h2 className="text-xl font-semibold mb-4 text-gray-200 flex items-center gap-2">
-        <ListChecks className="h-5 w-5 text-blue-400" />
+      <h2 className="text-xl font-semibold mb-4 text-white flex items-center gap-2">
+        <ListChecks className="h-5 w-5 text-white" />
         Training Topics
       </h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {/* Tree View */}
         <div className="bg-slate-700/30 rounded-md p-2 border border-slate-600/30">
           <TreeView className="max-h-[60vh] overflow-y-auto pr-2">
@@ -110,7 +110,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
             <TreeNode 
               id="machines"
               label="Machine Topics"
-              icon={expanded['machines'] ? <FolderOpen size={16} className="text-blue-400" /> : <Folder size={16} className="text-blue-400" />}
+              icon={expanded['machines'] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
               expanded={expanded['machines']}
               onToggle={() => toggleExpanded('machines')}
             />
@@ -123,7 +123,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                   <TreeNode 
                     id={machineKey}
                     label={machine.name}
-                    icon={<HardDrive size={14} className="text-blue-300" />}
+                    icon={<HardDrive size={14} className="text-white" />}
                     expanded={expanded[machineKey]}
                     level={1}
                     onToggle={() => toggleExpanded(machineKey)}
@@ -141,7 +141,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                         key={planKey}
                         id={planKey}
                         label={plan.name}
-                        icon={expanded[planKey] ? <FolderOpen size={14} className="text-green-300" /> : <Folder size={14} className="text-green-300" />}
+                        icon={expanded[planKey] ? <FolderOpen size={14} className="text-white" /> : <Folder size={14} className="text-white" />}
                         expanded={expanded[planKey]}
                         selected={isSelected}
                         level={2}
@@ -149,6 +149,32 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                         onToggle={() => toggleExpanded(planKey)}
                       />
                     );
+                  })}
+                  
+                  {/* Display topics when a plan is selected and expanded */}
+                  {plans.map(plan => {
+                    const planKey = `${machineKey}-plan-${plan.plan_id}`;
+                    const isCurrentPlan = selectedItemId === machine.machine_type_id && 
+                                         selectedPlanId === plan.plan_id && 
+                                         selectedItemType === 'machine';
+                    
+                    if (expanded[planKey] && isCurrentPlan && !topicsLoading && topics.length > 0) {
+                      return (
+                        <React.Fragment key={`${planKey}-topics`}>
+                          {topics.map((topic) => (
+                            <TreeNode 
+                              key={`topic-${topic.topic_id}`}
+                              id={`topic-${topic.topic_id}`}
+                              label={topic.topic_text}
+                              icon={<FileText size={14} className="text-white" />}
+                              level={3}
+                              isLeaf={true}
+                            />
+                          ))}
+                        </React.Fragment>
+                      );
+                    }
+                    return null;
                   })}
                 </React.Fragment>
               );
@@ -158,7 +184,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
             <TreeNode 
               id="software"
               label="Software Topics"
-              icon={expanded['software'] ? <FolderOpen size={16} className="text-green-400" /> : <Folder size={16} className="text-green-400" />}
+              icon={expanded['software'] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
               expanded={expanded['software']}
               onToggle={() => toggleExpanded('software')}
             />
@@ -171,7 +197,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                   <TreeNode 
                     id={softwareKey}
                     label={softwareItem.name}
-                    icon={<Database size={14} className="text-green-300" />}
+                    icon={<Database size={14} className="text-white" />}
                     expanded={expanded[softwareKey]}
                     level={1}
                     onToggle={() => toggleExpanded(softwareKey)}
@@ -189,7 +215,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                         key={planKey}
                         id={planKey}
                         label={plan.name}
-                        icon={expanded[planKey] ? <FolderOpen size={14} className="text-blue-300" /> : <Folder size={14} className="text-blue-300" />}
+                        icon={expanded[planKey] ? <FolderOpen size={14} className="text-white" /> : <Folder size={14} className="text-white" />}
                         expanded={expanded[planKey]}
                         selected={isSelected}
                         level={2}
@@ -198,55 +224,36 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                       />
                     );
                   })}
+                  
+                  {/* Display topics when a plan is selected and expanded */}
+                  {plans.map(plan => {
+                    const planKey = `${softwareKey}-plan-${plan.plan_id}`;
+                    const isCurrentPlan = selectedItemId === softwareItem.software_type_id && 
+                                         selectedPlanId === plan.plan_id && 
+                                         selectedItemType === 'software';
+                    
+                    if (expanded[planKey] && isCurrentPlan && !topicsLoading && topics.length > 0) {
+                      return (
+                        <React.Fragment key={`${planKey}-topics`}>
+                          {topics.map((topic) => (
+                            <TreeNode 
+                              key={`topic-${topic.topic_id}`}
+                              id={`topic-${topic.topic_id}`}
+                              label={topic.topic_text}
+                              icon={<FileText size={14} className="text-white" />}
+                              level={3}
+                              isLeaf={true}
+                            />
+                          ))}
+                        </React.Fragment>
+                      );
+                    }
+                    return null;
+                  })}
                 </React.Fragment>
               );
             })}
           </TreeView>
-        </div>
-        
-        {/* Topics Display */}
-        <div className="bg-slate-700/30 rounded-md p-4 border border-slate-600/30">
-          {!selectedItemId || !selectedPlanId ? (
-            <div className="text-center text-gray-400 p-4">
-              Select a topic from the tree to view details
-            </div>
-          ) : topicsLoading ? (
-            <div className="p-4 text-center">
-              <TextShimmerWave
-                className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-sm"
-                duration={1}
-                spread={1}
-                zDistance={1}
-                scaleDistance={1.1}
-                rotateYDistance={10}
-              >
-                Loading Topics...
-              </TextShimmerWave>
-            </div>
-          ) : topics.length === 0 ? (
-            <div className="text-gray-400 p-2 text-center">
-              No training topics found for this selection.
-            </div>
-          ) : (
-            <div>
-              <h3 className="text-lg font-medium text-gray-200 mb-3">
-                {selectedItemType === 'machine' 
-                  ? filteredMachines.find(m => m.machine_type_id === selectedItemId)?.name
-                  : software.find(s => s.software_type_id === selectedItemId)?.name}
-                {' - '}
-                {plans.find(p => p.plan_id === selectedPlanId)?.name}
-              </h3>
-              
-              <ul className="list-disc list-inside space-y-2 pl-2">
-                {topics.map((topic) => (
-                  <li key={topic.topic_id} className="text-gray-200 flex items-start gap-2">
-                    <FileText size={16} className="text-gray-400 mt-1 flex-shrink-0" />
-                    <span>{topic.topic_text}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
       </div>
     </Card>
