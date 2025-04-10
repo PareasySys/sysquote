@@ -2,12 +2,9 @@
 import React, { useState, useEffect } from "react";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Trash, Edit } from "lucide-react";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 
 interface SelectedMachineListProps {
   machines: QuoteMachine[];
@@ -30,8 +27,7 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
 }) => {
   const { plans, loading: plansLoading } = useTrainingPlans();
   const [trainingHours, setTrainingHours] = useState<TrainingHours[]>([]);
-  const [totalHours, setTotalHours] = useState<Record<number, number>>({});
-  const [isEditing, setIsEditing] = useState<Record<string, boolean>>({});
+  const [totalsByPlan, setTotalsByPlan] = useState<Record<number, number>>({});
 
   // Fetch training offers data (default hours) for each machine
   useEffect(() => {
@@ -58,12 +54,8 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
           
           setTrainingHours(initialHours);
           
-          // Calculate total hours per machine
-          const totals: Record<number, number> = {};
-          initialHours.forEach(item => {
-            totals[item.machineId] = (totals[item.machineId] || 0) + item.hours;
-          });
-          setTotalHours(totals);
+          // Calculate total hours per plan
+          calculatePlanTotals(initialHours);
         }
       } catch (err) {
         console.error("Error fetching training offers:", err);
@@ -105,7 +97,7 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
           });
           
           // Recalculate totals
-          calculateTotals();
+          calculatePlanTotals(trainingHours);
         }
       } catch (err) {
         console.error("Error fetching saved hours:", err);
@@ -116,13 +108,15 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
     fetchSavedHours();
   }, [machines, quoteId]);
   
-  // Calculate total hours for each machine
-  const calculateTotals = () => {
+  // Calculate total hours for each plan across all machines
+  const calculatePlanTotals = (hours: TrainingHours[]) => {
     const totals: Record<number, number> = {};
-    trainingHours.forEach(item => {
-      totals[item.machineId] = (totals[item.machineId] || 0) + item.hours;
+    
+    hours.forEach(item => {
+      totals[item.planId] = (totals[item.planId] || 0) + item.hours;
     });
-    setTotalHours(totals);
+    
+    setTotalsByPlan(totals);
   };
   
   // Update hours for a specific machine and plan
@@ -134,35 +128,23 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
         item.machineId === machineId && item.planId === planId
       );
       
+      const updated = [...prev];
       if (index >= 0) {
-        const updated = [...prev];
         updated[index].hours = safeHours;
-        return updated;
       } else {
-        return [...prev, { machineId, planId, hours: safeHours }];
+        updated.push({ machineId, planId, hours: safeHours });
       }
+      
+      // Recalculate plan totals
+      calculatePlanTotals(updated);
+      
+      return updated;
     });
-    
-    // Update total for this machine
-    setTotalHours(prev => ({
-      ...prev,
-      [machineId]: Object.entries(trainingHours)
-        .filter(([_, item]) => item.machineId === machineId && item.planId !== planId)
-        .reduce((sum, [_, item]) => sum + item.hours, safeHours)
-    }));
     
     // Save to database if quoteId is available
     if (quoteId) {
       saveHoursToDB(machineId, planId, safeHours);
     }
-  };
-  
-  // Toggle edit mode for a specific machine
-  const toggleEdit = (machineId: string) => {
-    setIsEditing(prev => ({
-      ...prev,
-      [machineId]: !prev[machineId]
-    }));
   };
   
   // Save hours to the database
@@ -206,7 +188,7 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
       {machines.map(machine => (
         <div key={machine.machine_type_id} className="space-y-2">
           <Card className="bg-slate-800/80 border border-white/5 p-3">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-slate-700 rounded flex-shrink-0 overflow-hidden">
                   {machine.photo_url ? 
@@ -235,29 +217,10 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
                   }
                 </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10"
-                  onClick={() => toggleEdit(machine.machine_type_id.toString())}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 text-gray-400 hover:text-red-400 hover:bg-red-500/10"
-                  onClick={() => onRemove(machine.machine_type_id)}
-                >
-                  <Trash className="h-4 w-4" />
-                </Button>
-              </div>
             </div>
             
-            {/* Training Plans Section */}
-            <div className="mt-3 border-t border-white/10 pt-3">
+            {/* Training Plans Section - Horizontal Layout */}
+            <div className="border-t border-white/10 pt-3">
               <div className="flex flex-wrap gap-3">
                 {!plansLoading && plans.map(plan => {
                   const hours = getHours(machine.machine_type_id, plan.plan_id);
@@ -266,51 +229,49 @@ const SelectedMachineList: React.FC<SelectedMachineListProps> = ({
                     null;
                     
                   return (
-                    <div key={plan.plan_id} className="flex items-center gap-1 bg-slate-700/50 rounded p-1 px-2">
+                    <div key={plan.plan_id} className="flex items-center gap-1 bg-slate-700/50 rounded p-2">
                       {iconUrl ? 
-                        <img src={iconUrl} alt={plan.name} className="w-4 h-4" /> : 
-                        <div className="w-4 h-4 bg-gray-600 rounded-full"></div>
+                        <img src={iconUrl} alt={plan.name} className="w-5 h-5" title={plan.name} /> : 
+                        <div className="w-5 h-5 bg-gray-600 rounded-full"></div>
                       }
-                      <span className="text-xs text-gray-300">{plan.name}: </span>
-                      {isEditing[machine.machine_type_id.toString()] ? (
-                        <Input 
-                          type="number"
-                          min="0"
-                          value={hours}
-                          onChange={(e) => handleHoursChange(
-                            machine.machine_type_id, 
-                            plan.plan_id, 
-                            parseInt(e.target.value, 10)
-                          )}
-                          className="w-12 h-6 text-xs p-1 text-center bg-slate-600 border-slate-500"
-                        />
-                      ) : (
-                        <span className="text-xs font-medium text-gray-200">{hours}h</span>
-                      )}
+                      <span className="text-xs font-medium text-gray-200">{hours}h</span>
                     </div>
                   );
                 })}
-              </div>
-            </div>
-            
-            {/* Machine Total Hours */}
-            <div className="mt-2 pt-2 border-t border-white/10 flex justify-end">
-              <div className="text-xs text-gray-400">
-                Total: <span className="text-gray-200 font-medium">
-                  {totalHours[machine.machine_type_id] || 0}h
-                </span>
               </div>
             </div>
           </Card>
         </div>
       ))}
       
-      {/* Overall Total Training Hours */}
+      {/* Overall Total Training Hours by Plan */}
       <Card className="bg-slate-700/50 border border-white/5 p-3">
-        <div className="flex justify-between items-center">
-          <h4 className="text-sm font-medium text-gray-300">Total Training Hours</h4>
-          <div className="text-gray-200 font-medium">
-            {Object.values(totalHours).reduce((sum, hours) => sum + hours, 0)}h
+        <div className="mb-2">
+          <h4 className="text-sm font-medium text-gray-300">Total Training Hours by Plan</h4>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {!plansLoading && plans.map(plan => {
+            const totalHours = totalsByPlan[plan.plan_id] || 0;
+            const iconUrl = plan.icon_name ? 
+              `${supabase.storage.from('training_plan_icons').getPublicUrl(plan.icon_name + '.svg').data.publicUrl}` : 
+              null;
+              
+            return (
+              <div key={plan.plan_id} className="flex items-center gap-1 bg-slate-700/30 rounded p-2">
+                {iconUrl ? 
+                  <img src={iconUrl} alt={plan.name} className="w-5 h-5" title={plan.name} /> : 
+                  <div className="w-5 h-5 bg-gray-600 rounded-full"></div>
+                }
+                <span className="text-xs font-medium text-gray-200">{totalHours}h</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-2 pt-2 border-t border-white/10 flex justify-end">
+          <div className="text-xs text-gray-400">
+            Grand Total: <span className="text-gray-200 font-medium">
+              {Object.values(totalsByPlan).reduce((sum, hours) => sum + hours, 0)}h
+            </span>
           </div>
         </div>
       </Card>
