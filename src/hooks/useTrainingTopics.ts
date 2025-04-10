@@ -20,13 +20,13 @@ export interface TrainingTopicBase {
 export type TrainingTopic = TrainingTopicBase;
 export type RequirementId = { requirement_id: number };
 
-// Fix to avoid excessive type instantiation
+// Fix to avoid excessive type instantiation and update requirement_id to nullable
 export type NewTopicInsert = {
   topic_text: string;
   plan_id?: number | null;
   machine_type_id?: number | null;
   software_type_id?: number | null;
-  requirement_id?: number | null;
+  requirement_id: number | null; // Changed to non-optional but nullable
   item_type?: string | null;
   display_order?: number | null;
 };
@@ -88,12 +88,12 @@ export const useTrainingTopics = (
         const newTopicData: NewTopicInsert = {
           topic_text: newTopicText,
           machine_type_id: machineTypeId,
-          requirement_id: null, // Explicitly set to null to satisfy TS
+          requirement_id: null // Now explicitly required but can be null
         };
 
         const { data, error } = await supabase
           .from("training_topics")
-          .insert(newTopicData)
+          .insert([newTopicData]) // Fixed: Pass as array for batch insert
           .select()
           .single();
 
@@ -173,7 +173,7 @@ export const useTrainingTopics = (
     }
   };
 
-  // Add the missing function to delete topics by item ID (machine or software)
+  // Add the function to delete topics by item ID (machine or software)
   const deleteTopicsByItemId = async (itemId: number, itemType: "machine" | "software"): Promise<boolean> => {
     try {
       const fieldName = itemType === "machine" ? "machine_type_id" : "software_type_id";
