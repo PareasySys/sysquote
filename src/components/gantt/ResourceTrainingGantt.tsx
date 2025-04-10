@@ -5,6 +5,8 @@ import { useTrainingRequirements } from "@/hooks/useTrainingRequirements";
 import { Card } from "@/components/ui/card";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { supabase } from "@/lib/supabaseClient";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface ResourceTrainingGanttProps {
   quoteId: string | undefined;
@@ -39,6 +41,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
 
   const [storedDetails, setStoredDetails] = useState<PlanningDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Fetch saved planning details
   const fetchStoredDetails = async () => {
@@ -46,6 +49,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     
     try {
       setDetailsLoading(true);
+      setFetchError(null);
       
       const { data, error } = await supabase
         .from("planning_details")
@@ -62,7 +66,11 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
         .eq("quote_id", quoteId)
         .eq("plan_id", planId);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching planning details:", error);
+        setFetchError(error.message);
+        throw error;
+      }
       
       console.log("Stored planning details:", data);
       
@@ -82,6 +90,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       
     } catch (err: any) {
       console.error("Error fetching planning details:", err);
+      setFetchError(err.message || "Failed to fetch planning details");
     } finally {
       setDetailsLoading(false);
     }
@@ -118,6 +127,13 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
           )}
         </p>
       </div>
+
+      {fetchError && (
+        <Alert variant="destructive" className="mb-4 bg-red-900/30 border-red-800/30 text-red-200">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{fetchError}</AlertDescription>
+        </Alert>
+      )}
       
       <div className="h-[500px] overflow-hidden">
         <GanttChart

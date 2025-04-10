@@ -48,7 +48,10 @@ export const useTrainingRequirements = (
         .eq("quote_id", quoteId)
         .eq("plan_id", planId);
       
-      if (detailsError) throw detailsError;
+      if (detailsError) {
+        console.error("Error fetching planning details:", detailsError);
+        throw detailsError;
+      }
       
       console.log("Planning details fetched:", planningDetails);
       
@@ -68,6 +71,8 @@ export const useTrainingRequirements = (
         
         // If not working on weekends, extend duration to account for skipped days
         if (!workOnSaturday || !workOnSunday) {
+          // Calculate how many weekends will be encountered during the duration
+          // For simplicity, assuming uniform distribution of weekends (2 days per 7)
           const daysOff = (!workOnSaturday && !workOnSunday) ? 2 : 1;
           const weekendAdjustment = Math.floor(durationDays / 5) * daysOff;
           durationDays += weekendAdjustment;

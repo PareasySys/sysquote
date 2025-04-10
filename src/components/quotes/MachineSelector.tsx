@@ -34,7 +34,12 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
         .from("training_offers")
         .select("machine_type_id, plan_id, hours_required");
         
-      if (offersError) throw offersError;
+      if (offersError) {
+        console.error("Error fetching training offers:", offersError);
+        throw offersError;
+      }
+      
+      console.log("Fetched training offers:", allTrainingOffers);
       
       // First delete any planning details for machines that are no longer selected
       const { error: deleteError } = await supabase
@@ -44,7 +49,10 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
         .neq("machine_types_id", null) // Only delete machine-related records
         .not("machine_types_id", "in", `(${machineIds.length > 0 ? machineIds.join(",") : 0})`);
         
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error("Error deleting planning details:", deleteError);
+        throw deleteError;
+      }
       
       // For each selected machine ID and each training plan, ensure there's a planning_details entry
       for (const machineId of machineIds) {
@@ -66,31 +74,53 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
             .eq("machine_types_id", machineId)
             .maybeSingle();
             
-          if (checkError) throw checkError;
+          if (checkError) {
+            console.error("Error checking existing planning details:", checkError);
+            throw checkError;
+          }
           
-          // If no planning detail exists, create one
-          if (!existingDetail) {
-            await supabase
-              .from("planning_details")
-              .insert({
-                quote_id: quoteId,
-                plan_id: plan.plan_id,
-                machine_types_id: machineId,
-                software_types_id: null,
-                resource_id: null,
-                allocated_hours: hoursRequired,
-                work_on_saturday: false,
-                work_on_sunday: false
-              });
-          } else {
-            // Ensure allocated hours are updated to match current training offer
-            await supabase
-              .from("planning_details")
-              .update({
-                allocated_hours: hoursRequired,
-                updated_at: new Date().toISOString()
-              })
-              .eq("id", existingDetail.id);
+          console.log(`Machine ${machineId}, Plan ${plan.plan_id}: ${existingDetail ? 'exists' : 'needs creation'}`);
+          
+          try {
+            // If no planning detail exists, create one
+            if (!existingDetail) {
+              console.log(`Creating planning detail for machine ${machineId}, plan ${plan.plan_id}`);
+              const { error: insertError } = await supabase
+                .from("planning_details")
+                .insert({
+                  quote_id: quoteId,
+                  plan_id: plan.plan_id,
+                  machine_types_id: machineId,
+                  software_types_id: null,
+                  resource_id: null,
+                  allocated_hours: hoursRequired,
+                  work_on_saturday: false,
+                  work_on_sunday: false
+                });
+                
+              if (insertError) {
+                console.error("Error inserting planning detail:", insertError);
+                throw insertError;
+              }
+            } else {
+              // Ensure allocated hours are updated to match current training offer
+              console.log(`Updating planning detail for machine ${machineId}, plan ${plan.plan_id}`);
+              const { error: updateError } = await supabase
+                .from("planning_details")
+                .update({
+                  allocated_hours: hoursRequired,
+                  updated_at: new Date().toISOString()
+                })
+                .eq("id", existingDetail.id);
+                
+              if (updateError) {
+                console.error("Error updating planning detail:", updateError);
+                throw updateError;
+              }
+            }
+          } catch (err) {
+            console.error("Error processing planning detail:", err);
+            toast.error("Failed to update planning details");
           }
         }
       }
