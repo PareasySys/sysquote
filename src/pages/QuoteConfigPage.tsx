@@ -384,6 +384,7 @@ const QuoteConfigPage: React.FC = () => {
                 <MachineSelector
                   selectedMachineIds={machineTypeIds}
                   onSave={handleMachineSave}
+                  quoteId={quoteId}
                 />
               </div>
               
