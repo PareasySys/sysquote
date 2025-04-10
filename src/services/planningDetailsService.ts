@@ -177,6 +177,8 @@ export const deletePlanningDetail = async (
 
 /**
  * Sync planning details for selected machines
+ * This function will now first clean up all existing machine planning details
+ * and then create exactly one entry per machine per plan
  */
 export const syncMachinePlanningDetails = async (
   quoteId: string,
@@ -187,6 +189,18 @@ export const syncMachinePlanningDetails = async (
   
   try {
     console.log("Syncing planning details for machines:", selectedMachineIds);
+    
+    // First step: Delete ALL existing machine planning details for this quote
+    const { error: deleteError } = await supabase
+      .from("planning_details")
+      .delete()
+      .eq("quote_id", quoteId)
+      .not("machine_types_id", "is", null);
+    
+    if (deleteError) {
+      console.error("Error deleting existing planning details:", deleteError);
+      throw deleteError;
+    }
     
     // Get all training offers to get hours_required for each machine-plan combination
     const { data: allTrainingOffers, error: offersError } = await supabase
@@ -208,34 +222,10 @@ export const syncMachinePlanningDetails = async (
       throw reqsError;
     }
     
-    // First get all existing planning details for this quote's machines
-    const { data: existingDetails, error: fetchError } = await supabase
-      .from("planning_details")
-      .select("id, machine_types_id")
-      .eq("quote_id", quoteId)
-      .not("machine_types_id", "is", null);
-      
-    if (fetchError) {
-      console.error("Error fetching existing planning details:", fetchError);
-      throw fetchError;
-    }
+    console.log("Creating planning details for", selectedMachineIds.length, "machines and", plans.length, "plans");
     
-    // Find details that should be deleted (machine no longer selected)
-    const detailsToDelete = (existingDetails || []).filter(
-      detail => !selectedMachineIds.includes(detail.machine_types_id || 0)
-    );
-    
-    // Delete machine-related planning details that are no longer needed
-    if (detailsToDelete.length > 0) {
-      console.log(`Deleting ${detailsToDelete.length} planning details for removed machines`);
-      
-      for (const detail of detailsToDelete) {
-        await deletePlanningDetail(detail.id);
-      }
-    }
-    
-    // For each selected machine ID and each training plan, create a new planning_details entry
-    // Always insert new records regardless of duplicates
+    // For each selected machine ID and each training plan, create exactly one planning_details entry
+    const bulkInsertData = [];
     for (const machineId of selectedMachineIds) {
       for (const plan of plans) {
         // Find the corresponding training requirement for this machine-plan combination
@@ -256,25 +246,32 @@ export const syncMachinePlanningDetails = async (
         // Default hours if no specific training offer is found
         const hoursRequired = trainingOffer?.hours_required || 0;
         
-        try {
-          // Create a new planning detail - no duplicate checking
-          const planningDetail: PlanningDetail = {
-            quote_id: quoteId,
-            plan_id: plan.plan_id,
-            machine_types_id: machineId,
-            software_types_id: null,
-            resource_id: resourceId,
-            allocated_hours: hoursRequired,
-            work_on_saturday: false,
-            work_on_sunday: false
-          };
-          
-          await savePlanningDetail(planningDetail);
-        } catch (err) {
-          console.error("Error processing planning detail:", err);
-          // Continue with other operations
-        }
+        // Create a planning detail record for bulk insert
+        bulkInsertData.push({
+          quote_id: quoteId,
+          plan_id: plan.plan_id,
+          machine_types_id: machineId,
+          software_types_id: null,
+          resource_id: resourceId,
+          allocated_hours: hoursRequired,
+          work_on_saturday: false,
+          work_on_sunday: false
+        });
       }
+    }
+    
+    // Perform bulk insert if there are records to insert
+    if (bulkInsertData.length > 0) {
+      const { error: insertError } = await supabase
+        .from("planning_details")
+        .insert(bulkInsertData);
+      
+      if (insertError) {
+        console.error("Error inserting planning details:", insertError);
+        throw insertError;
+      }
+      
+      console.log(`Successfully created ${bulkInsertData.length} planning detail records`);
     }
     
     return true;
@@ -316,7 +313,6 @@ export const cleanupRemovedMachines = async (
       .from("planning_details")
       .select("id, machine_types_id")
       .eq("quote_id", quoteId)
-      .eq("plan_id", planId)
       .not("machine_types_id", "is", null);
     
     if (orphanError) {
@@ -333,8 +329,16 @@ export const cleanupRemovedMachines = async (
     if (detailsToDelete && detailsToDelete.length > 0) {
       console.log(`Deleting ${detailsToDelete.length} orphaned planning details`);
       
-      for (const detail of detailsToDelete) {
-        await deletePlanningDetail(detail.id);
+      // Delete in bulk
+      const idsToDelete = detailsToDelete.map(detail => detail.id);
+      const { error: deleteError } = await supabase
+        .from("planning_details")
+        .delete()
+        .in("id", idsToDelete);
+        
+      if (deleteError) {
+        console.error("Error deleting orphaned planning details:", deleteError);
+        return false;
       }
     }
     

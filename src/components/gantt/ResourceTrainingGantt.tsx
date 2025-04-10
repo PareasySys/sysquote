@@ -62,9 +62,11 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
           durationDays += weekendAdjustment;
         }
         
-        // Use simple spacing algorithm for start days
-        // For duplicate resources, space them out a bit more to avoid overlaps
-        const startDay = (index + 1) * 5; 
+        // Use simple spacing algorithm for start days based on resource grouping
+        // Group by resource to better space out tasks for the same resource
+        const resourceDetails = details.filter(d => d.resource_id === detail.resource_id);
+        const resourceIndex = resourceDetails.findIndex(d => d.id === detail.id);
+        const startDay = resourceIndex * 5 + 1;
         
         return {
           requirement_id: index + 1, // Use index for unique requirement_id

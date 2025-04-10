@@ -88,7 +88,7 @@ export const useTrainingRequirements = (
   useEffect(() => {
     fetchRequirements();
     
-    // When quote, plan, or weekend settings change, clean up any orphaned planning details
+    // When quote or plan changes, clean up any orphaned planning details
     if (quoteId && planId) {
       cleanupRemovedMachines(quoteId, planId);
     }

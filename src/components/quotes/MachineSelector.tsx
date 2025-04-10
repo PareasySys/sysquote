@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { useMachineTypes } from "@/hooks/useMachineTypes";
 import MachineTypeCard from "@/components/machines/MachineTypeCard";
@@ -21,9 +21,15 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
 }) => {
   const { machines, loading, error } = useMachineTypes();
   const { plans } = useTrainingPlans();
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Function to handle machine selection changes
   const toggleMachineSelection = async (machineTypeId: number) => {
+    if (isSyncing) {
+      toast.info("Please wait, syncing in progress...");
+      return;
+    }
+
     try {
       // Create a new selection array
       const updatedSelection = selectedMachineIds.includes(machineTypeId)
@@ -34,29 +40,45 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
       onSave(updatedSelection);
       
       // Sync planning details with our service if we have a quote ID
-      if (quoteId) {
+      if (quoteId && plans.length > 0) {
+        setIsSyncing(true);
         await syncMachinePlanningDetails(quoteId, updatedSelection, plans);
+        setIsSyncing(false);
       }
     } catch (err) {
       console.error("Error toggling machine selection:", err);
       toast.error("Failed to update machine selection");
+      setIsSyncing(false);
     }
   };
 
   // Initial setup of planning details when component mounts
   useEffect(() => {
+    let mounted = true;
+    
     const syncDetails = async () => {
-      if (quoteId && selectedMachineIds.length > 0 && plans.length > 0) {
+      if (quoteId && selectedMachineIds.length > 0 && plans.length > 0 && !isSyncing) {
         try {
+          setIsSyncing(true);
           await syncMachinePlanningDetails(quoteId, selectedMachineIds, plans);
+          if (mounted) setIsSyncing(false);
         } catch (err) {
           console.error("Error syncing planning details:", err);
+          if (mounted) setIsSyncing(false);
         }
       }
     };
     
-    syncDetails();
-  }, [quoteId, plans.length]);
+    // Only sync on initial mount, not on every render
+    if (plans.length > 0 && !isSyncing) {
+      syncDetails();
+    }
+    
+    return () => {
+      mounted = false;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteId, plans.length]); // Removed selectedMachineIds dependency
 
   const isSelected = (machineTypeId: number) => selectedMachineIds.includes(machineTypeId);
 
