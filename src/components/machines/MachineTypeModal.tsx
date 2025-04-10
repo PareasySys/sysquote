@@ -59,7 +59,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     deleteRequirement 
   } = useMachineTrainingRequirements(machine?.machine_type_id);
   
-  const { deleteTopicsByItemId } = useTrainingTopics();
+  const { deleteTopicsByItemId } = useTrainingTopics([]);
 
   const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
 
@@ -104,6 +104,52 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     } catch (error) {
       console.error("Error uploading image:", error);
       toast.error("Failed to upload image");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!machine) return;
+
+    try {
+      setIsDeleting(true);
+
+      if (machine.machine_type_id) {
+        await deleteTopicsByItemId(machine.machine_type_id, "machine");
+      }
+      
+      try {
+        await supabase
+          .from("machine_training_requirements")
+          .delete()
+          .eq("machine_type_id", machine.machine_type_id);
+      } catch (error) {
+        console.error("Error deleting training requirements:", error);
+      }
+      
+      try {
+        await supabase
+          .from("training_offers")
+          .delete()
+          .eq("machine_type_id", machine.machine_type_id);
+      } catch (error) {
+        console.error("Error deleting training offers:", error);
+      }
+      
+      const { error } = await supabase
+        .from("machine_types")
+        .delete()
+        .eq("machine_type_id", machine.machine_type_id);
+
+      if (error) throw error;
+
+      toast.success("Machine deleted successfully");
+      onSave();
+      onClose();
+    } catch (error: any) {
+      console.error("Error deleting machine:", error);
+      toast.error(error.message || "Failed to delete machine");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -152,50 +198,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
       toast.error(error.message || "Failed to save machine");
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!machine) return;
-
-    try {
-      setIsDeleting(true);
-
-      await deleteTopicsByItemId(machine.machine_type_id, "machine");
-      
-      try {
-        await supabase
-          .from("machine_training_requirements")
-          .delete()
-          .eq("machine_type_id", machine.machine_type_id);
-      } catch (error) {
-        console.error("Error deleting training requirements:", error);
-      }
-      
-      try {
-        await supabase
-          .from("training_offers")
-          .delete()
-          .eq("machine_type_id", machine.machine_type_id);
-      } catch (error) {
-        console.error("Error deleting training offers:", error);
-      }
-      
-      const { error } = await supabase
-        .from("machine_types")
-        .delete()
-        .eq("machine_type_id", machine.machine_type_id);
-
-      if (error) throw error;
-
-      toast.success("Machine deleted successfully");
-      onSave();
-      onClose();
-    } catch (error: any) {
-      console.error("Error deleting machine:", error);
-      toast.error(error.message || "Failed to delete machine");
-    } finally {
-      setIsDeleting(false);
     }
   };
 

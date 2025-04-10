@@ -56,7 +56,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
     getResourceForPlan 
   } = useSoftwareTrainingRequirements(software?.software_type_id);
   
-  const { deleteTopicsByItemId } = useTrainingTopics();
+  const { deleteTopicsByItemId } = useTrainingTopics([]);
 
   const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
   
@@ -109,6 +109,43 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
     }
   };
 
+  const handleDelete = async () => {
+    if (!software) return;
+
+    try {
+      setIsDeleting(true);
+      
+      if (software.software_type_id) {
+        await deleteTopicsByItemId(software.software_type_id, "software");
+      }
+      
+      try {
+        await supabase
+          .from("software_training_requirements")
+          .delete()
+          .eq("software_type_id", software.software_type_id);
+      } catch (error) {
+        console.error("Error deleting software training requirements:", error);
+      }
+      
+      const { error } = await supabase
+        .from("software_types")
+        .delete()
+        .eq("software_type_id", software.software_type_id);
+
+      if (error) throw error;
+
+      toast.success("Software deleted successfully");
+      onSave();
+      onClose();
+    } catch (error: any) {
+      console.error("Error deleting software:", error);
+      toast.error(error.message || "Failed to delete software");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Software name is required");
@@ -156,41 +193,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
       toast.error(error.message || "Failed to save software");
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!software) return;
-
-    try {
-      setIsDeleting(true);
-
-      await deleteTopicsByItemId(software.software_type_id, "software");
-      
-      try {
-        await supabase
-          .from("software_training_requirements")
-          .delete()
-          .eq("software_type_id", software.software_type_id);
-      } catch (error) {
-        console.error("Error deleting software training requirements:", error);
-      }
-      
-      const { error } = await supabase
-        .from("software_types")
-        .delete()
-        .eq("software_type_id", software.software_type_id);
-
-      if (error) throw error;
-
-      toast.success("Software deleted successfully");
-      onSave();
-      onClose();
-    } catch (error: any) {
-      console.error("Error deleting software:", error);
-      toast.error(error.message || "Failed to delete software");
-    } finally {
-      setIsDeleting(false);
     }
   };
 

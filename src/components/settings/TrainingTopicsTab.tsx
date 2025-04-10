@@ -39,7 +39,11 @@ export default function TrainingTopicsTab() {
     addTopic, 
     deleteTopic, 
     updateTopic 
-  } = useTrainingTopics(selectedItemId || undefined, selectedPlanId || undefined, selectedItemType || undefined);
+  } = useTrainingTopics(
+    selectedItemId ? [selectedItemId] : [],
+    selectedPlanId,
+    selectedItemType
+  );
 
   const handleItemSelect = (itemId: number, itemType: "machine" | "software") => {
     if (expandedItemId === itemId && selectedItemType === itemType) {

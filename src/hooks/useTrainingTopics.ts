@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
@@ -30,7 +31,11 @@ export type NewTopicInsert = {
   display_order?: number | null;
 };
 
-export const useTrainingTopics = (selectedMachineIds: number[]) => {
+export const useTrainingTopics = (
+  selectedMachineIds: number[] = [], 
+  selectedPlanId?: number | null, 
+  selectedItemType?: string | null
+) => {
   const [topics, setTopics] = useState<TrainingTopic[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,10 +75,10 @@ export const useTrainingTopics = (selectedMachineIds: number[]) => {
     fetchTopics();
   }, [fetchTopics]);
 
-  const addTopic = async (newTopicText: string) => {
+  const addTopic = async (newTopicText: string): Promise<boolean> => {
     if (!newTopicText.trim()) {
       toast.error("Topic text cannot be empty");
-      return;
+      return false;
     }
 
     setIsAddingTopic(true);
@@ -83,11 +88,12 @@ export const useTrainingTopics = (selectedMachineIds: number[]) => {
         const newTopicData: NewTopicInsert = {
           topic_text: newTopicText,
           machine_type_id: machineTypeId,
+          requirement_id: null, // Explicitly set to null to satisfy TS
         };
 
         const { data, error } = await supabase
           .from("training_topics")
-          .insert([newTopicData])
+          .insert(newTopicData)
           .select()
           .single();
 
@@ -110,19 +116,22 @@ export const useTrainingTopics = (selectedMachineIds: number[]) => {
         setTopics((prevTopics) => [...prevTopics, ...successfulTopics]);
         setNewTopic(""); // Clear the input field
         toast.success("Training topic added successfully for selected machines!");
+        return true;
       } else {
         toast.error("Failed to add training topics for any of the selected machines.");
+        return false;
       }
     } catch (err: any) {
       console.error("Error adding training topic:", err);
       setError(err.message || "Failed to add training topic");
       toast.error("Failed to add training topic");
+      return false;
     } finally {
       setIsAddingTopic(false);
     }
   };
 
-  const updateTopic = async (topicId: number, newText: string) => {
+  const updateTopic = async (topicId: number, newText: string): Promise<boolean> => {
     try {
       const { error } = await supabase
         .from("training_topics")
@@ -137,13 +146,15 @@ export const useTrainingTopics = (selectedMachineIds: number[]) => {
         )
       );
       toast.success("Training topic updated successfully");
+      return true;
     } catch (err: any) {
       console.error("Error updating training topic:", err);
       toast.error("Failed to update training topic");
+      return false;
     }
   };
 
-  const deleteTopic = async (topicId: number) => {
+  const deleteTopic = async (topicId: number): Promise<boolean> => {
     try {
       const { error } = await supabase
         .from("training_topics")
@@ -154,9 +165,32 @@ export const useTrainingTopics = (selectedMachineIds: number[]) => {
 
       setTopics((prevTopics) => prevTopics.filter((topic) => topic.topic_id !== topicId));
       toast.success("Training topic deleted successfully");
+      return true;
     } catch (err: any) {
       console.error("Error deleting training topic:", err);
       toast.error("Failed to delete training topic");
+      return false;
+    }
+  };
+
+  // Add the missing function to delete topics by item ID (machine or software)
+  const deleteTopicsByItemId = async (itemId: number, itemType: "machine" | "software"): Promise<boolean> => {
+    try {
+      const fieldName = itemType === "machine" ? "machine_type_id" : "software_type_id";
+      
+      const { error } = await supabase
+        .from("training_topics")
+        .delete()
+        .eq(fieldName, itemId);
+
+      if (error) throw error;
+
+      toast.success(`Training topics for ${itemType} deleted successfully`);
+      return true;
+    } catch (err: any) {
+      console.error(`Error deleting training topics for ${itemType}:`, err);
+      toast.error(`Failed to delete training topics for ${itemType}`);
+      return false;
     }
   };
 
@@ -170,5 +204,6 @@ export const useTrainingTopics = (selectedMachineIds: number[]) => {
     updateTopic,
     deleteTopic,
     isAddingTopic,
+    deleteTopicsByItemId,
   };
 };
