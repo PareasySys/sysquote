@@ -43,7 +43,9 @@ export const useTrainingRequirements = (
           resources (name),
           allocated_hours,
           machine_types_id,
-          software_types_id
+          software_types_id,
+          start_day,
+          duration_days
         `)
         .eq("quote_id", quoteId)
         .eq("plan_id", planId);
@@ -61,7 +63,7 @@ export const useTrainingRequirements = (
         return;
       }
       
-      // Transform planning details into training requirements with calculated durations
+      // Transform planning details into training requirements
       const transformedRequirements: TrainingRequirement[] = planningDetails.map((detail, index) => {
         const resourceName = detail.resources?.name || "Unassigned";
         const hours = detail.allocated_hours || 0;
@@ -83,9 +85,9 @@ export const useTrainingRequirements = (
           resource_id: detail.resource_id || 0,
           resource_name: resourceName,
           training_hours: hours,
-          // Simple spacing algorithm - space items out
-          start_day: (index + 1) * 5,
-          duration_days: durationDays || 1
+          // Use stored start day if available, otherwise use a simple spacing algorithm
+          start_day: detail.start_day || (index + 1) * 5,
+          duration_days: detail.duration_days || durationDays || 1
         };
       });
       
@@ -117,7 +119,7 @@ export const useTrainingRequirements = (
         // Find the planning detail with the matching resource ID
         const { data: existingDetails, error: findError } = await supabase
           .from("planning_details")
-          .select("id, machine_types_id, software_types_id")
+          .select("id")
           .eq("quote_id", quoteId)
           .eq("plan_id", planId)
           .eq("resource_id", item.resource_id)
@@ -131,6 +133,8 @@ export const useTrainingRequirements = (
             .from("planning_details")
             .update({
               allocated_hours: item.training_hours,
+              start_day: item.start_day,
+              duration_days: item.duration_days,
               work_on_saturday: workOnSaturday,
               work_on_sunday: workOnSunday,
               updated_at: new Date().toISOString()
