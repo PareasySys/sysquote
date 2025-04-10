@@ -42,11 +42,11 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
         .delete()
         .eq("quote_id", quoteId)
         .neq("machine_types_id", null) // Only delete machine-related records
-        .not("machine_types_id", "in", `(${machineIds.join(",")})`);
+        .not("machine_types_id", "in", `(${machineIds.length > 0 ? machineIds.join(",") : 0})`);
         
       if (deleteError) throw deleteError;
       
-      // For each machine-plan combination, create or update planning details
+      // For each selected machine ID and each training plan, ensure there's a planning_details entry
       for (const machineId of machineIds) {
         for (const plan of plans) {
           // Find the corresponding training offer for this machine-plan combination
@@ -68,36 +68,11 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
             
           if (checkError) throw checkError;
           
-          // Get resources that can train on this machine type for this plan
-          const { data: resources, error: resourcesError } = await supabase
-            .from("machine_training_requirements")
-            .select("resource_id")
-            .eq("machine_type_id", machineId)
-            .eq("plan_id", plan.plan_id);
-            
-          if (resourcesError) throw resourcesError;
-          
-          // If no planning detail exists, create one for each resource or a default one
+          // If no planning detail exists, create one
           if (!existingDetail) {
-            if (resources && resources.length > 0) {
-              // Create planning details for each resource that can train on this machine
-              for (const resource of resources) {
-                if (resource.resource_id) {
-                  await supabase.from("planning_details").insert({
-                    quote_id: quoteId,
-                    plan_id: plan.plan_id,
-                    machine_types_id: machineId,
-                    software_types_id: null,
-                    resource_id: resource.resource_id,
-                    allocated_hours: hoursRequired,
-                    work_on_saturday: false,
-                    work_on_sunday: false
-                  });
-                }
-              }
-            } else {
-              // If no specific resources are assigned, create a default entry
-              await supabase.from("planning_details").insert({
+            await supabase
+              .from("planning_details")
+              .insert({
                 quote_id: quoteId,
                 plan_id: plan.plan_id,
                 machine_types_id: machineId,
@@ -107,9 +82,8 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
                 work_on_saturday: false,
                 work_on_sunday: false
               });
-            }
           } else {
-            // If a planning detail already exists, update the hours if they're different
+            // Ensure allocated hours are updated to match current training offer
             await supabase
               .from("planning_details")
               .update({

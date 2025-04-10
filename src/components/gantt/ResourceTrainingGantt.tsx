@@ -15,7 +15,7 @@ interface ResourceTrainingGanttProps {
 
 interface PlanningDetail {
   id: string;
-  resource_id: number;
+  resource_id: number | null;
   resource_name: string;
   allocated_hours: number;
   machine_types_id: number | null;

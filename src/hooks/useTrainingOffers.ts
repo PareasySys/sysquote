@@ -106,7 +106,7 @@ export const useTrainingOffers = () => {
       await fetchOffers();
       
       // Also update any planning_details that use this machine type and plan
-      await updatePlanningDetailsHours(machine_type_id, plan_id, hours_required);
+      await updatePlanningDetailsForAllQuotes(machine_type_id, plan_id, hours_required);
       
       toast.success("Training hours updated successfully");
     } catch (err: any) {
@@ -115,40 +115,70 @@ export const useTrainingOffers = () => {
     }
   };
   
-  // Update planning_details allocated_hours when training offers change
-  const updatePlanningDetailsHours = async (
+  // Update planning_details allocated_hours when training offers change for ALL quotes
+  const updatePlanningDetailsForAllQuotes = async (
     machine_type_id: number,
     plan_id: number,
     hours_required: number
   ) => {
     try {
-      // Get all planning details that match this machine type and plan
-      const { data, error } = await supabase
-        .from("planning_details")
-        .select("id")
-        .eq("plan_id", plan_id)
-        .eq("machine_types_id", machine_type_id);
+      // First, get all quotes that have this machine type in their machine_type_ids array
+      const { data: quotesWithMachine, error: quotesError } = await supabase
+        .from("quotes")
+        .select("quote_id")
+        .contains('machine_type_ids', [machine_type_id]);
       
-      if (error) throw error;
+      if (quotesError) throw quotesError;
       
-      if (!data || data.length === 0) return;
+      if (!quotesWithMachine || quotesWithMachine.length === 0) return;
       
-      console.log(`Updating ${data.length} planning details with new hours: ${hours_required}`);
+      console.log(`Updating planning details for ${quotesWithMachine.length} quotes that use machine type ${machine_type_id}`);
       
-      // Update each planning detail with the new allocated hours
-      for (const detail of data) {
-        const { error: updateError } = await supabase
+      // For each quote that has this machine, update its planning details
+      for (const quote of quotesWithMachine) {
+        // Get all planning details for this quote, machine type, and plan
+        const { data: planningDetails, error: detailsError } = await supabase
           .from("planning_details")
-          .update({ 
-            allocated_hours: hours_required,
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", detail.id);
-          
-        if (updateError) {
-          console.error("Error updating planning detail:", updateError);
+          .select("id")
+          .eq("quote_id", quote.quote_id)
+          .eq("plan_id", plan_id)
+          .eq("machine_types_id", machine_type_id);
+        
+        if (detailsError) throw detailsError;
+        
+        if (!planningDetails || planningDetails.length === 0) {
+          // If no planning details exist for this combination, create one
+          await supabase
+            .from("planning_details")
+            .insert({
+              quote_id: quote.quote_id,
+              plan_id: plan_id,
+              machine_types_id: machine_type_id,
+              software_types_id: null,
+              resource_id: null,
+              allocated_hours: hours_required,
+              work_on_saturday: false,
+              work_on_sunday: false
+            });
+        } else {
+          // Update each planning detail with the new allocated hours
+          for (const detail of planningDetails) {
+            const { error: updateError } = await supabase
+              .from("planning_details")
+              .update({ 
+                allocated_hours: hours_required,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", detail.id);
+              
+            if (updateError) {
+              console.error("Error updating planning detail:", updateError);
+            }
+          }
         }
       }
+      
+      console.log(`Successfully updated planning details for all affected quotes`);
     } catch (err) {
       console.error("Error updating planning details hours:", err);
     }
