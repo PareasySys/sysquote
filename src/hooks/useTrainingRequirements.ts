@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from 'uuid';
 
 export interface TrainingRequirement {
   requirement_id: number;
@@ -73,7 +72,7 @@ export const useTrainingRequirements = (
       
       setRequirements(adjustedRequirements);
       
-      // Save to training_plan_details table
+      // Save to planning_details table
       await saveTrainingPlanDetails(adjustedRequirements, planId, workOnSaturday, workOnSunday);
     } catch (err: any) {
       console.error("Error fetching training requirements:", err);
@@ -84,7 +83,7 @@ export const useTrainingRequirements = (
     }
   };
   
-  // Save training plan details to the database
+  // Save training plan details to the database using the updated function
   const saveTrainingPlanDetails = async (
     items: TrainingRequirement[], 
     planId: number, 
@@ -96,7 +95,7 @@ export const useTrainingRequirements = (
     try {
       console.log("Saving training plan details:", items.length, "items");
       
-      // Insert each requirement as a training plan detail using RPC
+      // Insert each requirement as a training plan detail using the new RPC
       for (const item of items) {
         const { data, error } = await supabase.rpc(
           'save_training_plan_detail',
@@ -104,7 +103,8 @@ export const useTrainingRequirements = (
             p_quote_id: quoteId,
             p_plan_id: planId,
             p_resource_category: 'Machine', // Default to Machine for now
-            p_type_id: null, // Will be populated when we have proper type assignments
+            p_machine_types_id: null, // Will be populated when we have proper type assignments
+            p_software_types_id: null, // Will be populated when we have software type assignments
             p_resource_id: item.resource_id,
             p_allocated_hours: item.training_hours,
             p_start_day: item.start_day,

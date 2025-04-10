@@ -13,7 +13,7 @@ interface ResourceTrainingGanttProps {
   workOnSunday: boolean;
 }
 
-interface TrainingPlanDetail {
+interface PlanningDetail {
   id: string;
   resource_id: number;
   resource_name: string;
@@ -21,8 +21,9 @@ interface TrainingPlanDetail {
   start_day: number;
   duration_days: number;
   resource_category: string;
-  type_id: number;
-  type_name: string;
+  machine_types_id: number | null;
+  software_types_id: number | null;
+  type_name: string | null;
 }
 
 const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
@@ -39,10 +40,10 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     saveTrainingPlanDetails
   } = useTrainingRequirements(quoteId, planId, workOnSaturday, workOnSunday);
 
-  const [storedDetails, setStoredDetails] = useState<TrainingPlanDetail[]>([]);
+  const [storedDetails, setStoredDetails] = useState<PlanningDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
-  // Fetch saved training plan details
+  // Fetch saved planning details
   const fetchStoredDetails = async () => {
     if (!quoteId) return;
     
@@ -56,11 +57,11 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       
       if (error) throw error;
       
-      console.log("Stored training plan details:", data);
+      console.log("Stored planning details:", data);
       setStoredDetails(data || []);
       
     } catch (err: any) {
-      console.error("Error fetching training plan details:", err);
+      console.error("Error fetching planning details:", err);
     } finally {
       setDetailsLoading(false);
     }
