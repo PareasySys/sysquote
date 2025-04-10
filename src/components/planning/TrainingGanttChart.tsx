@@ -27,23 +27,26 @@ interface TrainingGanttChartProps {
 }
 
 const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading, trainingHours = 0, planName = "" }) => {
-  const [view, setView] = useState<ViewMode>(ViewMode.Day);
+  const [view, setView] = useState<ViewMode>(ViewMode.Month);
   
   // Generate demo tasks if we have training hours but no tasks
   const generateDemoTasks = (): TrainingTask[] => {
     if (!trainingHours || trainingHours <= 0) return [];
     
-    // Start from tomorrow
-    const startDate = moment().add(1, 'day').startOf('day').toDate();
+    // Use a generic start date (month 1, day 1)
+    const genericStart = new Date(2025, 0, 1); // Jan 1, 2025 as base date
     const resourceId = 1;
+    
+    // Calculate how many days the training would take (assuming 8 hours per day)
+    const trainingDays = Math.ceil(trainingHours / 8);
     
     return [{
       id: "demo-task-1",
       resourceId: resourceId,
       resourceName: "Demo Resource",
-      taskName: `${planName} Training`,
-      startTime: startDate,
-      endTime: moment(startDate).add(trainingHours, 'hours').toDate(),
+      taskName: `${planName} Training (${trainingDays} days)`,
+      startTime: genericStart,
+      endTime: moment(genericStart).add(trainingDays, 'days').toDate(),
       styles: {
         backgroundColor: '#3b82f6',
       }
@@ -54,21 +57,34 @@ const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading,
   const displayTasks = tasks.length > 0 ? tasks : generateDemoTasks();
   
   // Convert our tasks to Gantt-compatible format
-  const ganttTasks: Task[] = displayTasks.map(task => ({
-    id: task.id,
-    name: task.taskName,
-    start: new Date(task.startTime),
-    end: new Date(task.endTime),
-    progress: 0,
-    type: 'task',
-    isDisabled: true,
-    project: task.resourceName,
-    styles: {
-      backgroundColor: task.styles?.backgroundColor || '#3b82f6',
-      progressColor: task.styles?.progressColor || '#60a5fa',
-      progressSelectedColor: task.styles?.progressSelectedColor || '#2563eb',
-    }
-  }));
+  const ganttTasks: Task[] = displayTasks.map(task => {
+    // Calculate duration in days
+    const startMoment = moment(task.startTime);
+    const endMoment = moment(task.endTime);
+    const durationDays = endMoment.diff(startMoment, 'days');
+    const durationHours = endMoment.diff(startMoment, 'hours');
+    
+    // Include days information in the task name
+    const daysInfo = durationDays > 0 
+      ? `(${durationDays} day${durationDays > 1 ? 's' : ''})`
+      : `(${durationHours} hour${durationHours > 1 ? 's' : ''})`;
+    
+    return {
+      id: task.id,
+      name: `${task.taskName} ${daysInfo}`,
+      start: new Date(task.startTime),
+      end: new Date(task.endTime),
+      progress: 0,
+      type: 'task',
+      isDisabled: true,
+      project: task.resourceName,
+      styles: {
+        backgroundColor: task.styles?.backgroundColor || '#3b82f6',
+        progressColor: task.styles?.progressColor || '#60a5fa',
+        progressSelectedColor: task.styles?.progressSelectedColor || '#2563eb',
+      }
+    };
+  });
 
   if (loading) {
     return (
@@ -119,13 +135,13 @@ const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading,
         <Gantt
           tasks={ganttTasks}
           viewMode={view}
-          listCellWidth=""
+          listCellWidth="250px"
           columnWidth={60}
           locale="en-US"
           barCornerRadius={4}
           barFill={80}
           headerHeight={50}
-          rowHeight={40}
+          rowHeight={50}
           fontSize="12px"
           todayColor="rgba(79, 70, 229, 0.1)"
           projectProgressColor="#2563eb"

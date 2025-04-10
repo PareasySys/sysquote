@@ -50,3 +50,29 @@
 .gantt-container .gantt-chart-header-cell {
   border-color: #334155;
 }
+
+/* Enhance the resource column on the left side */
+.gantt-container .gantt-chart-list {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-right: 1px solid #334155;
+}
+
+.gantt-container .gantt-chart-list-item {
+  padding: 8px 12px;
+  font-weight: 500;
+}
+
+/* Better styling for task bars */
+.gantt-container .gantt-chart-bar {
+  height: 80%;
+  border-radius: 4px;
+}
+
+/* Month format styling */
+.gantt-container .gantt-chart-calendar-header-month {
+  padding: 8px 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

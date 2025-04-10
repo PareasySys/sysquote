@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -74,8 +75,9 @@ const QuotePlanningPage: React.FC = () => {
     planTotals[plan.plan_id] = plan.training_hours;
   });
 
-  const startDate = moment().startOf('year').toDate();
-  const endDate = moment().add(1, 'year').toDate();
+  // Generic start date for our calendar (Month 1, Day 1)
+  const startDate = new Date(2025, 0, 1); // Jan 1, 2025 as base date
+  const endDate = new Date(2025, 11, 30); // Dec 30, 2025 as end date
 
   useEffect(() => {
     if (!user) {
@@ -174,12 +176,18 @@ const QuotePlanningPage: React.FC = () => {
       resourceRequirements[resourceId].push(req);
     });
     
+    // Generic start date (Month 1, Day 1)
+    let currentMonth = 1; // Start with Month 1
+    let currentDay = 1;   // Start with Day 1
+    
     Object.entries(resourceRequirements).forEach(([resourceId, reqs]) => {
       const resourceIdNum = parseInt(resourceId);
       const resource = resources.find(r => r.resource_id === resourceIdNum);
       const resourceName = resource ? resource.name : `Resource ${resourceId}`;
       
-      let currentDay = 1;
+      // Reset to beginning of month for each resource
+      currentMonth = 1;
+      currentDay = 1;
       let hoursScheduledToday = 0;
       
       reqs.forEach((req) => {
@@ -195,6 +203,18 @@ const QuotePlanningPage: React.FC = () => {
             (currentDay % 7 === 0 && !workOnWeekends.workOnSunday)
           ) {
             currentDay++;
+            
+            // Check if we need to advance to the next month (assuming 30 days per month)
+            if (currentDay > 30) {
+              currentMonth++;
+              currentDay = 1;
+              
+              // Check if we've gone beyond 12 months
+              if (currentMonth > 12) {
+                break; // Stop scheduling if beyond our planning horizon
+              }
+            }
+            
             hoursScheduledToday = 0;
             continue;
           }
@@ -205,10 +225,13 @@ const QuotePlanningPage: React.FC = () => {
           );
           
           if (hoursToScheduleToday > 0) {
-            const startTime = moment(startDate).add(currentDay - 1, 'days')
-              .add(hoursScheduledToday, 'hours').toDate();
-            const endTime = moment(startDate).add(currentDay - 1, 'days')
-              .add(hoursScheduledToday + hoursToScheduleToday, 'hours').toDate();
+            // Create a date for this task in our generic calendar
+            const taskDate = new Date(2025, currentMonth - 1, currentDay);
+            const startTime = new Date(taskDate);
+            startTime.setHours(8 + hoursScheduledToday); // Start at 8 AM + any hours already scheduled
+            
+            const endTime = new Date(taskDate);
+            endTime.setHours(8 + hoursScheduledToday + hoursToScheduleToday);
             
             tasks.push({
               id: `${req.requirement_id}-${tasks.length}`,
@@ -227,6 +250,18 @@ const QuotePlanningPage: React.FC = () => {
             
             if (hoursScheduledToday >= maxHoursPerDay) {
               currentDay++;
+              
+              // Check if we need to advance to the next month (assuming 30 days per month)
+              if (currentDay > 30) {
+                currentMonth++;
+                currentDay = 1;
+                
+                // Check if we've gone beyond 12 months
+                if (currentMonth > 12) {
+                  break; // Stop scheduling if beyond our planning horizon
+                }
+              }
+              
               hoursScheduledToday = 0;
             }
           }
