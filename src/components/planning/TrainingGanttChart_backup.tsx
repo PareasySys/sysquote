@@ -28,7 +28,7 @@ interface TrainingGanttChartProps {
 const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading, trainingHours = 0, planName = "" }) => {
   // Only use Day view
   const view = ViewMode.Day;
-
+  
   // Generate demo tasks if we have training hours but no tasks
   const generateDemoTasks = (): TrainingTask[] => {
     if (!trainingHours || trainingHours <= 0) return [];
@@ -52,21 +52,21 @@ const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading,
       }
     }];
   };
-
+  
   // Use actual tasks if available, otherwise generate demo tasks if we have hours
   const displayTasks = tasks.length > 0 ? tasks : generateDemoTasks();
-
+  
   // Convert our tasks to Gantt-compatible format
   const ganttTasks: Task[] = displayTasks.map(task => {
     return {
       id: task.id,
-      name: task.resourceName, // Show resource name as the task name in the left column
+      name: task.taskName, // Remove duration info
       start: new Date(task.startTime),
       end: new Date(task.endTime),
       progress: 0,
       type: 'task',
       isDisabled: true,
-      project: task.resourceName, // Use resource name as the project name
+      project: task.resourceName,
       styles: {
         backgroundColor: task.styles?.backgroundColor || '#3b82f6',
         progressColor: task.styles?.progressColor || '#60a5fa',
@@ -101,7 +101,7 @@ const TrainingGanttChart: React.FC<TrainingGanttChartProps> = ({ tasks, loading,
         <Gantt
           tasks={ganttTasks}
           viewMode={view}
-          listCellWidth="180px"
+          listCellWidth="250px"
           columnWidth={60}
           locale="en-US"
           barCornerRadius={4}

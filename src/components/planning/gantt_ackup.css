@@ -1,0 +1,127 @@
+
+/* Custom styling for gantt-task-react to match our dark theme */
+.gantt-container .gantt-chart * {
+  box-sizing: border-box;
+}
+
+.gantt-container .gantt-chart {
+  font-family: inherit;
+  color: #e2e8f0;
+}
+
+.gantt-container .gantt-chart-table_header {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
+.gantt-container .gantt-chart-calendar_header {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
+.gantt-container .gantt-chart-table_row:nth-child(even) {
+  background-color: #0f172a;
+}
+
+.gantt-container .gantt-chart-table_row:nth-child(odd) {
+  background-color: #1e293b;
+}
+
+.gantt-container .gantt-chart-grid-vertical-line {
+  stroke: #334155;
+}
+
+.gantt-container .gantt-chart-grid-horizontal-line {
+  stroke: #334155;
+}
+
+.gantt-container .gantt-chart-calendar_day {
+  stroke: #475569;
+}
+
+.gantt-container .gantt-chart-calendar_weekend {
+  fill: #334155;
+}
+
+.gantt-container .gantt-chart-table-cell {
+  border-color: #334155;
+}
+
+.gantt-container .gantt-chart-header-cell {
+  border-color: #334155;
+}
+
+/* Enhance the resource column on the left side */
+.gantt-container .gantt-chart-list {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-right: 1px solid #334155;
+}
+
+.gantt-container .gantt-chart-list-item {
+  padding: 8px 12px;
+  font-weight: 500;
+}
+
+/* Better styling for task bars */
+.gantt-container .gantt-chart-bar {
+  height: 80%;
+  border-radius: 4px;
+}
+
+/* Month format styling - Replacing years with simply Month names */
+.gantt-container .gantt-chart-calendar-header-month {
+  padding: 8px 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Hide year references in calendar headers */
+.gantt-container .gantt-chart-calendar-header-month::after {
+  content: "";
+}
+
+/* Rename months by adding custom content */
+.gantt-container .gantt-chart-calendar-header-month:nth-child(1)::before {
+  content: "Month 1";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(2)::before {
+  content: "Month 2";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(3)::before {
+  content: "Month 3";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(4)::before {
+  content: "Month 4";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(5)::before {
+  content: "Month 5";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(6)::before {
+  content: "Month 6";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(7)::before {
+  content: "Month 7";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(8)::before {
+  content: "Month 8";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(9)::before {
+  content: "Month 9";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(10)::before {
+  content: "Month 10";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(11)::before {
+  content: "Month 11";
+}
+.gantt-container .gantt-chart-calendar-header-month:nth-child(12)::before {
+  content: "Month 12";
+}
+
+/* Hide any year text that might appear */
+.gantt-container .gantt-chart-calendar-header-month span {
+  display: none;
+}
+
