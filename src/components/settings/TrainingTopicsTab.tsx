@@ -2,19 +2,30 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useMachineTypes } from '@/hooks/useMachineTypes';
 import { useSoftwareTypes } from '@/hooks/useSoftwareTypes';
 import { useTrainingPlans } from '@/hooks/useTrainingPlans';
-import { useTrainingTopics } from '@/hooks/useTrainingTopics';
-import { PlusCircle, Pencil, Save, X, Trash2, CheckSquare, ChevronDown, ChevronRight } from 'lucide-react';
+import { 
+  PlusCircle, 
+  Pencil, 
+  Save, 
+  X, 
+  Trash2, 
+  ChevronDown, 
+  ChevronRight,
+  Server,
+  HardDrive,
+  Database,
+  FileCode,
+  Cpu,
+  Monitor,
+  Printer,
+  Laptop,
+  FileText,
+  Folder,
+  FolderOpen
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -24,7 +35,9 @@ export default function TrainingTopicsTab() {
   const { software, loading: softwareLoading } = useSoftwareTypes();
   const { plans, loading: plansLoading } = useTrainingPlans();
   
+  // Separate expanded states for machines and software to prevent conflicts
   const [expandedMachines, setExpandedMachines] = useState<{[key: number]: boolean}>({});
+  const [expandedSoftware, setExpandedSoftware] = useState<{[key: number]: boolean}>({});
   const [expandedPlans, setExpandedPlans] = useState<{[key: string]: boolean}>({});
   
   const [selectedMachineId, setSelectedMachineId] = useState<number | null>(null);
@@ -38,16 +51,48 @@ export default function TrainingTopicsTab() {
   const [topicsByItemAndPlan, setTopicsByItemAndPlan] = useState<{[key: string]: any[]}>({});
   const [loadingTopics, setLoadingTopics] = useState<{[key: string]: boolean}>({});
   
+  // Get machine icon by machine name
+  const getMachineIcon = (machineName: string) => {
+    const name = machineName.toLowerCase();
+    if (name.includes('server')) return <Server size={18} className="text-white" />;
+    if (name.includes('storage')) return <HardDrive size={18} className="text-white" />;
+    if (name.includes('processor') || name.includes('cpu')) return <Cpu size={18} className="text-white" />;
+    if (name.includes('monitor') || name.includes('display')) return <Monitor size={18} className="text-white" />;
+    if (name.includes('printer')) return <Printer size={18} className="text-white" />;
+    return <Server size={18} className="text-white" />;  // Default icon
+  };
+  
+  // Get software icon by software name
+  const getSoftwareIcon = (softwareName: string) => {
+    const name = softwareName.toLowerCase();
+    if (name.includes('database')) return <Database size={18} className="text-white" />;
+    if (name.includes('code') || name.includes('programming')) return <FileCode size={18} className="text-white" />;
+    return <Laptop size={18} className="text-white" />;  // Default icon
+  };
+  
   const toggleMachine = (machineId: number, itemType: "machine" | "software") => {
-    setExpandedMachines(prev => ({
-      ...prev,
-      [machineId]: !prev[machineId]
-    }));
-    
-    if (!expandedMachines[machineId]) {
-      setSelectedMachineId(machineId);
-      setSelectedItemType(itemType);
-      setSelectedPlanId(null);
+    if (itemType === "machine") {
+      setExpandedMachines(prev => ({
+        ...prev,
+        [machineId]: !prev[machineId]
+      }));
+      
+      if (!expandedMachines[machineId]) {
+        setSelectedMachineId(machineId);
+        setSelectedItemType("machine");
+        setSelectedPlanId(null);
+      }
+    } else {
+      setExpandedSoftware(prev => ({
+        ...prev,
+        [machineId]: !prev[machineId]
+      }));
+      
+      if (!expandedSoftware[machineId]) {
+        setSelectedMachineId(machineId);
+        setSelectedItemType("software");
+        setSelectedPlanId(null);
+      }
     }
   };
   
@@ -238,7 +283,10 @@ export default function TrainingTopicsTab() {
                     className="flex items-center justify-between py-3 cursor-pointer hover:bg-slate-700/30 px-2 rounded transition-colors"
                     onClick={() => toggleMachine(machine.machine_type_id, "machine")}
                   >
-                    <span className="text-gray-200">{machine.name}</span>
+                    <div className="flex items-center gap-2">
+                      {getMachineIcon(machine.name)}
+                      <span className="text-gray-200">{machine.name}</span>
+                    </div>
                     {expandedMachines[machine.machine_type_id] ? (
                       <ChevronDown className="h-4 w-4 text-gray-400" />
                     ) : (
@@ -260,7 +308,14 @@ export default function TrainingTopicsTab() {
                                   className="flex items-center justify-between py-2 cursor-pointer hover:bg-slate-700/20 px-2 rounded transition-colors"
                                   onClick={() => togglePlan(machine.machine_type_id, plan.plan_id, "machine")}
                                 >
-                                  <span className="text-gray-300 text-sm">{plan.name}</span>
+                                  <div className="flex items-center gap-2">
+                                    {expandedPlans[planKey] ? (
+                                      <FolderOpen size={16} className="text-white" />
+                                    ) : (
+                                      <Folder size={16} className="text-white" />
+                                    )}
+                                    <span className="text-gray-300 text-sm">{plan.name}</span>
+                                  </div>
                                   {expandedPlans[planKey] ? (
                                     <ChevronDown className="h-3 w-3 text-gray-500" />
                                   ) : (
@@ -294,7 +349,7 @@ export default function TrainingTopicsTab() {
                                                         className="h-7"
                                                         onClick={() => handleSaveEdit(topic.topic_id)}
                                                       >
-                                                        <Save className="h-3 w-3" />
+                                                        <Save className="h-3 w-3 text-white" />
                                                       </Button>
                                                       <Button 
                                                         type="button" 
@@ -303,13 +358,16 @@ export default function TrainingTopicsTab() {
                                                         className="h-7"
                                                         onClick={handleCancelEdit}
                                                       >
-                                                        <X className="h-3 w-3" />
+                                                        <X className="h-3 w-3 text-white" />
                                                       </Button>
                                                     </div>
                                                   </div>
                                                 ) : (
                                                   <>
-                                                    <span className="text-gray-300 text-xs">{topic.topic_text}</span>
+                                                    <div className="flex items-center gap-2">
+                                                      <FileText size={14} className="text-white" />
+                                                      <span className="text-gray-300 text-xs">{topic.topic_text}</span>
+                                                    </div>
                                                     <div className="flex items-center space-x-1">
                                                       <Button
                                                         type="button"
@@ -318,7 +376,7 @@ export default function TrainingTopicsTab() {
                                                         className="h-6 w-6"
                                                         onClick={() => handleStartEdit(topic.topic_id, topic.topic_text)}
                                                       >
-                                                        <Pencil className="h-3 w-3" />
+                                                        <Pencil className="h-3 w-3 text-white" />
                                                       </Button>
                                                       <Button
                                                         type="button"
@@ -351,7 +409,7 @@ export default function TrainingTopicsTab() {
                                                 className="h-8"
                                                 onClick={handleAddTopic}
                                               >
-                                                <PlusCircle className="h-3 w-3 mr-1" />
+                                                <PlusCircle className="h-3 w-3 mr-1 text-white" />
                                                 <span className="text-xs">Add</span>
                                               </Button>
                                             </div>
@@ -374,7 +432,7 @@ export default function TrainingTopicsTab() {
                                                 className="h-8"
                                                 onClick={handleAddTopic}
                                               >
-                                                <PlusCircle className="h-3 w-3 mr-1" />
+                                                <PlusCircle className="h-3 w-3 mr-1 text-white" />
                                                 <span className="text-xs">Add</span>
                                               </Button>
                                             </div>
@@ -409,15 +467,18 @@ export default function TrainingTopicsTab() {
                     className="flex items-center justify-between py-3 cursor-pointer hover:bg-slate-700/30 px-2 rounded transition-colors"
                     onClick={() => toggleMachine(soft.software_type_id, "software")}
                   >
-                    <span className="text-gray-200">{soft.name}</span>
-                    {expandedMachines[soft.software_type_id] ? (
+                    <div className="flex items-center gap-2">
+                      {getSoftwareIcon(soft.name)}
+                      <span className="text-gray-200">{soft.name}</span>
+                    </div>
+                    {expandedSoftware[soft.software_type_id] ? (
                       <ChevronDown className="h-4 w-4 text-gray-400" />
                     ) : (
                       <ChevronRight className="h-4 w-4 text-gray-400" />
                     )}
                   </div>
                   
-                  {expandedMachines[soft.software_type_id] && (
+                  {expandedSoftware[soft.software_type_id] && (
                     <div className="pl-4 pb-2">
                       {plansLoading ? (
                         <p className="text-gray-400 text-sm">Loading plans...</p>
@@ -431,7 +492,14 @@ export default function TrainingTopicsTab() {
                                   className="flex items-center justify-between py-2 cursor-pointer hover:bg-slate-700/20 px-2 rounded transition-colors"
                                   onClick={() => togglePlan(soft.software_type_id, plan.plan_id, "software")}
                                 >
-                                  <span className="text-gray-300 text-sm">{plan.name}</span>
+                                  <div className="flex items-center gap-2">
+                                    {expandedPlans[planKey] ? (
+                                      <FolderOpen size={16} className="text-white" />
+                                    ) : (
+                                      <Folder size={16} className="text-white" />
+                                    )}
+                                    <span className="text-gray-300 text-sm">{plan.name}</span>
+                                  </div>
                                   {expandedPlans[planKey] ? (
                                     <ChevronDown className="h-3 w-3 text-gray-500" />
                                   ) : (
@@ -465,7 +533,7 @@ export default function TrainingTopicsTab() {
                                                         className="h-7"
                                                         onClick={() => handleSaveEdit(topic.topic_id)}
                                                       >
-                                                        <Save className="h-3 w-3" />
+                                                        <Save className="h-3 w-3 text-white" />
                                                       </Button>
                                                       <Button 
                                                         type="button" 
@@ -474,13 +542,16 @@ export default function TrainingTopicsTab() {
                                                         className="h-7"
                                                         onClick={handleCancelEdit}
                                                       >
-                                                        <X className="h-3 w-3" />
+                                                        <X className="h-3 w-3 text-white" />
                                                       </Button>
                                                     </div>
                                                   </div>
                                                 ) : (
                                                   <>
-                                                    <span className="text-gray-300 text-xs">{topic.topic_text}</span>
+                                                    <div className="flex items-center gap-2">
+                                                      <FileText size={14} className="text-white" />
+                                                      <span className="text-gray-300 text-xs">{topic.topic_text}</span>
+                                                    </div>
                                                     <div className="flex items-center space-x-1">
                                                       <Button
                                                         type="button"
@@ -489,7 +560,7 @@ export default function TrainingTopicsTab() {
                                                         className="h-6 w-6"
                                                         onClick={() => handleStartEdit(topic.topic_id, topic.topic_text)}
                                                       >
-                                                        <Pencil className="h-3 w-3" />
+                                                        <Pencil className="h-3 w-3 text-white" />
                                                       </Button>
                                                       <Button
                                                         type="button"
@@ -522,7 +593,7 @@ export default function TrainingTopicsTab() {
                                                 className="h-8"
                                                 onClick={handleAddTopic}
                                               >
-                                                <PlusCircle className="h-3 w-3 mr-1" />
+                                                <PlusCircle className="h-3 w-3 mr-1 text-white" />
                                                 <span className="text-xs">Add</span>
                                               </Button>
                                             </div>
@@ -545,7 +616,7 @@ export default function TrainingTopicsTab() {
                                                 className="h-8"
                                                 onClick={handleAddTopic}
                                               >
-                                                <PlusCircle className="h-3 w-3 mr-1" />
+                                                <PlusCircle className="h-3 w-3 mr-1 text-white" />
                                                 <span className="text-xs">Add</span>
                                               </Button>
                                             </div>
