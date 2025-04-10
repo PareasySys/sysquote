@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +8,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, Edit, Save, Calendar } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, Edit, Save } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card } from "@/components/ui/card";
@@ -24,8 +23,6 @@ import { useQuoteMachines } from "@/hooks/useQuoteMachines";
 import { Input } from "@/components/ui/input";
 import { useGeographicAreas } from "@/hooks/useGeographicAreas";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import QuotePlanningPage from "@/components/quotes/gantt/QuotePlanningPage";
 
 type Quote = {
   quote_id: string;
@@ -54,7 +51,6 @@ const QuoteConfigPage: React.FC = () => {
     removeMachine
   } = useQuoteMachines(quoteId);
   const { areas, loading: areasLoading } = useGeographicAreas();
-  const [activeTab, setActiveTab] = useState("machines");
   
   const [isEditing, setIsEditing] = useState(false);
   const [editedQuote, setEditedQuote] = useState<{
@@ -377,62 +373,49 @@ const QuoteConfigPage: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <Tabs defaultValue="machines" value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-3 mb-6">
-                <TabsTrigger value="machines">Machines & Software</TabsTrigger>
-                <TabsTrigger value="training">Training Topics</TabsTrigger>
-                <TabsTrigger value="planning">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Planning
-                </TabsTrigger>
-              </TabsList>
+            <div className="flex flex-col lg:flex-row gap-6">
+              <div className="w-full lg:w-1/3">
+                <MachineSelector
+                  selectedMachineIds={machineTypeIds}
+                  onSave={handleMachineSave}
+                />
+              </div>
               
-              <TabsContent value="machines">
-                <div className="flex flex-col lg:flex-row gap-6">
-                  <div className="w-full lg:w-1/3">
-                    <MachineSelector
-                      selectedMachineIds={machineTypeIds}
-                      onSave={handleMachineSave}
-                    />
-                  </div>
+              <div className="w-full lg:w-2/3">
+                <Card className="bg-slate-800/80 border border-white/5 p-4 mb-6">
+                  <h2 className="text-xl font-semibold mb-4 text-gray-200">Selected Machines</h2>
                   
-                  <div className="w-full lg:w-2/3">
-                    <Card className="bg-slate-800/80 border border-white/5 p-4 mb-6">
-                      <h2 className="text-xl font-semibold mb-4 text-gray-200">Selected Machines</h2>
-                      
-                      {machinesLoading ? (
-                        <div className="p-4 text-center">
-                          <TextShimmerWave
-                            className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
-                            duration={1}
-                            spread={1}
-                            zDistance={1}
-                            scaleDistance={1.1}
-                            rotateYDistance={10}
-                          >
-                            Loading Machine Selection
-                          </TextShimmerWave>
-                        </div>
-                      ) : machinesError ? (
-                        <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
-                          <p className="text-red-300">{machinesError}</p>
-                        </div>
-                      ) : (
-                        <SelectedMachineList 
-                          machines={selectedMachines}
-                          onRemove={removeMachine}
-                          loading={machinesLoading}
-                          quoteId={quoteId}
-                        />
-                      )}
-                    </Card>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="training">
+                  {machinesLoading ? (
+                    <div className="p-4 text-center">
+                      <TextShimmerWave
+                        className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
+                        duration={1}
+                        spread={1}
+                        zDistance={1}
+                        scaleDistance={1.1}
+                        rotateYDistance={10}
+                      >
+                        Loading Machine Selection
+                      </TextShimmerWave>
+                    </div>
+                  ) : machinesError ? (
+                    <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
+                      <p className="text-red-300">{machinesError}</p>
+                    </div>
+                  ) : (
+                    <SelectedMachineList 
+                      machines={selectedMachines}
+                      onRemove={removeMachine}
+                      loading={machinesLoading}
+                      quoteId={quoteId}
+                    />
+                  )}
+                </Card>
+                
                 {selectedMachines.length > 0 ? (
-                  <QuoteTrainingTopics selectedMachines={selectedMachines} />
+                  <div className="mt-6">
+                    <QuoteTrainingTopics selectedMachines={selectedMachines} />
+                  </div>
                 ) : (
                   <Card className="bg-slate-800/80 border border-white/5 p-4 mt-6">
                     <h2 className="text-xl font-semibold mb-4 text-gray-200">Training Topics</h2>
@@ -441,20 +424,8 @@ const QuoteConfigPage: React.FC = () => {
                     </div>
                   </Card>
                 )}
-              </TabsContent>
-              
-              <TabsContent value="planning">
-                {quoteId ? (
-                  <QuotePlanningPage quoteId={quoteId} />
-                ) : (
-                  <Card className="bg-slate-800/80 border border-white/5 p-4">
-                    <div className="text-gray-400 p-4 text-center border border-dashed border-gray-700 rounded-lg">
-                      Quote ID is required for planning
-                    </div>
-                  </Card>
-                )}
-              </TabsContent>
-            </Tabs>
+              </div>
+            </div>
           )}
         </div>
       </main>
