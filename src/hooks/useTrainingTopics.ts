@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
@@ -41,7 +40,7 @@ export const useTrainingTopics = (
       const tableName = itemType === "machine" ? 'machine_training_requirements' : 'software_training_requirements';
       const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
       
-      const { data: reqData, error } = await supabase
+      const { data, error } = await supabase
         .from(tableName)
         .select('id')
         .eq(columnName, itemId)
@@ -50,7 +49,7 @@ export const useTrainingTopics = (
       
       if (error) throw error;
       
-      return reqData?.id || null;
+      return data?.id || null;
     } catch (err) {
       console.error("Error fetching requirement:", err);
       return null;
@@ -70,10 +69,8 @@ export const useTrainingTopics = (
       
       console.log(`Fetching training topics for ${itemType} ${itemId} and plan ${planId}`);
       
-      // Determine which column to query based on itemType
       const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
       
-      // Fetch topics using the appropriate column
       const { data: topicsData, error: fetchError } = await supabase
         .from('training_topics')
         .select('*')
@@ -85,20 +82,18 @@ export const useTrainingTopics = (
       
       console.log("Training topics fetched:", topicsData);
       
-      // Set item_type on each topic if needed
       if (topicsData) {
         const topicsWithType: TrainingTopic[] = topicsData.map((topic: any) => ({
           ...topic,
           software_type_id: topic.software_type_id || null,
           machine_type_id: topic.machine_type_id || null,
-          item_type: topic.item_type || itemType // Preserve existing or set new
+          item_type: topic.item_type || itemType
         }));
         setTopics(topicsWithType);
       } else {
         setTopics([]);
       }
       
-      // Also fetch or create the requirement ID for later use
       const reqId = await fetchRequirement();
       setRequirementId(reqId);
       
@@ -114,11 +109,9 @@ export const useTrainingTopics = (
     if (!itemId || !planId || !itemType) return false;
 
     try {
-      // Check if we need to create a requirement first
       let reqId = requirementId;
       
       if (!reqId) {
-        // Create a new requirement based on item type
         const tableName = itemType === "machine" ? 'machine_training_requirements' : 'software_training_requirements';
         const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
         
@@ -138,7 +131,6 @@ export const useTrainingTopics = (
         }
       }
 
-      // Define type for new topic with required fields
       type NewTopic = {
         requirement_id: number;
         plan_id: number;
@@ -149,7 +141,6 @@ export const useTrainingTopics = (
         software_type_id?: number | null;
       };
 
-      // Determine which column to set based on itemType
       const newTopic: NewTopic = {
         requirement_id: reqId as number,
         plan_id: planId,
@@ -158,7 +149,6 @@ export const useTrainingTopics = (
         updated_at: new Date().toISOString()
       };
 
-      // Set the appropriate ID column based on itemType
       if (itemType === "machine") {
         newTopic.machine_type_id = itemId;
         newTopic.software_type_id = null;
@@ -175,7 +165,6 @@ export const useTrainingTopics = (
       if (insertError) throw insertError;
       
       if (topicData && topicData[0]) {
-        // Make sure we're adding a complete TrainingTopic object with item_type
         const addedTopic: TrainingTopic = {
           ...topicData[0],
           software_type_id: topicData[0].software_type_id || null,
@@ -237,7 +226,6 @@ export const useTrainingTopics = (
     }
   };
 
-  // Helper function to delete all topics for a specific machine or software type
   const deleteTopicsByItemId = async (itemIdToDelete: number, itemTypeToDelete: string): Promise<boolean> => {
     try {
       const columnName = itemTypeToDelete === "machine" ? 'machine_type_id' : 'software_type_id';
