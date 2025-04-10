@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -122,8 +121,9 @@ const QuotePlanningPage: React.FC = () => {
     if (!quoteId) return;
     
     try {
-      // Check if there's work_on_saturday and work_on_sunday in the database
-      // If not, we'll use default values
+      // Check if there are custom columns in the quotes table
+      // Since work_on_saturday and work_on_sunday might not exist yet in the schema
+      // we'll use a more generic select first to check columns
       const { data, error: fetchError } = await supabase
         .from("quotes")
         .select("*")
@@ -132,11 +132,12 @@ const QuotePlanningPage: React.FC = () => {
       
       if (fetchError) throw fetchError;
       
-      // Set defaults if these columns don't exist
+      // Set defaults or use values if they exist in the data
       setWorkOnWeekends({
         workOnSaturday: data?.work_on_saturday ?? false,
         workOnSunday: data?.work_on_sunday ?? false
       });
+
     } catch (err: any) {
       console.error("Error fetching quote settings:", err);
       setError(err.message || "Failed to load quote settings");
