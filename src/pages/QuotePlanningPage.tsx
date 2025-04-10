@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { 
@@ -12,8 +12,18 @@ import {
 import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuoteTrainingHours } from "@/hooks/useQuoteTrainingHours";
+import { useTrainingPlans } from "@/hooks/useTrainingPlans";
+import { supabase } from "@/integrations/supabase/client";
+
+// Import the new timeline components
+import Timeline from 'react-calendar-timeline';
+import 'react-calendar-timeline/lib/Timeline.css';
+import moment from 'moment';
 
 const QuotePlanningPage: React.FC = () => {
   const { quoteId } = useParams<{ quoteId: string }>();
@@ -21,17 +31,220 @@ const QuotePlanningPage: React.FC = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { profileData } = useUserProfile(user);
+  const { plans, loading: plansLoading } = useTrainingPlans();
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [resources, setResources] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [workOnWeekends, setWorkOnWeekends] = useState({
+    workOnSaturday: false,
+    workOnSunday: false
+  });
+
+  const { planTotals, loading: hoursLoading } = useQuoteTrainingHours(quoteId);
+
+  // Set up the generic calendar - 12 months with 30 days each
+  const startDate = moment().startOf('year').toDate();
+  const endDate = moment().add(1, 'year').toDate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/");
+      return;
+    }
+    
+    if (plans && plans.length > 0 && !selectedPlanId) {
+      setSelectedPlanId(plans[0].plan_id);
+    }
+    
+    fetchResources();
+    fetchQuoteSettings();
+  }, [user, quoteId, plans]);
+
+  useEffect(() => {
+    if (selectedPlanId) {
+      fetchTrainingData(selectedPlanId);
+    }
+  }, [selectedPlanId, workOnWeekends]);
+
+  const fetchQuoteSettings = async () => {
+    if (!quoteId) return;
+    
+    try {
+      const { data, error: fetchError } = await supabase
+        .from("quotes")
+        .select("work_on_saturday, work_on_sunday")
+        .eq("quote_id", quoteId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      setWorkOnWeekends({
+        workOnSaturday: data?.work_on_saturday || false,
+        workOnSunday: data?.work_on_sunday || false
+      });
+    } catch (err: any) {
+      console.error("Error fetching quote settings:", err);
+      setError(err.message || "Failed to load quote settings");
+    }
+  };
+
+  const fetchResources = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('resources')
+        .select('*')
+        .order('resource_name');
+        
+      if (error) throw error;
+      
+      setResources(data || []);
+      
+      // Transform resources into timeline groups format
+      const formattedGroups = (data || []).map(resource => ({
+        id: resource.resource_id,
+        title: resource.resource_name
+      }));
+      
+      setGroups(formattedGroups);
+    } catch (err: any) {
+      console.error("Error fetching resources:", err);
+      setError(err.message || "Failed to load resources");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const fetchTrainingData = async (planId: number) => {
+    if (!quoteId) return;
+    
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('quote_training_requirements')
+        .select(`
+          requirement_id,
+          machine_type_id,
+          software_type_id,
+          resource_id,
+          training_hours,
+          machine_types(name),
+          software_types(name),
+          resources(resource_name)
+        `)
+        .eq('quote_id', quoteId)
+        .eq('plan_id', planId);
+        
+      if (error) throw error;
+      
+      // Generate timeline items from the requirements data
+      const timelineItems = generateTimelineItems(data || []);
+      setItems(timelineItems);
+    } catch (err: any) {
+      console.error("Error fetching training data:", err);
+      setError(err.message || "Failed to load training data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generate timeline items with scheduling logic
+  const generateTimelineItems = (requirements: any[]): any[] => {
+    const maxHoursPerDay = 8;
+    const items: any[] = [];
+    
+    // Group requirements by resource
+    const resourceRequirements: {[key: number]: any[]} = {};
+    requirements.forEach(req => {
+      const resourceId = req.resource_id;
+      if (!resourceRequirements[resourceId]) {
+        resourceRequirements[resourceId] = [];
+      }
+      resourceRequirements[resourceId].push(req);
+    });
+    
+    // For each resource, schedule their requirements
+    Object.entries(resourceRequirements).forEach(([resourceId, reqs]) => {
+      let currentDay = 1; // Start at day 1
+      let hoursScheduledToday = 0;
+      
+      reqs.forEach((req, index) => {
+        const taskName = req.machine_type_id 
+          ? req.machine_types?.name 
+          : req.software_types?.name;
+        
+        let hoursRemaining = req.training_hours;
+        
+        while (hoursRemaining > 0) {
+          // Skip weekends if configured to do so
+          if (
+            (currentDay % 7 === 6 && !workOnWeekends.workOnSaturday) || // Saturday
+            (currentDay % 7 === 0 && !workOnWeekends.workOnSunday)      // Sunday
+          ) {
+            currentDay++;
+            hoursScheduledToday = 0;
+            continue;
+          }
+          
+          // How many hours can be scheduled today
+          const hoursToScheduleToday = Math.min(
+            maxHoursPerDay - hoursScheduledToday,
+            hoursRemaining
+          );
+          
+          if (hoursToScheduleToday > 0) {
+            // Convert days to milliseconds for the timeline
+            const startTime = moment(startDate).add(currentDay - 1, 'days')
+              .add(hoursScheduledToday, 'hours').valueOf();
+            const endTime = moment(startDate).add(currentDay - 1, 'days')
+              .add(hoursScheduledToday + hoursToScheduleToday, 'hours').valueOf();
+            
+            items.push({
+              id: `${req.requirement_id}-${items.length}`,
+              group: parseInt(resourceId),
+              title: taskName,
+              start_time: startTime,
+              end_time: endTime,
+              canMove: false,
+              canResize: false,
+              canChangeGroup: false,
+              itemProps: {
+                style: {
+                  background: req.machine_type_id ? '#3b82f6' : '#10b981',
+                  color: 'white',
+                  borderRadius: '4px',
+                  padding: '2px 4px',
+                }
+              }
+            });
+            
+            hoursRemaining -= hoursToScheduleToday;
+            hoursScheduledToday += hoursToScheduleToday;
+            
+            // Move to next day if this day is full
+            if (hoursScheduledToday >= maxHoursPerDay) {
+              currentDay++;
+              hoursScheduledToday = 0;
+            }
+          }
+        }
+      });
+    });
+    
+    return items;
+  };
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
 
-  const handleBackToConfig = () => {
+  const handleBackToQuote = () => {
     navigate(`/quote/${quoteId}/config`);
   };
-
-  if (!user) return null;
 
   const sidebarLinks = [
     {
@@ -113,24 +326,104 @@ const QuotePlanningPage: React.FC = () => {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  onClick={handleBackToConfig}
+                  onClick={handleBackToQuote}
                   className="text-gray-400 hover:text-gray-200"
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
+                
                 <h1 className="text-2xl font-bold text-gray-100">Planning</h1>
               </div>
             </div>
           </div>
+          
+          {error ? (
+            <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
+              <p className="text-red-300">{error}</p>
+              <Button 
+                onClick={() => fetchTrainingData(selectedPlanId!)} 
+                variant="outline" 
+                className="mt-2 text-blue-300 border-blue-800 hover:bg-blue-900/50"
+              >
+                Try Again
+              </Button>
+            </div>
+          ) : (
+            <div>
+              <Card className="bg-slate-800/80 border border-white/5 p-4 mb-6">
+                <Tabs 
+                  defaultValue={plans && plans.length > 0 ? plans[0].plan_id.toString() : ""} 
+                  onValueChange={(value) => setSelectedPlanId(parseInt(value))}
+                >
+                  <TabsList className="bg-slate-700">
+                    {plansLoading ? (
+                      <div className="p-4">
+                        <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
+                          Loading Plans
+                        </TextShimmerWave>
+                      </div>
+                    ) : (
+                      plans.map((plan) => (
+                        <TabsTrigger 
+                          key={plan.plan_id} 
+                          value={plan.plan_id.toString()}
+                          className="data-[state=active]:bg-blue-600"
+                        >
+                          {plan.name}
+                          {planTotals[plan.plan_id] && (
+                            <span className="ml-2 bg-blue-700 text-white text-xs px-1.5 py-0.5 rounded-md">
+                              {planTotals[plan.plan_id]}h
+                            </span>
+                          )}
+                        </TabsTrigger>
+                      ))
+                    )}
+                  </TabsList>
+                  
+                  {plans.map((plan) => (
+                    <TabsContent key={plan.plan_id} value={plan.plan_id.toString()}>
+                      <div className="mt-4">
+                        <div className="mb-4">
+                          <h3 className="text-xl font-semibold text-gray-200">{plan.name} Plan</h3>
+                          <p className="text-gray-400 mt-1">
+                            {planTotals[plan.plan_id] ? `${planTotals[plan.plan_id]} training hours` : 'Loading hours...'}
+                          </p>
+                        </div>
 
-          <div className="grid grid-cols-1 gap-6">
-            <Card className="bg-slate-800/80 border border-white/5 p-4 mb-6">
-              <h2 className="text-xl font-semibold mb-4 text-gray-200">Quote Planning</h2>
-              <p className="text-gray-400">
-                The Gantt charts for this quote's training plans will be implemented here.
-              </p>
-            </Card>
-          </div>
+                        {loading ? (
+                          <div className="p-4 text-center">
+                            <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg">
+                              Loading schedule data...
+                            </TextShimmerWave>
+                          </div>
+                        ) : (
+                          <div className="mt-4 bg-slate-900 p-2 rounded-md border border-slate-700">
+                            <Timeline
+                              groups={groups}
+                              items={items}
+                              defaultTimeStart={startDate}
+                              defaultTimeEnd={endDate}
+                              minZoom={60 * 60 * 24 * 7 * 1000} // min zoom is 1 week
+                              maxZoom={60 * 60 * 24 * 30 * 2 * 1000} // max zoom is 2 months
+                              canMove={false}
+                              canResize={false}
+                              stackItems
+                              itemHeightRatio={0.8}
+                              lineHeight={40}
+                              sidebarWidth={200}
+                              showCursorLine
+                              itemTouchSendsClick={false}
+                              timeSteps={{ day: 1, month: 1, year: 1 }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              </Card>
+            </div>
+          )}
         </div>
       </main>
     </div>
