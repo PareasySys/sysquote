@@ -30,9 +30,11 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
     // Auto-save machine selection
     onSave(updatedSelection);
     
-    // If a machine was removed, clean up its planning_details
-    if (quoteId && selectedMachineIds.includes(machineTypeId) && !updatedSelection.includes(machineTypeId)) {
-      try {
+    if (!quoteId) return;
+
+    try {
+      if (selectedMachineIds.includes(machineTypeId) && !updatedSelection.includes(machineTypeId)) {
+        // Machine was removed - delete all planning details for this machine
         console.log("Removing planning details for machine:", machineTypeId);
         
         const { error } = await supabase
@@ -42,17 +44,13 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
           .eq("machine_types_id", machineTypeId);
           
         if (error) throw error;
-      } catch (err: any) {
-        console.error("Error cleaning up planning details:", err);
-        toast.error("Failed to clean up planning details");
-      }
-    } 
-    // If a machine was added, create planning_details entries for each plan
-    else if (quoteId && !selectedMachineIds.includes(machineTypeId) && updatedSelection.includes(machineTypeId)) {
-      try {
+        toast.success("Planning details for machine removed");
+      } 
+      else if (!selectedMachineIds.includes(machineTypeId) && updatedSelection.includes(machineTypeId)) {
+        // Machine was added - create planning details for all training plans
         console.log("Adding planning details for machine:", machineTypeId);
         
-        // Get training offers for this machine type
+        // Get all training offers for this machine type to get the hours_required
         const { data: trainingOffers, error: offersError } = await supabase
           .from("training_offers")
           .select("plan_id, hours_required")
@@ -60,51 +58,61 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
           
         if (offersError) throw offersError;
         
-        // Create planning details for each plan, using hours from training offers when available
+        // Process each training plan
         for (const plan of plans) {
           // Find matching training offer for this plan and machine
           const offer = trainingOffers?.find(o => o.plan_id === plan.plan_id);
           const hoursRequired = offer ? offer.hours_required : 0;
           
-          // Get resources that should be assigned to this machine type
-          const { data: resources, error: resourcesError } = await supabase
+          // Get resources that can train on this machine type for this plan
+          const { data: requirements, error: requirementsError } = await supabase
             .from("machine_training_requirements")
             .select("resource_id")
             .eq("machine_type_id", machineTypeId)
             .eq("plan_id", plan.plan_id);
             
-          if (resourcesError) throw resourcesError;
+          if (requirementsError) throw requirementsError;
           
-          // For each resource, create a planning detail
-          if (resources && resources.length > 0) {
-            for (const resource of resources) {
-              if (resource.resource_id) {
-                await supabase.rpc(
-                  'save_training_plan_detail',
-                  {
-                    p_quote_id: quoteId,
-                    p_plan_id: plan.plan_id,
-                    p_resource_category: 'Machine',
-                    p_machine_types_id: machineTypeId,
-                    p_software_types_id: null,
-                    p_resource_id: resource.resource_id,
-                    p_allocated_hours: hoursRequired,
-                    p_start_day: 1, // Default values
-                    p_duration_days: Math.ceil(hoursRequired / 8), // Assuming 8 hours per day
-                    p_work_on_saturday: false,
-                    p_work_on_sunday: false
-                  }
-                );
+          // For each resource that can train on this machine, create a planning detail
+          if (requirements && requirements.length > 0) {
+            for (const requirement of requirements) {
+              if (requirement.resource_id) {
+                // Insert planning detail for this resource and machine
+                await supabase.from("planning_details").insert({
+                  quote_id: quoteId,
+                  plan_id: plan.plan_id,
+                  machine_types_id: machineTypeId,
+                  software_types_id: null,
+                  resource_id: requirement.resource_id,
+                  allocated_hours: hoursRequired,
+                  work_on_saturday: false,
+                  work_on_sunday: false
+                });
               }
             }
+            console.log(`Created planning details for machine ${machineTypeId} with plan ${plan.plan_id}`);
+          } else {
+            // If no specific resources are assigned for training this machine,
+            // create a default entry with no resource assigned
+            await supabase.from("planning_details").insert({
+              quote_id: quoteId,
+              plan_id: plan.plan_id,
+              machine_types_id: machineTypeId,
+              software_types_id: null,
+              resource_id: null,
+              allocated_hours: hoursRequired,
+              work_on_saturday: false,
+              work_on_sunday: false
+            });
+            console.log(`Created default planning detail for machine ${machineTypeId} with plan ${plan.plan_id}`);
           }
         }
         
-        console.log("Created planning details for selected machine");
-      } catch (err: any) {
-        console.error("Error creating planning details:", err);
-        toast.error("Failed to create planning details");
+        toast.success("Planning details for machine created");
       }
+    } catch (err: any) {
+      console.error("Error managing planning details:", err);
+      toast.error("Failed to update planning details");
     }
   };
 

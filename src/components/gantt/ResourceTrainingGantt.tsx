@@ -18,9 +18,6 @@ interface PlanningDetail {
   resource_id: number;
   resource_name: string;
   allocated_hours: number;
-  start_day: number;
-  duration_days: number;
-  resource_category: string;
   machine_types_id: number | null;
   software_types_id: number | null;
   type_name: string | null;
@@ -45,20 +42,43 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
 
   // Fetch saved planning details
   const fetchStoredDetails = async () => {
-    if (!quoteId) return;
+    if (!quoteId || !planId) return;
     
     try {
       setDetailsLoading(true);
       
-      const { data, error } = await supabase.rpc(
-        'get_quote_training_plan_details', 
-        { quote_id_param: quoteId }
-      );
+      const { data, error } = await supabase
+        .from("planning_details")
+        .select(`
+          id,
+          resource_id,
+          resources (name),
+          allocated_hours,
+          machine_types_id,
+          software_types_id,
+          machine_types (name),
+          software_types (name)
+        `)
+        .eq("quote_id", quoteId)
+        .eq("plan_id", planId);
       
       if (error) throw error;
       
       console.log("Stored planning details:", data);
-      setStoredDetails(data || []);
+      
+      // Map the data to our expected format
+      const mappedDetails: PlanningDetail[] = data.map(item => ({
+        id: item.id,
+        resource_id: item.resource_id,
+        resource_name: item.resources?.name || "Unassigned",
+        allocated_hours: item.allocated_hours,
+        machine_types_id: item.machine_types_id,
+        software_types_id: item.software_types_id,
+        type_name: item.machine_types ? item.machine_types.name : 
+                  (item.software_types ? item.software_types.name : null)
+      }));
+      
+      setStoredDetails(mappedDetails);
       
     } catch (err: any) {
       console.error("Error fetching planning details:", err);
@@ -67,14 +87,11 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     }
   };
 
-  // Refresh the data when weekend settings change
+  // Refresh the data when weekend settings or plan changes
   useEffect(() => {
-    if (planId && requirements.length > 0) {
-      saveTrainingPlanDetails(requirements, planId, workOnSaturday, workOnSunday);
+    if (quoteId && planId) {
+      fetchStoredDetails();
     }
-    
-    // Also fetch stored details whenever dependencies change
-    fetchStoredDetails();
   }, [workOnSaturday, workOnSunday, quoteId, planId]);
 
   if (!planId) {
@@ -97,7 +114,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
               Loading schedule...
             </TextShimmerWave>
           ) : (
-            `Showing ${requirements.length} training requirements`
+            `Showing ${storedDetails.length} training assignments`
           )}
         </p>
       </div>
