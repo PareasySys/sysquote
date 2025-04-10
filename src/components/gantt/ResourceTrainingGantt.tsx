@@ -1,13 +1,12 @@
 
 import React, { useEffect, useState } from "react";
 import GanttChart from "./GanttChart";
-import { useTrainingRequirements } from "@/hooks/useTrainingRequirements";
 import { Card } from "@/components/ui/card";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
-import { supabase } from "@/lib/supabaseClient";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { toast } from "sonner";
+import { fetchPlanningDetails, PlanningDetail, updateWeekendSettings } from "@/services/planningDetailsService";
+import { TrainingRequirement } from "@/hooks/useTrainingRequirements";
 
 interface ResourceTrainingGanttProps {
   quoteId: string | undefined;
@@ -16,130 +15,84 @@ interface ResourceTrainingGanttProps {
   workOnSunday: boolean;
 }
 
-interface PlanningDetail {
-  id: string;
-  resource_id: number | null;
-  resource_name: string;
-  allocated_hours: number;
-  machine_types_id: number | null;
-  software_types_id: number | null;
-  type_name: string | null;
-}
-
 const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
   quoteId,
   planId,
   workOnSaturday,
   workOnSunday
 }) => {
-  const {
-    requirements,
-    loading,
-    error,
-    fetchRequirements,
-    cleanupRemovedMachines
-  } = useTrainingRequirements(quoteId, planId, workOnSaturday, workOnSunday);
+  const [requirements, setRequirements] = useState<TrainingRequirement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [planningDetails, setPlanningDetails] = useState<PlanningDetail[]>([]);
 
-  const [storedDetails, setStoredDetails] = useState<PlanningDetail[]>([]);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  // Fetch planning details and convert to training requirements
+  const fetchRequirements = async () => {
+    if (!quoteId || !planId) {
+      setRequirements([]);
+      setLoading(false);
+      return;
+    }
 
-  // Fetch saved planning details
-  const fetchStoredDetails = async () => {
-    if (!quoteId || !planId) return;
-    
     try {
-      setDetailsLoading(true);
-      setFetchError(null);
+      setLoading(true);
+      setError(null);
       
-      // Join with resources table to get resource names
-      const { data, error } = await supabase
-        .from("planning_details")
-        .select(`
-          id,
-          resource_id,
-          resources (name),
-          allocated_hours,
-          machine_types_id,
-          software_types_id,
-          machine_types (name),
-          software_types (name)
-        `)
-        .eq("quote_id", quoteId)
-        .eq("plan_id", planId);
+      // Fetch planning details from our service
+      const details = await fetchPlanningDetails(quoteId, planId);
+      setPlanningDetails(details);
       
-      if (error) {
-        console.error("Error fetching planning details:", error);
-        setFetchError(error.message);
-        throw error;
-      }
-      
-      console.log("Stored planning details:", data);
-      
-      // Map the data to our expected format
-      if (data && data.length > 0) {
-        const mappedDetails: PlanningDetail[] = data.map(item => ({
-          id: item.id,
-          resource_id: item.resource_id,
-          resource_name: item.resources?.name || "Unassigned",
-          allocated_hours: item.allocated_hours,
-          machine_types_id: item.machine_types_id,
-          software_types_id: item.software_types_id,
-          type_name: item.machine_types ? item.machine_types.name : 
-                    (item.software_types ? item.software_types.name : null)
-        }));
+      // Transform planning details into training requirements
+      const transformedRequirements: TrainingRequirement[] = details.map((detail, index) => {
+        const resourceId = detail.resource_id || 0;
+        const resourceName = detail.resource_name || "Unassigned";
+        const hours = detail.allocated_hours || 0;
         
-        setStoredDetails(mappedDetails);
-      } else {
-        setStoredDetails([]);
-      }
+        // Calculate duration in days (assuming 8 hours per working day)
+        let durationDays = Math.ceil(hours / 8);
+        if (durationDays < 1) durationDays = 1;
+        
+        // If not working on weekends, extend duration to account for skipped days
+        if (!workOnSaturday || !workOnSunday) {
+          // Calculate how many weekends will be encountered during the duration
+          // For simplicity, assuming uniform distribution of weekends (2 days per 7)
+          const daysOff = (!workOnSaturday && !workOnSunday) ? 2 : 1;
+          const weekendAdjustment = Math.floor(durationDays / 5) * daysOff;
+          durationDays += weekendAdjustment;
+        }
+        
+        // Use simple spacing algorithm for start days if not available
+        const startDay = (index + 1) * 5; 
+        
+        return {
+          requirement_id: index + 1,
+          resource_id: resourceId,
+          resource_name: resourceName,
+          training_hours: hours,
+          start_day: startDay,
+          duration_days: durationDays || 1
+        };
+      });
+      
+      setRequirements(transformedRequirements);
       
     } catch (err: any) {
       console.error("Error fetching planning details:", err);
-      setFetchError(err.message || "Failed to fetch planning details");
+      setError(err.message || "Failed to load training requirements");
     } finally {
-      setDetailsLoading(false);
+      setLoading(false);
     }
   };
 
-  // Update planning details when machines, resources, or hours change
-  const updatePlanningDetails = async () => {
-    if (!quoteId || !planId) return;
-    
-    try {
-      setDetailsLoading(true);
-      setFetchError(null);
-      
-      // Make sure any orphaned planning details are cleaned up
-      await cleanupRemovedMachines();
-      
-      // Then fetch fresh data
-      await fetchStoredDetails();
-      
-      // Refresh the gantt chart requirements
-      await fetchRequirements();
-      
-    } catch (err: any) {
-      console.error("Error updating planning details:", err);
-      setFetchError(err.message || "Failed to update planning details");
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
-  // Refresh the data when plan changes
-  useEffect(() => {
-    if (quoteId && planId) {
-      fetchStoredDetails();
-    }
-  }, [quoteId, planId]);
-  
   // Update weekend settings when they change
   useEffect(() => {
     if (quoteId && planId) {
-      updatePlanningDetails();
+      fetchRequirements();
+      
+      // Update weekend settings in database
+      updateWeekendSettings(quoteId, planId, workOnSaturday, workOnSunday);
     }
-  }, [workOnSaturday, workOnSunday]);
+  }, [quoteId, planId, workOnSaturday, workOnSunday]);
 
   if (!planId) {
     return (
@@ -156,20 +109,20 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-200">Resource Training Schedule</h3>
         <p className="text-gray-400 text-sm">
-          {loading || detailsLoading ? (
+          {loading ? (
             <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
               Loading schedule...
             </TextShimmerWave>
           ) : (
-            `Showing ${storedDetails.length} training assignments`
+            `Showing ${planningDetails.length} training assignments`
           )}
         </p>
       </div>
 
-      {fetchError && (
+      {error && (
         <Alert variant="destructive" className="mb-4 bg-red-900/30 border-red-800/30 text-red-200">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{fetchError}</AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
       
