@@ -22,7 +22,12 @@ import {
   Code,
   FileCode,
   Binary,
-  Blocks
+  Blocks,
+  Forklift,
+  Truck,
+  Factory,
+  Laptop,
+  Car
 } from "lucide-react";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
 import { supabase } from "@/lib/supabaseClient";
@@ -52,7 +57,12 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
   }>({});
   const [loadingTopics, setLoadingTopics] = useState<{[key: string]: boolean}>({});
   
-  // Expanded state for tree nodes
+  // Separate expanded states for machines and software to prevent conflicts
+  const [expandedMachines, setExpandedMachines] = useState<{[key: string]: boolean}>({});
+  const [expandedSoftware, setExpandedSoftware] = useState<{[key: string]: boolean}>({});
+  const [expandedPlans, setExpandedPlans] = useState<ExpandedState>({});
+  
+  // Root section expansion state (machines and software sections)
   const [expanded, setExpanded] = useState<ExpandedState>({
     'machines': true,
     'software': true,
@@ -61,23 +71,26 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
   // Get machine icon by machine name
   const getMachineIcon = (machineName: string) => {
     const name = machineName.toLowerCase();
-    if (name.includes('server')) return <Server size={14} className="text-white" />;
-    if (name.includes('storage')) return <HardDrive size={14} className="text-white" />;
-    if (name.includes('processor') || name.includes('cpu')) return <Cpu size={14} className="text-white" />;
-    if (name.includes('monitor') || name.includes('display')) return <Monitor size={14} className="text-white" />;
-    if (name.includes('printer')) return <Printer size={14} className="text-white" />;
-    return <HardDrive size={14} className="text-white" />;
+    if (name.includes('server')) return <Server size={16} className="text-white" />;
+    if (name.includes('storage')) return <HardDrive size={16} className="text-white" />;
+    if (name.includes('processor') || name.includes('cpu')) return <Cpu size={16} className="text-white" />;
+    if (name.includes('monitor') || name.includes('display')) return <Monitor size={16} className="text-white" />;
+    if (name.includes('printer')) return <Printer size={16} className="text-white" />;
+    if (name.includes('lgv')) return <Car size={16} className="text-white" />;
+    if (name.includes('frs')) return <Truck size={16} className="text-white" />;
+    if (name.includes('traslo')) return <Forklift size={16} className="text-white" />;
+    return <Factory size={16} className="text-white" />;
   };
   
   // Get software icon by software name
   const getSoftwareIcon = (softwareName: string) => {
     const name = softwareName.toLowerCase();
-    if (name.includes('database')) return <Database size={14} className="text-white" />;
-    if (name.includes('code') || name.includes('programming')) return <Code size={14} className="text-white" />;
-    if (name.includes('file') || name.includes('document')) return <FileCode size={14} className="text-white" />;
-    if (name.includes('binary')) return <Binary size={14} className="text-white" />;
-    if (name.includes('book') || name.includes('manual')) return <BookOpen size={14} className="text-white" />;
-    return <Blocks size={14} className="text-white" />;
+    if (name.includes('database')) return <Database size={16} className="text-white" />;
+    if (name.includes('code') || name.includes('programming')) return <Code size={16} className="text-white" />;
+    if (name.includes('file') || name.includes('document')) return <FileCode size={16} className="text-white" />;
+    if (name.includes('binary')) return <Binary size={16} className="text-white" />;
+    if (name.includes('book') || name.includes('manual')) return <BookOpen size={16} className="text-white" />;
+    return <Laptop size={16} className="text-white" />;
   };
   
   // Filter machines to only show selected ones in the quote
@@ -111,16 +124,14 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
       
       console.log(`Topics for ${key}:`, data);
       
-      const formattedTopics = data?.map((topic: any) => ({
-        ...topic,
-        software_type_id: topic.software_type_id || null,
-        machine_type_id: topic.machine_type_id || null,
-        item_type: topic.item_type || itemType
-      })) || [];
-      
       setTopicsByItemAndPlan(prev => ({
         ...prev,
-        [key]: formattedTopics
+        [key]: data?.map((topic: any) => ({
+          ...topic,
+          software_type_id: topic.software_type_id || null,
+          machine_type_id: topic.machine_type_id || null,
+          item_type: topic.item_type || itemType
+        })) || []
       }));
     } catch (err) {
       console.error(`Error fetching topics for ${key}:`, err);
@@ -132,10 +143,34 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
     }
   };
   
-  // Toggle expanded state of a node
-  const toggleExpanded = (nodeKey: string, itemId?: number, planId?: number, itemType?: string) => {
+  // Toggle expanded state of a machine node
+  const toggleMachineExpanded = (machineKey: string) => {
+    setExpandedMachines(prev => ({
+      ...prev,
+      [machineKey]: !prev[machineKey]
+    }));
+  };
+  
+  // Toggle expanded state of a software node
+  const toggleSoftwareExpanded = (softwareKey: string) => {
+    setExpandedSoftware(prev => ({
+      ...prev,
+      [softwareKey]: !prev[softwareKey]
+    }));
+  };
+  
+  // Toggle expanded state for a root section (machines or software)
+  const toggleRootExpanded = (nodeKey: string) => {
+    setExpanded(prev => ({
+      ...prev,
+      [nodeKey]: !prev[nodeKey]
+    }));
+  };
+  
+  // Toggle expanded state for a plan under a machine or software
+  const togglePlanExpanded = (nodeKey: string, itemId?: number, planId?: number, itemType?: string) => {
     // If this is a plan node and it's being expanded, fetch topics
-    if (itemId && planId && itemType && !expanded[nodeKey]) {
+    if (itemId && planId && itemType && !expandedPlans[nodeKey]) {
       // Only fetch if we haven't already
       const key = `${itemType}-${itemId}-plan-${planId}`;
       if (!topicsByItemAndPlan[key]) {
@@ -143,7 +178,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
       }
     }
     
-    setExpanded(prev => ({
+    setExpandedPlans(prev => ({
       ...prev,
       [nodeKey]: !prev[nodeKey]
     }));
@@ -184,7 +219,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
             label="Machine Topics"
             icon={expanded['machines'] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
             expanded={expanded['machines']}
-            onToggle={() => toggleExpanded('machines')}
+            onToggle={() => toggleRootExpanded('machines')}
           />
           
           {expanded['machines'] && filteredMachines.map(machine => {
@@ -196,13 +231,13 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                   id={machineKey}
                   label={machine.name}
                   icon={getMachineIcon(machine.name)}
-                  expanded={expanded[machineKey]}
+                  expanded={expandedMachines[machineKey]}
                   level={1}
-                  onToggle={() => toggleExpanded(machineKey)}
+                  onToggle={() => toggleMachineExpanded(machineKey)}
                 />
                 
                 {/* Plans under this machine */}
-                {expanded[machineKey] && plans.map(plan => {
+                {expandedMachines[machineKey] && plans.map(plan => {
                   const planKey = `${machineKey}-plan-${plan.plan_id}`;
                   const topicsKey = `machine-${machine.machine_type_id}-plan-${plan.plan_id}`;
                   
@@ -211,14 +246,14 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                       <TreeNode 
                         id={planKey}
                         label={plan.name}
-                        icon={expanded[planKey] ? <FolderOpen size={14} className="text-white" /> : <Folder size={14} className="text-white" />}
-                        expanded={expanded[planKey]}
+                        icon={expandedPlans[planKey] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
+                        expanded={expandedPlans[planKey]}
                         level={2}
-                        onToggle={() => toggleExpanded(planKey, machine.machine_type_id, plan.plan_id, 'machine')}
+                        onToggle={() => togglePlanExpanded(planKey, machine.machine_type_id, plan.plan_id, 'machine')}
                       />
                       
                       {/* Display topics when a plan is expanded */}
-                      {expanded[planKey] && (
+                      {expandedPlans[planKey] && (
                         <>
                           {loadingTopics[topicsKey] ? (
                             <TreeNode
@@ -233,7 +268,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                                 key={`topic-${topic.topic_id}`}
                                 id={`topic-${topic.topic_id}`}
                                 label={topic.topic_text}
-                                icon={<FileText size={14} className="text-white" />}
+                                icon={<FileText size={16} className="text-white" />}
                                 isLeaf={true}
                                 level={3}
                               />
@@ -261,7 +296,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
             label="Software Topics"
             icon={expanded['software'] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
             expanded={expanded['software']}
-            onToggle={() => toggleExpanded('software')}
+            onToggle={() => toggleRootExpanded('software')}
           />
           
           {expanded['software'] && software.map(softwareItem => {
@@ -273,13 +308,13 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                   id={softwareKey}
                   label={softwareItem.name}
                   icon={getSoftwareIcon(softwareItem.name)}
-                  expanded={expanded[softwareKey]}
+                  expanded={expandedSoftware[softwareKey]}
                   level={1}
-                  onToggle={() => toggleExpanded(softwareKey)}
+                  onToggle={() => toggleSoftwareExpanded(softwareKey)}
                 />
                 
                 {/* Plans under this software */}
-                {expanded[softwareKey] && plans.map(plan => {
+                {expandedSoftware[softwareKey] && plans.map(plan => {
                   const planKey = `${softwareKey}-plan-${plan.plan_id}`;
                   const topicsKey = `software-${softwareItem.software_type_id}-plan-${plan.plan_id}`;
                   
@@ -288,14 +323,14 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                       <TreeNode 
                         id={planKey}
                         label={plan.name}
-                        icon={expanded[planKey] ? <FolderOpen size={14} className="text-white" /> : <Folder size={14} className="text-white" />}
-                        expanded={expanded[planKey]}
+                        icon={expandedPlans[planKey] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
+                        expanded={expandedPlans[planKey]}
                         level={2}
-                        onToggle={() => toggleExpanded(planKey, softwareItem.software_type_id, plan.plan_id, 'software')}
+                        onToggle={() => togglePlanExpanded(planKey, softwareItem.software_type_id, plan.plan_id, 'software')}
                       />
                       
                       {/* Display topics when a plan is expanded */}
-                      {expanded[planKey] && (
+                      {expandedPlans[planKey] && (
                         <>
                           {loadingTopics[topicsKey] ? (
                             <TreeNode
@@ -310,7 +345,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
                                 key={`topic-${topic.topic_id}`}
                                 id={`topic-${topic.topic_id}`}
                                 label={topic.topic_text}
-                                icon={<FileText size={14} className="text-white" />}
+                                icon={<FileText size={16} className="text-white" />}
                                 isLeaf={true}
                                 level={3}
                               />
