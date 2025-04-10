@@ -1,15 +1,28 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import GanttChart from "./GanttChart";
 import { useTrainingRequirements } from "@/hooks/useTrainingRequirements";
 import { Card } from "@/components/ui/card";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
+import { supabase } from "@/lib/supabaseClient";
 
 interface ResourceTrainingGanttProps {
   quoteId: string | undefined;
   planId: number | null;
   workOnSaturday: boolean;
   workOnSunday: boolean;
+}
+
+interface TrainingPlanDetail {
+  id: string;
+  resource_id: number;
+  resource_name: string;
+  allocated_hours: number;
+  start_day: number;
+  duration_days: number;
+  resource_category: string;
+  type_id: number;
+  type_name: string;
 }
 
 const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
@@ -26,12 +39,42 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     saveTrainingPlanDetails
   } = useTrainingRequirements(quoteId, planId, workOnSaturday, workOnSunday);
 
+  const [storedDetails, setStoredDetails] = useState<TrainingPlanDetail[]>([]);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+
+  // Fetch saved training plan details
+  const fetchStoredDetails = async () => {
+    if (!quoteId) return;
+    
+    try {
+      setDetailsLoading(true);
+      
+      const { data, error } = await supabase.rpc(
+        'get_quote_training_plan_details', 
+        { quote_id_param: quoteId }
+      );
+      
+      if (error) throw error;
+      
+      console.log("Stored training plan details:", data);
+      setStoredDetails(data || []);
+      
+    } catch (err: any) {
+      console.error("Error fetching training plan details:", err);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
   // Refresh the data when weekend settings change
   useEffect(() => {
     if (planId && requirements.length > 0) {
       saveTrainingPlanDetails(requirements, planId, workOnSaturday, workOnSunday);
     }
-  }, [workOnSaturday, workOnSunday]);
+    
+    // Also fetch stored details whenever dependencies change
+    fetchStoredDetails();
+  }, [workOnSaturday, workOnSunday, quoteId, planId]);
 
   if (!planId) {
     return (
@@ -48,7 +91,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-200">Resource Training Schedule</h3>
         <p className="text-gray-400 text-sm">
-          {loading ? (
+          {loading || detailsLoading ? (
             <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
               Loading schedule...
             </TextShimmerWave>

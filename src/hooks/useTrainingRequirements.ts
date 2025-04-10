@@ -73,7 +73,7 @@ export const useTrainingRequirements = (
       
       setRequirements(adjustedRequirements);
       
-      // Save to quote_training_plan_hours table (for persistence)
+      // Save to training_plan_details table
       await saveTrainingPlanDetails(adjustedRequirements, planId, workOnSaturday, workOnSunday);
     } catch (err: any) {
       console.error("Error fetching training requirements:", err);
@@ -94,26 +94,30 @@ export const useTrainingRequirements = (
     if (!quoteId) return;
     
     try {
-      // First, delete existing records for this quote and plan from quote_training_plan_hours
-      const { error: deleteError } = await supabase
-        .from('quote_training_plan_hours')
-        .delete()
-        .match({ quote_id: quoteId, plan_id: planId });
+      console.log("Saving training plan details:", items.length, "items");
       
-      if (deleteError) throw deleteError;
-      
-      // Insert each requirement as a new record
+      // Insert each requirement as a training plan detail using RPC
       for (const item of items) {
-        const { error: insertError } = await supabase
-          .from('quote_training_plan_hours')
-          .insert({
-            quote_id: quoteId,
-            plan_id: planId,
-            resource_id: item.resource_id,
-            training_hours: item.training_hours,
-          });
+        const { data, error } = await supabase.rpc(
+          'save_training_plan_detail',
+          {
+            p_quote_id: quoteId,
+            p_plan_id: planId,
+            p_resource_category: 'Machine', // Default to Machine for now
+            p_type_id: null, // Will be populated when we have proper type assignments
+            p_resource_id: item.resource_id,
+            p_allocated_hours: item.training_hours,
+            p_start_day: item.start_day,
+            p_duration_days: item.duration_days,
+            p_work_on_saturday: workOnSaturday,
+            p_work_on_sunday: workOnSunday
+          }
+        );
         
-        if (insertError) throw insertError;
+        if (error) {
+          console.error("Error saving training plan detail:", error);
+          throw error;
+        }
       }
       
       console.log("Training plan details saved successfully");
