@@ -217,3 +217,7 @@
   overflow: auto;
   position: relative;
 }
+
+.gantt-columns {
+  height: 100vh
+}
