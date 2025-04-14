@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -26,6 +25,7 @@ import {
 } from "@/components/ui/form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
 
 interface AreaCostModalProps {
   open: boolean;
@@ -130,6 +130,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         daily_allowance: values.dailyAllowance,
         daily_pocket_money: values.dailyPocketMoney,
         icon_name: values.iconName || null,
+        area_id: areaCost?.area_id || 0,
       };
 
       if (areaCost) {
@@ -156,13 +157,11 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         }
         
         const nextId = maxIdData && maxIdData.length > 0 ? maxIdData[0].area_id + 1 : 1;
+        costData.area_id = nextId;
         
         const { error } = await supabase
           .from("area_costs")
-          .insert({
-            ...costData,
-            area_id: nextId
-          });
+          .insert(costData);
 
         if (error) {
           console.error("Error creating area cost:", error);
@@ -170,6 +169,8 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         }
         toast.success("Area cost created successfully");
       }
+
+      await syncPlanningDetailsAfterChanges();
 
       onSave();
       onClose();
@@ -208,6 +209,8 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         console.error("Error deleting area cost:", error);
         throw error;
       }
+      
+      await syncPlanningDetailsAfterChanges();
       
       toast.success("Area cost deleted successfully");
       

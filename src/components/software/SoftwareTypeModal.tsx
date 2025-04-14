@@ -20,6 +20,7 @@ import { useSoftwareTrainingRequirements } from "@/hooks/useSoftwareTrainingRequ
 import { useResources } from "@/hooks/useResources";
 import { useTrainingTopics } from "@/hooks/useTrainingTopics";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
 
 interface SoftwareTypeModalProps {
   open: boolean;
@@ -135,6 +136,8 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
 
       if (error) throw error;
 
+      await syncPlanningDetailsAfterChanges();
+
       toast.success("Software deleted successfully");
       onSave();
       onClose();
@@ -185,6 +188,8 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
         }
         toast.success("Software created successfully");
       }
+
+      await syncPlanningDetailsAfterChanges();
 
       onSave();
       onClose();

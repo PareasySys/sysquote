@@ -19,6 +19,7 @@ import { useMachineTrainingRequirements } from "@/hooks/useMachineTrainingRequir
 import { useResources } from "@/hooks/useResources";
 import { useTrainingTopics } from "@/hooks/useTrainingTopics";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
 
 interface MachineTypeModalProps {
   open: boolean;
@@ -142,6 +143,8 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
 
       if (error) throw error;
 
+      await syncPlanningDetailsAfterChanges();
+
       toast.success("Machine deleted successfully");
       onSave();
       onClose();
@@ -190,6 +193,8 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
         }
         toast.success("Machine created successfully");
       }
+
+      await syncPlanningDetailsAfterChanges();
 
       onSave();
       onClose();

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchPlanningDetails } from '@/services/planningDetailsService';
 import { scheduleTrainingTasks } from '@/utils/scheduleTasks';
 import { ScheduledTaskSegment } from '@/utils/types';
+import { syncPlanningDetailsAfterChanges } from '@/services/planningDetailsSync';
 
 export interface TrainingRequirement {
   id?: string;
@@ -53,6 +54,9 @@ export function useTrainingRequirements(
       console.log(`useTrainingRequirements: Found ${machineCount} machine resources and ${softwareCount} software resources.`);
 
       setRawRequirements(validRequirements);
+      
+      // Sync planning details to ensure consistency
+      await syncPlanningDetailsAfterChanges();
     } catch (err: any) {
       console.error("useTrainingRequirements: Error fetching planning details:", err);
       const errorMessage = err.message || "Failed to fetch training requirements.";

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useTrainingOffers } from "@/hooks/useTrainingOffers";
 import { useMachineTypes } from "@/hooks/useMachineTypes";
@@ -10,6 +9,7 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
 
 const TrainingOffersTab = () => {
   const {
@@ -85,8 +85,9 @@ const TrainingOffersTab = () => {
         success = await updateTrainingHours(itemId, planId, hours);
       }
       
-      // Remove cell from edit mode only if the update was successful
       if (success) {
+        await syncPlanningDetailsAfterChanges();
+        
         const newEditCells = { ...editCells };
         delete newEditCells[key];
         setEditCells(newEditCells);

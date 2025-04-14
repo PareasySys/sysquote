@@ -1,9 +1,8 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
+import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
 
-// Define simpler types to avoid excessive type instantiation
 export interface TrainingTopicBase {
   topic_id: number;
   topic_text: string;
@@ -20,13 +19,12 @@ export interface TrainingTopicBase {
 export type TrainingTopic = TrainingTopicBase;
 export type RequirementId = { requirement_id: number };
 
-// Fix to avoid excessive type instantiation and update requirement_id to nullable
 export type NewTopicInsert = {
   topic_text: string;
   plan_id?: number | null;
   machine_type_id?: number | null;
   software_type_id?: number | null;
-  requirement_id: number | null; // Changed to non-optional but nullable
+  requirement_id: number | null;
   item_type?: string | null;
   display_order?: number | null;
 };
@@ -83,38 +81,36 @@ export const useTrainingTopics = (
 
     setIsAddingTopic(true);
     try {
-      // Map through each selected machine ID and create a new topic for it
       const insertPromises = selectedMachineIds.map(async (machineTypeId) => {
         const newTopicData: NewTopicInsert = {
           topic_text: newTopicText,
           machine_type_id: machineTypeId,
-          requirement_id: null // Now explicitly required but can be null
+          requirement_id: null
         };
 
         const { data, error } = await supabase
           .from("training_topics")
-          .insert([newTopicData]) // Fixed: Pass as array for batch insert
+          .insert([newTopicData])
           .select()
           .single();
 
         if (error) {
           console.error(`Error adding topic for machine ${machineTypeId}:`, error);
           toast.error(`Failed to add topic for machine ${machineTypeId}`);
-          return null; // Indicate failure
+          return null;
         }
 
-        return data as TrainingTopic; // Indicate success and return the new topic
+        return data as TrainingTopic;
       });
 
-      // Wait for all insert operations to complete
       const results = await Promise.all(insertPromises);
 
-      // Filter out any failed results (where the promise returned null)
       const successfulTopics = results.filter((topic): topic is TrainingTopic => topic !== null);
 
       if (successfulTopics.length > 0) {
         setTopics((prevTopics) => [...prevTopics, ...successfulTopics]);
-        setNewTopic(""); // Clear the input field
+        setNewTopic("");
+        await syncPlanningDetailsAfterChanges();
         toast.success("Training topic added successfully for selected machines!");
         return true;
       } else {
@@ -145,6 +141,7 @@ export const useTrainingTopics = (
           topic.topic_id === topicId ? { ...topic, topic_text: newText } : topic
         )
       );
+      await syncPlanningDetailsAfterChanges();
       toast.success("Training topic updated successfully");
       return true;
     } catch (err: any) {
@@ -164,6 +161,7 @@ export const useTrainingTopics = (
       if (error) throw error;
 
       setTopics((prevTopics) => prevTopics.filter((topic) => topic.topic_id !== topicId));
+      await syncPlanningDetailsAfterChanges();
       toast.success("Training topic deleted successfully");
       return true;
     } catch (err: any) {
@@ -173,7 +171,6 @@ export const useTrainingTopics = (
     }
   };
 
-  // Add the function to delete topics by item ID (machine or software)
   const deleteTopicsByItemId = async (itemId: number, itemType: "machine" | "software"): Promise<boolean> => {
     try {
       const fieldName = itemType === "machine" ? "machine_type_id" : "software_type_id";

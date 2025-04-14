@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -16,6 +15,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
 
 interface TrainingPlanModalProps {
   open: boolean;
@@ -87,6 +87,8 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
         toast.success("Training plan created successfully");
       }
 
+      await syncPlanningDetailsAfterChanges();
+
       onSave();
       onClose();
     } catch (error: any) {
@@ -109,6 +111,8 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
         .eq("plan_id", plan.plan_id);
 
       if (error) throw error;
+
+      await syncPlanningDetailsAfterChanges();
 
       toast.success("Training plan deleted successfully");
       onSave();
