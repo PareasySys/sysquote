@@ -1,223 +1,297 @@
+/* --- Base Setup --- */
+:root {
+  --gantt-resource-col-width: 200px;
+  --gantt-header-height: 70px; /* Total header height (months + days) */
+  --gantt-resource-header-height: 40px; /* Height for resource name row */
+  --gantt-machine-row-height: 30px;     /* Height for machine row / task row */
+  --gantt-day-width: 30px;
+
+  --gantt-border-color: rgba(255, 255, 255, 0.1);
+  --gantt-border-color-light: rgba(255, 255, 255, 0.05);
+  --gantt-header-bg: rgba(30, 41, 59, 0.95); /* Slightly more opaque */
+  --gantt-resource-bg: rgba(30, 41, 59, 0.7);
+  --gantt-weekend-bg: rgba(45, 55, 75, 0.6);
+  --gantt-grid-bg: transparent; /* Grid itself is lines/weekend shades */
+  --gantt-container-bg: rgba(15, 23, 42, 0.5);
+  --gantt-text-color: rgba(255, 255, 255, 0.9);
+  --gantt-text-color-muted: rgba(255, 255, 255, 0.7);
+  --gantt-text-color-faint: rgba(255, 255, 255, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+}
 
 .gantt-container {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  height: 100%; /* Ensure parent provides height */
+  overflow: hidden; /* Prevent container scrollbars */
+  border: 1px solid var(--gantt-border-color);
   border-radius: 0.5rem;
-  background-color: rgba(15, 23, 42, 0.3);
+  background-color: var(--gantt-container-bg);
+  color: var(--gantt-text-color);
 }
 
-.gantt-header {
+/* --- Header Row --- */
+.gantt-header-row {
   display: flex;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: rgba(30, 41, 59, 0.8);
+  flex-shrink: 0; /* Prevent header from shrinking */
+  height: var(--gantt-header-height);
+  background-color: var(--gantt-header-bg);
+  z-index: 30; /* Above content */
+  position: relative; /* Needed for z-index */
+  border-bottom: 1px solid var(--gantt-border-color);
 }
 
-.gantt-resource-column {
-  min-width: 200px;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  background-color: rgba(30, 41, 59, 0.8);
-  font-weight: 500;
-  z-index: 20;
-}
-
-.gantt-resource-header {
-  height: 70px;
+.gantt-resource-header-cell {
+  min-width: var(--gantt-resource-col-width);
+  width: var(--gantt-resource-col-width);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+  font-weight: 500;
+  border-right: 1px solid var(--gantt-border-color);
+  height: 100%;
 }
 
-.gantt-timeline {
-  display: flex;
+.gantt-timeline-header-wrapper {
   flex: 1;
-  overflow-x: hidden; /* Hide scrollbar for header timeline */
+  overflow: hidden; /* Clip the timeline content */
+  position: relative;
+}
+
+.gantt-timeline-header-content {
+  display: flex;
+  flex-direction: column;
+  position: absolute; /* Allows transform for scrolling */
+  top: 0;
+  left: 0;
+  height: 100%;
+  will-change: transform; /* Optimize scrolling */
 }
 
 .gantt-months {
   display: flex;
-  height: 35px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  height: 50%; /* Half of header height */
+  border-bottom: 1px solid var(--gantt-border-color);
 }
 
 .gantt-month {
-  width: 900px; /* 30 days * 30px per day */
-  min-width: 900px;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: calc(var(--gantt-day-width) * 30); /* Adjust if daysPerMonth changes */
+  border-right: 1px solid var(--gantt-border-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
+  font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
 .gantt-days {
   display: flex;
-  height: 35px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.gantt-month-days {
-  display: flex;
-}
-
-.gantt-month-cells {
-  display: flex;
+  height: 50%; /* Half of header height */
 }
 
 .gantt-day {
-  width: 30px;
-  min-width: 30px;
+  width: var(--gantt-day-width);
+  min-width: var(--gantt-day-width);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--gantt-text-color-muted);
   font-size: 0.75rem;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid var(--gantt-border-color-light);
+  flex-shrink: 0;
 }
 
-/* Weekend styling */
 .gantt-day.weekend {
-  background-color: rgba(45, 55, 75, 0.8);
-  color: rgba(255, 255, 255, 0.5);
+  background-color: var(--gantt-weekend-bg);
+  color: var(--gantt-text-color-faint);
 }
 
-/* Weekend cell styling */
-.gantt-cell.weekend {
-  background-color: rgba(45, 55, 75, 0.4);
-}
-
-.gantt-content {
+/* --- Main Content Row --- */
+.gantt-main-content-row {
   display: flex;
-  flex: 1;
-  overflow: auto;
-  scrollbar-width: thin;
+  flex: 1; /* Take remaining vertical space */
+  overflow: hidden; /* Prevent double scrollbars */
+  position: relative; /* For positioning children */
 }
 
-.gantt-resources {
-  min-width: 200px;
-  background-color: rgba(30, 41, 59, 0.5);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  flex-direction: column;
-  position: sticky;
+/* --- Resource List --- */
+.gantt-resource-list-wrapper {
+  min-width: var(--gantt-resource-col-width);
+  width: var(--gantt-resource-col-width);
+  height: 100%; /* Fill parent vertically */
+  overflow: hidden; /* Clip the resource list content */
+  position: relative;
+  background-color: var(--gantt-resource-bg);
+  border-right: 1px solid var(--gantt-border-color);
+  z-index: 20; /* Above grid content */
+}
+
+.gantt-resource-list-content {
+  position: absolute; /* Allows transform for scrolling */
+  width: 100%;
+  top: 0;
   left: 0;
-  z-index: 5;
+  will-change: transform; /* Optimize scrolling */
 }
 
-.gantt-resource {
-  display: flex;
-  flex-direction: column;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+.gantt-resource-group {
+  border-bottom: 1px solid var(--gantt-border-color-light);
+}
+.gantt-resource-group:last-child {
+    border-bottom: none;
 }
 
 .gantt-resource-name {
-  padding: 10px 0 5px 10px;
+  height: var(--gantt-resource-header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
   font-weight: 500;
+  background-color: rgba(0, 0, 0, 0.1); /* Subtle distinction */
 }
 
 .gantt-resource-machine {
-  padding: 6px 0 6px 20px;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
-  height: 30px; /* Fixed height for each machine row */
+  height: var(--gantt-machine-row-height);
   display: flex;
   align-items: center;
+  padding: 0 10px 0 20px; /* Indent machine name */
+  font-size: 0.8rem;
+  color: var(--gantt-text-color-muted);
+  border-top: 1px solid var(--gantt-border-color-light); /* Line between machines */
+}
+.gantt-resource-group .gantt-resource-machine:first-child {
+    border-top: none; /* No top border for the first machine in a group */
 }
 
-.gantt-grid {
-  display: block;
-  flex-direction: column;
-  flex: 2;
-  height: 100%;
-  padding-top: 30px;/* Ensure it stretches to full height */
-}
 
-.gantt-machine-row {
-  display: flex;
+/* --- Grid --- */
+.gantt-grid-scroll-container {
+  flex: 1;
+  overflow: auto; /* THE ONLY SCROLLBAR */
   position: relative;
-  height: 30px; /* Fixed height to match resource-machine */
-  flex-shrink: 0; /* Prevent rows from shrinking */
+  background-color: var(--gantt-grid-bg);
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent; /* Firefox */
+}
+/* Webkit scrollbar styling */
+.gantt-grid-scroll-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.gantt-grid-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.gantt-grid-scroll-container::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+.gantt-grid-scroll-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
-.gantt-cell {
-  width: 30px;
-  min-width: 30px;
-  height: 30px; /* Fixed height to ensure full stretch */
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-  flex-shrink: 0; /* Prevent cells from shrinking */
+
+.gantt-grid-content {
+  position: relative; /* Anchor for absolute children (background, tasks) */
+  /* Width and Height are set dynamically via style prop */
 }
 
-.gantt-row {
-  display: flex;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  min-height: 30px;
+/* --- Grid Background Layer --- */
+.gantt-grid-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1; /* Below tasks */
+  overflow: hidden; /* Clip lines/shading */
+}
+
+.gantt-grid-vline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--gantt-border-color-light);
+}
+
+.gantt-grid-hline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: var(--gantt-border-color-light);
+}
+.gantt-grid-hline.group-separator {
+   background-color: var(--gantt-border-color); /* Make group separators slightly stronger */
+}
+
+.gantt-grid-weekend-bg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background-color: var(--gantt-weekend-bg);
+  z-index: 0; /* Behind lines */
+}
+
+/* --- Task Layer --- */
+.gantt-task-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10; /* Above grid background */
 }
 
 .gantt-task {
   position: absolute;
-  height: 24px;
   border-radius: 4px;
-  background-color: #3B82F6;
   color: white;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  padding-left: 8px;
   font-size: 0.75rem;
   font-weight: 500;
-  top: 3px; /* Center in the row */
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  overflow: hidden; /* Prevent content spill */
+}
+
+.gantt-task-label {
+  padding: 0 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  z-index: 1;
-  cursor: pointer;
 }
 
-.gantt-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  color: rgba(255, 255, 255, 0.7);
-}
 
-.gantt-error {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  color: #EF4444;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
-}
-
+/* --- Loading/Error/Empty States --- */
+.gantt-loading,
+.gantt-error,
 .gantt-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 200px;
-  color: rgba(255, 255, 255, 0.7);
+  height: 200px; /* Or make it fill container */
+  padding: 1rem;
+  color: var(--gantt-text-color-muted);
+}
+
+.gantt-loading {
+  /* Style as needed */
+}
+
+.gantt-error {
+  color: #EF4444; /* Red */
+  flex-direction: column;
+  gap: 1rem;
+  text-align: center;
+}
+
+.gantt-empty {
   font-style: italic;
-}
-
-.gantt-resources-and-grid {
-  display: flex;
-  flex: 1;
-  overflow: auto;
-  position: relative;
-}
-
-.gantt-columns {
-  height: 100%;
 }
