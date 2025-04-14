@@ -15,11 +15,11 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  overflow: hidden; /* Prevent horizontal scrolling in the header */
+  background-color: rgba(30, 41, 59, 0.8);
 }
 
 .gantt-resource-column {
-  min-width: 150px;
+  min-width: 200px;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   background-color: rgba(30, 41, 59, 0.8);
   font-weight: 500;
@@ -45,7 +45,6 @@
   display: flex;
   height: 35px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background-color: rgba(30, 41, 59, 0.8);
 }
 
 .gantt-month {
@@ -63,7 +62,6 @@
   display: flex;
   height: 35px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background-color: rgba(30, 41, 59, 0.5);
 }
 
 .gantt-day {
@@ -79,13 +77,13 @@
 
 /* Weekend styling */
 .gantt-day.weekend {
-  background-color: rgba(35, 45, 65, 0.8);
+  background-color: rgba(45, 55, 75, 0.8);
   color: rgba(255, 255, 255, 0.5);
 }
 
 /* Weekend cell styling */
 .gantt-cell.weekend {
-  background-color: rgba(35, 45, 65, 0.4);
+  background-color: rgba(45, 55, 75, 0.4);
 }
 
 .gantt-content {
@@ -96,7 +94,7 @@
 }
 
 .gantt-resources {
-  min-width: 150px;
+  min-width: 200px;
   background-color: rgba(30, 41, 59, 0.5);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
@@ -107,7 +105,6 @@
 }
 
 .gantt-resource {
-  min-height: 50px;
   display: flex;
   flex-direction: column;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -120,21 +117,31 @@
 }
 
 .gantt-resource-machine {
-  padding: 2px 0 2px 20px;
+  padding: 6px 0 6px 20px;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.7);
+  min-height: 30px;
+  display: flex;
+  align-items: center;
 }
 
 .gantt-grid {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .gantt-row {
-  min-height: 50px;
   display: flex;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gantt-machine-row {
+  display: flex;
   position: relative;
+  min-height: 30px;
 }
 
 .gantt-cell {
@@ -145,7 +152,7 @@
 
 .gantt-task {
   position: absolute;
-  height: 30px;
+  height: 24px;
   border-radius: 4px;
   background-color: #3B82F6;
   color: white;
@@ -154,11 +161,12 @@
   justify-content: center;
   font-size: 0.75rem;
   font-weight: 500;
-  top: 10px; /* Center in the row */
+  top: 3px; /* Center in the row */
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  z-index: 1;
 }
 
 .gantt-loading {
@@ -187,4 +195,11 @@
   height: 200px;
   color: rgba(255, 255, 255, 0.7);
   font-style: italic;
+}
+
+.gantt-resources-and-grid {
+  display: flex;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 }

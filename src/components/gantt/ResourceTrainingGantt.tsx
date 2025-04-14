@@ -7,7 +7,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { fetchPlanningDetails, updateWeekendSettings } from "@/services/planningDetailsService";
 import { TrainingRequirement } from "@/hooks/useTrainingRequirements";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ResourceTrainingGanttProps {
   quoteId: string | undefined;
@@ -55,20 +54,28 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
         let durationDays = Math.ceil(hours / 8);
         if (durationDays < 1) durationDays = 1;
         
-        // If not working on weekends, extend duration to account for skipped days
-        if (!workOnSaturday || !workOnSunday) {
+        // Use the actual weekend settings from the database record
+        const detailWorkOnSaturday = detail.work_on_saturday || false;
+        const detailWorkOnSunday = detail.work_on_sunday || false;
+        
+        // Only extend duration if this specific detail has weekend work disabled
+        if (!detailWorkOnSaturday || !detailWorkOnSunday) {
           // Calculate how many weekends will be encountered during the duration
           // For simplicity, assuming uniform distribution of weekends (2 days per 7)
-          const daysOff = (!workOnSaturday && !workOnSunday) ? 2 : 1;
+          const daysOff = (!detailWorkOnSaturday && !detailWorkOnSunday) ? 2 : 1;
           const weekendAdjustment = Math.floor(durationDays / 5) * daysOff;
           durationDays += weekendAdjustment;
         }
         
-        // Use simple spacing algorithm for start days based on resource grouping
-        // Group by resource to better space out tasks for the same resource
-        const resourceDetails = details.filter(d => d.resource_id === detail.resource_id);
-        const resourceIndex = resourceDetails.findIndex(d => d.id === detail.id);
-        const startDay = resourceIndex * 5 + 1;
+        // Stagger the tasks by resources and machines
+        const sameResourceMachines = details.filter(
+          d => d.resource_id === detail.resource_id && d.type_name === detail.type_name
+        );
+        const resourceMachineIndex = sameResourceMachines.findIndex(d => d.id === detail.id);
+        let startDay = resourceMachineIndex * 2 + 1;
+        
+        // Further stagger based on resource to avoid multiple resources starting at the same time
+        startDay += (resourceId % 5) * 2;
         
         return {
           requirement_id: index + 1, // Use index for unique requirement_id

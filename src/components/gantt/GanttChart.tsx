@@ -1,9 +1,10 @@
-import React, { useMemo } from "react";
+
+import React, { useMemo, useRef } from "react";
 import "./GanttChart.css";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TrainingRequirement } from "@/hooks/useTrainingRequirements";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 interface GanttChartProps {
   requirements: TrainingRequirement[];
   loading: boolean;
@@ -12,7 +13,8 @@ interface GanttChartProps {
   workOnSunday: boolean;
   onRetry?: () => void;
 }
-interface ResourceMachineGroup {
+
+interface ResourceGroup {
   resourceId: number;
   resourceName: string;
   machines: {
@@ -21,6 +23,7 @@ interface ResourceMachineGroup {
     requirements: TrainingRequirement[];
   }[];
 }
+
 const GanttChart: React.FC<GanttChartProps> = ({
   requirements,
   loading,
@@ -29,9 +32,13 @@ const GanttChart: React.FC<GanttChartProps> = ({
   workOnSunday,
   onRetry
 }) => {
+  // Refs for synchronized scrolling
+  const gridRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  
   // Group requirements by resource and then by machine
   const resourceGroups = useMemo(() => {
-    const groups = new Map<number, ResourceMachineGroup>();
+    const groups = new Map<number, ResourceGroup>();
     requirements.forEach(req => {
       // Create or get the resource group
       if (!groups.has(req.resource_id)) {
@@ -98,14 +105,23 @@ const GanttChart: React.FC<GanttChartProps> = ({
     const dayOfWeek = dayOfYear % 7;
 
     // Based on our model: 6 = Saturday, 0 = Sunday
-    return dayOfWeek === 6 && !workOnSaturday || dayOfWeek === 0 && !workOnSunday;
+    return (dayOfWeek === 6 && !workOnSaturday) || (dayOfWeek === 0 && !workOnSunday);
   };
+
+  // Handle horizontal scroll sync between grid and header
+  const handleGridScroll = () => {
+    if (gridRef.current && headerRef.current) {
+      headerRef.current.scrollLeft = gridRef.current.scrollLeft;
+    }
+  };
+
   if (loading) {
     return <div className="gantt-loading">
         <Loader2 className="h-6 w-6 animate-spin mr-2" />
         <span>Loading training schedule...</span>
       </div>;
   }
+
   if (error) {
     return <div className="gantt-error">
         <p>Error: {error}</p>
@@ -114,91 +130,127 @@ const GanttChart: React.FC<GanttChartProps> = ({
           </Button>}
       </div>;
   }
+
   if (resourceGroups.length === 0) {
     return <div className="gantt-empty">
         <p>No training requirements found for the selected plan.</p>
       </div>;
   }
-  return <div className="gantt-container">
+
+  return (
+    <div className="gantt-container">
       <div className="gantt-header">
         <div className="gantt-resource-column">
-          <div className="gantt-resource-header">Resources</div>
+          <div className="gantt-resource-header">Resources & Machines</div>
         </div>
-        <div className="gantt-timeline">
+        <div className="gantt-timeline" ref={headerRef}>
           <div>
             <div className="gantt-months">
-              {months.map(month => <div key={`month-${month}`} className="gantt-month">
+              {months.map(month => (
+                <div key={`month-${month}`} className="gantt-month">
                   Month {month}
-                </div>)}
+                </div>
+              ))}
             </div>
             <div className="gantt-days">
-              {months.map(month => <React.Fragment key={`month-days-${month}`}>
-                  {days.map(day => <div key={`day-${month}-${day}`} className={`gantt-day ${isWeekend(month, day) ? 'weekend' : ''}`}>
+              {months.map(month => (
+                <React.Fragment key={`month-days-${month}`}>
+                  {days.map(day => (
+                    <div 
+                      key={`day-${month}-${day}`} 
+                      className={`gantt-day ${isWeekend(month, day) ? 'weekend' : ''}`}
+                    >
                       {day}
-                    </div>)}
-                </React.Fragment>)}
+                    </div>
+                  ))}
+                </React.Fragment>
+              ))}
             </div>
           </div>
         </div>
       </div>
-      <div className="gantt-content">
+      
+      <div className="gantt-resources-and-grid">
         <div className="gantt-resources">
-          {resourceGroups.map(group => <div key={`resource-${group.resourceId}`} className="gantt-resource">
+          {resourceGroups.map(group => (
+            <div key={`resource-${group.resourceId}`} className="gantt-resource">
               <div className="gantt-resource-name">{group.resourceName}</div>
-              {group.machines.map((machine, idx) => <div key={`machine-${group.resourceId}-${idx}`} className="gantt-resource-machine">
+              {group.machines.map((machine, idx) => (
+                <div 
+                  key={`machine-${group.resourceId}-${idx}`} 
+                  className="gantt-resource-machine"
+                >
                   {machine.machineName} ({machine.hours}h)
-                </div>)}
-            </div>)}
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
-        <div className="gantt-grid">
-          {resourceGroups.map(group => <div key={`row-${group.resourceId}`} className="gantt-row">
-              {months.map(month => days.map(day => <div key={`cell-${group.resourceId}-${month}-${day}`} className={`gantt-cell ${isWeekend(month, day) ? 'weekend' : ''}`}></div>))}
-              
-              {/* Render tasks for this resource */}
-              {group.machines.flatMap(machine => machine.requirements.map(req => {
-            // Calculate position based on the custom calendar (12 months x 30 days)
-            const {
-              month,
-              dayOfMonth
-            } = getDayPosition(req.start_day);
-
-            // Convert to pixels for positioning
-            const left = ((month - 1) * 30 + (dayOfMonth - 1)) * 30; // 30px per day
-            const width = req.duration_days * 30; // 30px per day
-
-            return <div key={`task-${req.requirement_id}`} className="gantt-task" style={{
-              left: `${left}px`,
-              width: `${width}px`,
-              backgroundColor: getResourceColor(req.resource_id)
-            }} title={`Resource: ${req.resource_name}, Machine: ${req.machine_name}, Hours: ${req.training_hours}, Start: Month ${month}, Day ${dayOfMonth}, Duration: ${req.duration_days} days`}>
-                      {req.machine_name}: {req.training_hours}H
-                    </div>;
-          }))}
-            </div>)}
+        
+        <div className="gantt-grid" ref={gridRef} onScroll={handleGridScroll}>
+          {resourceGroups.map(group => (
+            <div key={`group-${group.resourceId}`}>
+              {group.machines.map((machine, machineIndex) => (
+                <div key={`machine-row-${group.resourceId}-${machineIndex}`} className="gantt-machine-row">
+                  {months.map(month => 
+                    days.map(day => (
+                      <div 
+                        key={`cell-${group.resourceId}-${machineIndex}-${month}-${day}`} 
+                        className={`gantt-cell ${isWeekend(month, day) ? 'weekend' : ''}`}
+                      />
+                    ))
+                  )}
+                  
+                  {machine.requirements.map(req => {
+                    // Calculate position based on the custom calendar (12 months x 30 days)
+                    const { month, dayOfMonth } = getDayPosition(req.start_day);
+                    
+                    // Convert to pixels for positioning
+                    const left = ((month - 1) * 30 + (dayOfMonth - 1)) * 30; // 30px per day
+                    
+                    // When calculating duration, don't extend for weekends if not working on those days
+                    // We use the database flag directly from the requirement
+                    const width = req.duration_days * 30; // 30px per day
+                    
+                    return (
+                      <div 
+                        key={`task-${req.requirement_id}`} 
+                        className="gantt-task" 
+                        style={{
+                          left: `${left}px`,
+                          width: `${width}px`,
+                          backgroundColor: getResourceColor(req.resource_id)
+                        }}
+                        title={`${req.machine_name}: ${req.training_hours}h, Start: Month ${month}, Day ${dayOfMonth}, Duration: ${req.duration_days} days`}
+                      >
+                        {req.machine_name}: {req.training_hours}h
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
 
 // Helper function to generate consistent colors based on resource ID
 function getResourceColor(id: number): string {
   // Fixed set of colors for consistency
-  const colors = ['#3B82F6',
-  // Blue
-  '#F97316',
-  // Orange
-  '#10B981',
-  // Green
-  '#8B5CF6',
-  // Purple
-  '#EC4899',
-  // Pink
-  '#EF4444',
-  // Red
-  '#F59E0B',
-  // Amber
-  '#06B6D4' // Cyan
+  const colors = [
+    '#3B82F6', // Blue
+    '#F97316', // Orange
+    '#10B981', // Green
+    '#8B5CF6', // Purple
+    '#EC4899', // Pink
+    '#EF4444', // Red
+    '#F59E0B', // Amber
+    '#06B6D4'  // Cyan
   ];
   return colors[id % colors.length];
 }
+
 export default GanttChart;
