@@ -141,10 +141,6 @@ const GanttChart: React.FC<GanttChartProps> = ({
       </div>;
   }
 
-  // Get these values outside of the return
-  const months = Array.from({ length: 12 }, (_, i) => i + 1);
-  const days = Array.from({ length: 30 }, (_, i) => i + 1);
-
   return (
     <div className="gantt-container">
       <div className="gantt-header">
@@ -162,7 +158,6 @@ const GanttChart: React.FC<GanttChartProps> = ({
             </div>
             <div className="gantt-days">
               {months.map(month => (
-                // Use div instead of Fragment to avoid data-lov-id issues
                 <div key={`month-days-${month}`} className="gantt-month-days">
                   {days.map(day => (
                     <div 
@@ -203,7 +198,6 @@ const GanttChart: React.FC<GanttChartProps> = ({
                 {group.machines.map((machine, machineIndex) => (
                   <div key={`machine-row-${group.resourceId}-${machineIndex}`} className="gantt-machine-row">
                     {months.map(month => (
-                      // Use div instead of Fragment to avoid data-lov-id issues
                       <div key={`month-cells-${month}-${group.resourceId}-${machineIndex}`} className="gantt-month-cells">
                         {days.map(day => (
                           <div 
