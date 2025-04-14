@@ -1,3 +1,5 @@
+/* src/components/gantt/GanttChart.css */
+
 /* --- Base Setup --- */
 :root {
   --gantt-resource-col-width: 200px;
@@ -16,6 +18,10 @@
   --gantt-text-color: rgba(255, 255, 255, 0.9);
   --gantt-text-color-muted: rgba(255, 255, 255, 0.7);
   --gantt-text-color-faint: rgba(255, 255, 255, 0.5);
+
+  --gantt-total-bar-bg: rgba(100, 116, 139, 0.4); /* slate-500 with opacity */
+  --gantt-total-bar-border: rgba(100, 116, 139, 0.6);
+  --gantt-travel-icon-color: rgba(203, 213, 225, 0.9); /* slate-300 */
 }
 
 * {
@@ -194,7 +200,6 @@
   background-color: rgba(255, 255, 255, 0.5);
 }
 
-
 .gantt-grid-content {
   position: relative; /* Anchor for absolute children (background, tasks) */
   /* Width and Height are set dynamically via style prop */
@@ -207,7 +212,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 1; /* Below tasks */
+  z-index: 1; /* Below tasks and total bars */
   overflow: hidden; /* Clip lines/shading */
 }
 
@@ -238,6 +243,47 @@
   z-index: 0; /* Behind lines */
 }
 
+/* --- Total Engagement Layer --- */
+.gantt-total-engagement-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5; /* Below tasks (10) but above grid background (1) */
+  pointer-events: none; /* Allow clicks to pass through */
+}
+
+.gantt-total-engagement-bar {
+  position: absolute;
+  background-color: var(--gantt-total-bar-bg);
+  border: 1px solid var(--gantt-total-bar-border);
+  border-radius: 4px;
+  overflow: visible; /* Allow icons to render correctly */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gantt-travel-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gantt-travel-icon-color);
+  display: flex; /* Needed for Lucide icons */
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto; /* Allow title tooltip on icons */
+}
+
+.gantt-travel-icon.start {
+  left: 4px; /* Position inside the start */
+}
+
+.gantt-travel-icon.end {
+  right: 4px; /* Position inside the end */
+}
+
 /* --- Task Layer --- */
 .gantt-task-layer {
   position: absolute;
@@ -245,7 +291,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 10; /* Above grid background */
+  z-index: 10; /* Above grid background and total bars */
 }
 
 .gantt-task {
@@ -258,7 +304,7 @@
   font-weight: 500;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   cursor: pointer;
-  overflow: hidden; /* Prevent content spill */
+  overflow: hidden; /* Clip content */
 }
 
 .gantt-task-label {
@@ -267,7 +313,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 
 /* --- Loading/Error/Empty States --- */
 .gantt-loading,
