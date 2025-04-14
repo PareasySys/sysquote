@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 
-// Reuse the same TopicItem interface as for machine requirements
 export interface TopicItem {
   topic_id: number;
   topic_name: string;
@@ -31,20 +30,20 @@ export const useSoftwareTrainingRequirements = (softwareIds: number[]) => {
         
         console.log("Fetching software training requirements for:", softwareIds);
         
+        // Query the software training requirements table and join with training topics
         const { data, error: fetchError } = await supabase
           .from("software_training_requirements")
           .select(`
             software_type_id,
-            hours_required,
-            training_topics(
+            plan_id,
+            training_topics (
               topic_id,
               topic_name,
               description,
               parent_topic_id
             )
           `)
-          .in("software_type_id", softwareIds)
-          .order("software_type_id");
+          .in("software_type_id", softwareIds);
           
         if (fetchError) throw fetchError;
         
@@ -53,25 +52,29 @@ export const useSoftwareTrainingRequirements = (softwareIds: number[]) => {
         // Format data by software ID
         const topicMap: Record<string, TopicItem[]> = {};
         
-        data?.forEach(req => {
-          const softwareKey = `software_${req.software_type_id}`;
-          
-          if (!topicMap[softwareKey]) {
-            topicMap[softwareKey] = [];
-          }
-          
-          if (req.training_topics) {
-            const topic: TopicItem = {
-              topic_id: req.training_topics.topic_id,
-              topic_name: req.training_topics.topic_name,
-              description: req.training_topics.description,
-              parent_topic_id: req.training_topics.parent_topic_id,
-              hours_required: req.hours_required
-            };
+        if (data) {
+          data.forEach(req => {
+            if (!req || !req.software_type_id) return;
             
-            topicMap[softwareKey].push(topic);
-          }
-        });
+            const softwareKey = `software_${req.software_type_id}`;
+            
+            if (!topicMap[softwareKey]) {
+              topicMap[softwareKey] = [];
+            }
+            
+            if (req.training_topics) {
+              const topic: TopicItem = {
+                topic_id: req.training_topics.topic_id,
+                topic_name: req.training_topics.topic_name,
+                description: req.training_topics.description,
+                parent_topic_id: req.training_topics.parent_topic_id,
+                hours_required: req.plan_id // Using plan_id temporarily as hours_required
+              };
+              
+              topicMap[softwareKey].push(topic);
+            }
+          });
+        }
         
         setTopicsBySoftware(topicMap);
       } catch (err: any) {

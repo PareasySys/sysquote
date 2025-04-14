@@ -1,58 +1,68 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
+import { useMachineTrainingRequirements } from "@/hooks/useMachineTrainingRequirements";
+import { useSoftwareTrainingRequirements, TopicItem } from "@/hooks/useSoftwareTrainingRequirements";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
 import { QuoteSoftware } from "@/hooks/useQuoteSoftware";
-import { useMachineTrainingRequirements } from "@/hooks/useMachineTrainingRequirements";
-import { useSoftwareTrainingRequirements } from "@/hooks/useSoftwareTrainingRequirements";
+import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import QuoteTrainingTopicsTree from "./QuoteTrainingTopicsTree";
 import TrainingHoursSummary from "./TrainingHoursSummary";
 
 interface QuoteTrainingTopicsProps {
   selectedMachines: QuoteMachine[];
-  selectedSoftware?: QuoteSoftware[];
+  selectedSoftware: QuoteSoftware[];
 }
 
 const QuoteTrainingTopics: React.FC<QuoteTrainingTopicsProps> = ({ 
-  selectedMachines,
-  selectedSoftware = []
+  selectedMachines, 
+  selectedSoftware
 }) => {
-  // Fetch machine training requirements
-  const { 
-    topicsByMachine,
-    loading: loadingMachineReqs,
-    error: machineReqsError
-  } = useMachineTrainingRequirements(selectedMachines.map(machine => machine.machine_type_id));
+  const machineIds = selectedMachines.map(machine => machine.machine_type_id);
+  const softwareIds = selectedSoftware.map(software => software.software_type_id);
   
-  // Fetch software training requirements
+  const { 
+    requirements: machineRequirements,
+    loading: machineLoading, 
+    error: machineError 
+  } = useMachineTrainingRequirements(machineIds);
+  
   const {
     topicsBySoftware,
-    loading: loadingSoftwareReqs,
-    error: softwareReqsError
-  } = useSoftwareTrainingRequirements(selectedSoftware.map(software => software.software_type_id));
-
-  // Combine all requirements
-  const allTopicsByItem = { ...topicsByMachine, ...topicsBySoftware };
+    loading: softwareLoading,
+    error: softwareError
+  } = useSoftwareTrainingRequirements(softwareIds);
   
-  // Are we loading either type of requirements?
-  const isLoading = loadingMachineReqs || loadingSoftwareReqs;
+  const [combinedTopics, setCombinedTopics] = useState<{[key: string]: any}>({});
   
-  // Do we have an error with either type of requirements?
-  const hasError = machineReqsError || softwareReqsError;
-  const errorMessage = machineReqsError || softwareReqsError || "Failed to load training requirements";
+  // Combine machine and software topics
+  useEffect(() => {
+    const combined = {
+      ...machineRequirements,
+      ...topicsBySoftware
+    };
+    setCombinedTopics(combined);
+  }, [machineRequirements, topicsBySoftware]);
   
-  // Count the total number of topics
-  const topicsCount = Object.values(allTopicsByItem).flat().length;
+  const isLoading = machineLoading || softwareLoading;
+  const hasError = machineError || softwareError;
+  const errorMessage = machineError || softwareError;
   
   if (isLoading) {
     return (
       <Card className="bg-slate-800/80 border border-white/5 p-4">
         <h2 className="text-xl font-semibold mb-4 text-gray-200">Training Topics</h2>
-        <div className="animate-pulse p-4">
-          <div className="h-6 bg-slate-700/50 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-slate-700/50 rounded w-4/5 mb-2"></div>
-          <div className="h-4 bg-slate-700/50 rounded w-2/3 mb-2"></div>
-          <div className="h-4 bg-slate-700/50 rounded w-3/4"></div>
+        <div className="p-4 text-center">
+          <TextShimmerWave
+            className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
+            duration={1}
+            spread={1}
+            zDistance={1}
+            scaleDistance={1.1}
+            rotateYDistance={10}
+          >
+            Loading Training Requirements
+          </TextShimmerWave>
         </div>
       </Card>
     );
@@ -69,30 +79,29 @@ const QuoteTrainingTopics: React.FC<QuoteTrainingTopicsProps> = ({
     );
   }
   
-  if (topicsCount === 0) {
+  if (Object.keys(combinedTopics).length === 0) {
     return (
       <Card className="bg-slate-800/80 border border-white/5 p-4">
         <h2 className="text-xl font-semibold mb-4 text-gray-200">Training Topics</h2>
         <div className="text-gray-400 p-4 text-center border border-dashed border-gray-700 rounded-lg">
-          No training topics available for selected machines and software
+          No training topics found for the selected machines and software
         </div>
       </Card>
     );
   }
-
+  
   return (
-    <>
-      <Card className="bg-slate-800/80 border border-white/5 p-4">
-        <h2 className="text-xl font-semibold mb-4 text-gray-200">Training Topics</h2>
-        <QuoteTrainingTopicsTree 
-          topicsByItem={allTopicsByItem} 
-          machines={selectedMachines}
-          software={selectedSoftware}
-        />
-      </Card>
+    <Card className="bg-slate-800/80 border border-white/5 p-4">
+      <h2 className="text-xl font-semibold mb-4 text-gray-200">Training Topics</h2>
       
-      <TrainingHoursSummary />
-    </>
+      <div className="space-y-6">
+        <QuoteTrainingTopicsTree topics={combinedTopics} />
+        <TrainingHoursSummary 
+          machineIds={machineIds} 
+          softwareIds={softwareIds} 
+        />
+      </div>
+    </Card>
   );
 };
 

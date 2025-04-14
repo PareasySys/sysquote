@@ -77,8 +77,6 @@ const QuoteConfigPage: React.FC = () => {
     area_id: undefined
   });
 
-  const [selectionTab, setSelectionTab] = useState("machines");
-
   useEffect(() => {
     if (!user) {
       navigate("/");
@@ -406,98 +404,131 @@ const QuoteConfigPage: React.FC = () => {
           ) : (
             <div className="flex flex-col lg:flex-row gap-6">
               <div className="w-full lg:w-1/3">
-                <Tabs 
-                  defaultValue="machines" 
-                  value={selectionTab}
-                  onValueChange={setSelectionTab}
-                  className="w-full"
-                >
-                  <TabsList className="grid grid-cols-2 mb-4">
-                    <TabsTrigger value="machines">Machines</TabsTrigger>
-                    <TabsTrigger value="software">Software</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="machines">
-                    <MachineSelector
-                      selectedMachineIds={machineTypeIds}
-                      onSave={handleMachineSave}
-                      quoteId={quoteId}
-                    />
-                  </TabsContent>
-                  <TabsContent value="software">
-                    <SoftwareSelector
-                      selectedSoftwareIds={softwareTypeIds}
-                      onSave={handleSoftwareSave}
-                      quoteId={quoteId}
-                    />
-                  </TabsContent>
-                </Tabs>
+                <div className="space-y-6">
+                  
+                  <Card className="bg-slate-800/80 border border-white/5 p-4">
+                    <h2 className="text-xl font-semibold mb-4 text-gray-200">Machine Selection</h2>
+                    
+                    {machinesLoading ? (
+                      <div className="p-4 text-center">
+                        <TextShimmerWave
+                          className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
+                          duration={1}
+                          spread={1}
+                          zDistance={1}
+                          scaleDistance={1.1}
+                          rotateYDistance={10}
+                        >
+                          Loading Machine Types
+                        </TextShimmerWave>
+                      </div>
+                    ) : machinesError ? (
+                      <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
+                        <p className="text-red-300">{machinesError}</p>
+                      </div>
+                    ) : (
+                      <MachineSelector
+                        selectedMachineIds={machineTypeIds}
+                        onSave={handleMachineSave}
+                        quoteId={quoteId}
+                      />
+                    )}
+                  </Card>
+
+                  
+                  <Card className="bg-slate-800/80 border border-white/5 p-4">
+                    <h2 className="text-xl font-semibold mb-4 text-gray-200">Software Selection</h2>
+                    
+                    {softwareLoading ? (
+                      <div className="p-4 text-center">
+                        <TextShimmerWave
+                          className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
+                          duration={1}
+                          spread={1}
+                          zDistance={1}
+                          scaleDistance={1.1}
+                          rotateYDistance={10}
+                        >
+                          Loading Software Types
+                        </TextShimmerWave>
+                      </div>
+                    ) : softwareError ? (
+                      <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
+                        <p className="text-red-300">{softwareError}</p>
+                      </div>
+                    ) : (
+                      <SoftwareSelector
+                        selectedSoftwareIds={softwareTypeIds}
+                        onSave={handleSoftwareSave}
+                        quoteId={quoteId}
+                      />
+                    )}
+                  </Card>
+                </div>
               </div>
               
               <div className="w-full lg:w-2/3">
                 <Card className="bg-slate-800/80 border border-white/5 p-4 mb-6">
                   <h2 className="text-xl font-semibold mb-4 text-gray-200">Selected Items</h2>
                   
-                  <Tabs defaultValue="machines" className="w-full">
-                    <TabsList className="grid grid-cols-2 mb-4">
-                      <TabsTrigger value="machines">Machines</TabsTrigger>
-                      <TabsTrigger value="software">Software</TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="machines">
-                      {machinesLoading ? (
-                        <div className="p-4 text-center">
-                          <TextShimmerWave
-                            className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
-                            duration={1}
-                            spread={1}
-                            zDistance={1}
-                            scaleDistance={1.1}
-                            rotateYDistance={10}
-                          >
-                            Loading Machine Selection
-                          </TextShimmerWave>
-                        </div>
-                      ) : machinesError ? (
-                        <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
-                          <p className="text-red-300">{machinesError}</p>
-                        </div>
-                      ) : (
-                        <SelectedMachineList 
-                          machines={selectedMachines}
-                          onRemove={removeMachine}
-                          loading={machinesLoading}
-                          quoteId={quoteId}
-                        />
-                      )}
-                    </TabsContent>
-                    
-                    <TabsContent value="software">
-                      {softwareLoading ? (
-                        <div className="p-4 text-center">
-                          <TextShimmerWave
-                            className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
-                            duration={1}
-                            spread={1}
-                            zDistance={1}
-                            scaleDistance={1.1}
-                            rotateYDistance={10}
-                          >
-                            Loading Software Selection
-                          </TextShimmerWave>
-                        </div>
-                      ) : softwareError ? (
-                        <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
-                          <p className="text-red-300">{softwareError}</p>
-                        </div>
-                      ) : (
-                        <SelectedSoftwareList 
-                          software={selectedSoftware}
-                          onRemove={removeSoftware}
-                          loading={softwareLoading}
-                        />
-                      )}
-                    </TabsContent>
-                  </Tabs>
+                  
+                  <div className="mb-6">
+                    <h3 className="text-lg font-medium mb-3 text-gray-300 border-b border-gray-700 pb-2">Machines</h3>
+                    {machinesLoading ? (
+                      <div className="p-4 text-center">
+                        <TextShimmerWave
+                          className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
+                          duration={1}
+                          spread={1}
+                          zDistance={1}
+                          scaleDistance={1.1}
+                          rotateYDistance={10}
+                        >
+                          Loading Machine Selection
+                        </TextShimmerWave>
+                      </div>
+                    ) : machinesError ? (
+                      <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
+                        <p className="text-red-300">{machinesError}</p>
+                      </div>
+                    ) : (
+                      <SelectedMachineList 
+                        machines={selectedMachines}
+                        onRemove={removeMachine}
+                        loading={machinesLoading}
+                        quoteId={quoteId}
+                      />
+                    )}
+                  </div>
+                  
+                  
+                  <div>
+                    <h3 className="text-lg font-medium mb-3 text-gray-300 border-b border-gray-700 pb-2">Software</h3>
+                    {softwareLoading ? (
+                      <div className="p-4 text-center">
+                        <TextShimmerWave
+                          className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
+                          duration={1}
+                          spread={1}
+                          zDistance={1}
+                          scaleDistance={1.1}
+                          rotateYDistance={10}
+                        >
+                          Loading Software Selection
+                        </TextShimmerWave>
+                      </div>
+                    ) : softwareError ? (
+                      <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
+                        <p className="text-red-300">{softwareError}</p>
+                      </div>
+                    ) : (
+                      <SelectedSoftwareList 
+                        software={selectedSoftware}
+                        onRemove={removeSoftware}
+                        loading={softwareLoading}
+                      />
+                    )}
+                  </div>
                 </Card>
                 
                 {(selectedMachines.length > 0 || selectedSoftware.length > 0) ? (

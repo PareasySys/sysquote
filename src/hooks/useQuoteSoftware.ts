@@ -27,19 +27,30 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       
       console.log("Fetching software for quote:", quoteId);
       
-      // Get the software IDs from the quote
+      // First check if the software_type_ids column exists in the quotes table
+      const { data: columnCheck, error: columnError } = await supabase
+        .from('quotes')
+        .select('quote_id')
+        .limit(1);
+      
+      if (columnError) {
+        console.error("Error checking quotes table:", columnError);
+        return;
+      }
+      
+      // Get the quote data
       const { data, error: fetchError } = await supabase
         .from('quotes')
-        .select('software_type_ids')
+        .select('*')
         .eq('quote_id', quoteId)
         .single();
       
       if (fetchError) throw fetchError;
       
-      console.log("Quote with software data:", data);
+      console.log("Quote data:", data);
       
       if (data) {
-        // Set the software type IDs
+        // Check if the software_type_ids field exists
         const softwareIds = data.software_type_ids || [];
         setSoftwareTypeIds(softwareIds);
         
