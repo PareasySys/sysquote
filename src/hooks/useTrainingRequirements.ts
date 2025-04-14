@@ -1,3 +1,4 @@
+
 // src/hooks/useTrainingRequirements.ts
 
 import { useState, useEffect, useCallback } from 'react';
@@ -66,22 +67,8 @@ export function useTrainingRequirements(
       const details = await fetchPlanningDetails(quoteId, planId);
       console.log(`useTrainingRequirements: Fetched ${details.length} raw planning details.`);
 
-      // Map the fetched details slightly to match the expected input for scheduleTrainingTasks
-      // Ensure required fields (resource_id, resource_name, machine_name, training_hours) exist
-      const mappedRequirements: TrainingRequirement[] = details
-        .filter(detail => detail.resource_id != null) // Filter out items without a resource
-        .map(detail => ({
-          requirement_id: detail.id, // Use planning_details ID as the base requirement ID
-          quote_id: detail.quote_id,
-          plan_id: detail.plan_id,
-          resource_id: detail.resource_id!, // Assert non-null based on filter
-          resource_name: detail.resource_name!, // Assert non-null based on filter/service logic
-          machine_name: detail.type_name || 'Unknown Machine', // Use derived type_name
-          training_hours: detail.allocated_hours, // Use allocated_hours
-        }));
-
-      console.log('useTrainingRequirements: Mapped Requirements:', JSON.stringify(mappedRequirements, null, 2));
-      setRawRequirements(mappedRequirements);
+      // The data is already mapped in the service function
+      setRawRequirements(details);
       // Don't set scheduledTasks here; let the scheduling effect handle it.
     } catch (err: any) {
       console.error("useTrainingRequirements: Error fetching planning details:", err);

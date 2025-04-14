@@ -1,6 +1,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { TrainingRequirement } from '@/hooks/useTrainingRequirements';
+import { TrainingPlan } from '@/hooks/useTrainingPlans';
 
 /**
  * Fetch planning details for scheduling
@@ -21,13 +22,12 @@ export async function fetchPlanningDetails(
         id,
         quote_id,
         plan_id,
-        resource_category,
-        machine_types_id,
-        software_types_id,
         resource_id,
         resources:resource_id (name),
         allocated_hours,
+        machine_types_id,
         machine_types:machine_types_id (name),
+        software_types_id,
         software_types:software_types_id (name)
       `)
       .eq('quote_id', quoteId)
@@ -43,9 +43,7 @@ export async function fetchPlanningDetails(
       plan_id: detail.plan_id,
       resource_id: detail.resource_id,
       resource_name: detail.resources?.name || 'Unnamed Resource',
-      machine_name: detail.resource_category === 'Machine' 
-        ? detail.machine_types?.name || 'Unknown Machine' 
-        : detail.software_types?.name || 'Unknown Software',
+      machine_name: detail.machine_types?.name || detail.software_types?.name || 'Unknown',
       training_hours: detail.allocated_hours
     }));
     
@@ -86,6 +84,86 @@ export async function updateWeekendSettings(
     
   } catch (err) {
     console.error("Error updating weekend settings:", err);
+    throw err;
+  }
+}
+
+/**
+ * Sync machine planning details with selected machines
+ * This creates or updates planning detail records for selected machines
+ */
+export async function syncMachinePlanningDetails(
+  quoteId: string,
+  machineTypeIds: number[],
+  plans: TrainingPlan[]
+): Promise<void> {
+  if (!quoteId || !machineTypeIds || !plans || plans.length === 0) {
+    return;
+  }
+  
+  try {
+    // Get existing planning details for this quote
+    const { data: existingDetails, error: fetchError } = await supabase
+      .from('planning_details')
+      .select('id, quote_id, plan_id, machine_types_id, software_types_id')
+      .eq('quote_id', quoteId)
+      .is('software_types_id', null); // Only get machine-related records
+    
+    if (fetchError) throw fetchError;
+    
+    // Create a map of existing details for quick lookup
+    const existingMap: Record<string, any> = {};
+    existingDetails?.forEach(detail => {
+      if (detail.machine_types_id) {
+        const key = `${detail.plan_id}_${detail.machine_types_id}`;
+        existingMap[key] = detail;
+      }
+    });
+    
+    // Process each plan and selected machine
+    const operations = [];
+    
+    for (const plan of plans) {
+      for (const machineTypeId of machineTypeIds) {
+        const key = `${plan.plan_id}_${machineTypeId}`;
+        
+        if (existingMap[key]) {
+          // Planning detail already exists, no need to create
+          continue;
+        }
+        
+        // Create new planning detail
+        operations.push(
+          supabase
+            .from('planning_details')
+            .insert({
+              quote_id: quoteId,
+              plan_id: plan.plan_id,
+              machine_types_id: machineTypeId,
+              allocated_hours: 0 // Default to 0 hours
+            })
+        );
+      }
+      
+      // Remove planning details for machines that are no longer selected
+      const { error: deleteError } = await supabase
+        .from('planning_details')
+        .delete()
+        .eq('quote_id', quoteId)
+        .eq('plan_id', plan.plan_id)
+        .not('machine_types_id', 'in', `(${machineTypeIds.join(',')})`)
+        .is('software_types_id', null);
+      
+      if (deleteError) throw deleteError;
+    }
+    
+    // Execute all insert operations in parallel
+    if (operations.length > 0) {
+      await Promise.all(operations.map(op => op));
+    }
+    
+  } catch (err) {
+    console.error("Error syncing machine planning details:", err);
     throw err;
   }
 }
