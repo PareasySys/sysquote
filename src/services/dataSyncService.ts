@@ -166,10 +166,10 @@ export const dataSyncService = {
       console.log(`Syncing changes for training offer: machine=${machineTypeId}, software=${softwareTypeId}, plan=${planId}`);
       
       // Find all quotes that use this machine or software type
+      const queryBuilder = supabase.from("quotes").select("quote_id");
+      
       if (machineTypeId) {
-        const { data: affectedQuotes, error: quotesError } = await supabase
-          .from("quotes")
-          .select("quote_id")
+        const { data: affectedQuotes, error: quotesError } = await queryBuilder
           .contains("machine_type_ids", [machineTypeId]);
         
         if (quotesError) throw quotesError;
@@ -182,9 +182,7 @@ export const dataSyncService = {
           }
         }
       } else if (softwareTypeId) {
-        const { data: affectedQuotes, error: quotesError } = await supabase
-          .from("quotes")
-          .select("quote_id")
+        const { data: affectedQuotes, error: quotesError } = await queryBuilder
           .contains("software_type_ids", [softwareTypeId]);
         
         if (quotesError) throw quotesError;
@@ -391,23 +389,14 @@ export const dataSyncService = {
       } = params;
       
       // First check if a planning detail already exists
-      let whereClause = {
-        quote_id: quoteId,
-        plan_id: planId,
-        resource_category: resourceCategory
-      };
-      
-      // Add the type_id condition based on resource category
-      if (resourceCategory === 'Machine') {
-        Object.assign(whereClause, { machine_types_id: machineTypesId });
-      } else {
-        Object.assign(whereClause, { software_types_id: softwareTypesId });
-      }
-      
       const { data: existingDetail, error: findError } = await supabase
         .from("planning_details")
         .select("id")
-        .match(whereClause)
+        .eq("quote_id", quoteId)
+        .eq("plan_id", planId)
+        .eq("resource_category", resourceCategory)
+        .eq(resourceCategory === 'Machine' ? "machine_types_id" : "software_types_id", 
+            resourceCategory === 'Machine' ? machineTypesId : softwareTypesId)
         .maybeSingle();
       
       if (findError) {

@@ -87,12 +87,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         
         toast.success("Area cost updated successfully");
       } else {
-        // Create a new area cost with both area_cost_id and area_id fields
-        // We'll generate a unique ID for both as they seem to be the same in the schema
-        const newAreaId = Date.now(); // Simple unique ID generation
-        
         const { data, error } = await supabase.from("area_costs").insert({
-          area_id: newAreaId, // Add the required area_id field
           area_name: areaName,
           daily_accommodation_food_cost: dailyAccommodationFoodCost,
           daily_pocket_money: dailyPocketMoney,
