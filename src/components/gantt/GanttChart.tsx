@@ -171,31 +171,11 @@ const GanttChart: React.FC<GanttChartProps> = ({
       }
     });
 
-   // 2. Calculate rendering info
+    // 2. Calculate rendering info
     let currentTop = 0;
     resourceGroups.forEach(group => {
       const resourceId = group.resourceId;
-      const resourceTop = currentTop;
-      // Calculate total engagement bar data (same as before)
-      if (resourceMinMax[resourceId]) { /* ... engagement bar calculation ... */ }
-
-      currentTop += RESOURCE_HEADER_HEIGHT;
-
-      // Calculate individual task segment positions
-      group.machines.forEach(machine => {
-        machine.requirements.forEach(seg => {
-          const { month, dayOfMonth } = getDayPosition(seg.start_day);
-          const left = (Math.max(1, seg.start_day) - 1) * DAY_WIDTH;
-
-          // --- UPDATED WIDTH CALCULATION ---
-          // Calculate width based on hours worked relative to a full day's work
-          let width = (seg.segment_hours / DAILY_HOUR_LIMIT) * DAY_WIDTH;
-
-          // Ensure a minimum visual width for very short tasks
-          width = Math.max(width, 4); // Example: 4px minimum width
-
-          console.log(`Task ${seg.id}: Start ${seg.start_day}, Dur ${seg.duration_days}, Hours ${seg.segment_hours}, Calculated Width ${width}px`);
-          // --- END UPDATED WIDTH CALCULATION ---
+      const resourceTop = currentTop; // Vertical position for the resource header row
 
       
 
