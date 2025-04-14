@@ -90,7 +90,75 @@ export async function syncPlanningDetailsAfterChanges() {
         }
       }
       
-      // If any referenced entity doesn't exist, update the planning detail
+      // For software entries, check if we need to update resource or hours from training requirements and offers
+      if (detail.software_types_id) {
+        // Get resource from software training requirements
+        const { data: softwareReq } = await supabase
+          .from("software_training_requirements")
+          .select("resource_id")
+          .eq("software_type_id", detail.software_types_id)
+          .eq("plan_id", detail.plan_id)
+          .single();
+        
+        // Get hours from training offers
+        const { data: trainingOffer } = await supabase
+          .from("training_offers")
+          .select("hours_required")
+          .eq("software_type_id", detail.software_types_id)
+          .eq("plan_id", detail.plan_id)
+          .eq("machine_type_id", null) // Make sure we get software offers only
+          .single();
+          
+        // If we have a resource in softwareReq but it's different from what's in details, update it
+        if (softwareReq && softwareReq.resource_id !== detail.resource_id) {
+          console.log(`Updating resource ID for software ${detail.software_types_id} from ${detail.resource_id || 'null'} to ${softwareReq.resource_id}`);
+          updates.resource_id = softwareReq.resource_id;
+          needsUpdate = true;
+        }
+        
+        // If we have hours in trainingOffer but they're different from allocated_hours, update them
+        if (trainingOffer && trainingOffer.hours_required !== detail.allocated_hours) {
+          console.log(`Updating allocated hours for software ${detail.software_types_id} from ${detail.allocated_hours} to ${trainingOffer.hours_required}`);
+          updates.allocated_hours = trainingOffer.hours_required;
+          needsUpdate = true;
+        }
+      }
+      
+      // For machine entries, do the same kind of checks for resource and hours
+      if (detail.machine_types_id) {
+        // Get resource from machine training requirements
+        const { data: machineReq } = await supabase
+          .from("machine_training_requirements")
+          .select("resource_id")
+          .eq("machine_type_id", detail.machine_types_id)
+          .eq("plan_id", detail.plan_id)
+          .single();
+        
+        // Get hours from training offers
+        const { data: trainingOffer } = await supabase
+          .from("training_offers")
+          .select("hours_required")
+          .eq("machine_type_id", detail.machine_types_id)
+          .eq("plan_id", detail.plan_id)
+          .eq("software_type_id", null) // Make sure we get machine offers only
+          .single();
+          
+        // If we have a resource in machineReq but it's different from what's in details, update it
+        if (machineReq && machineReq.resource_id !== detail.resource_id) {
+          console.log(`Updating resource ID for machine ${detail.machine_types_id} from ${detail.resource_id || 'null'} to ${machineReq.resource_id}`);
+          updates.resource_id = machineReq.resource_id;
+          needsUpdate = true;
+        }
+        
+        // If we have hours in trainingOffer but they're different from allocated_hours, update them
+        if (trainingOffer && trainingOffer.hours_required !== detail.allocated_hours) {
+          console.log(`Updating allocated hours for machine ${detail.machine_types_id} from ${detail.allocated_hours} to ${trainingOffer.hours_required}`);
+          updates.allocated_hours = trainingOffer.hours_required;
+          needsUpdate = true;
+        }
+      }
+      
+      // If any referenced entity doesn't exist or we need to update resource/hours, update the planning detail
       if (needsUpdate && Object.keys(updates).length > 0) {
         const { error: updateError } = await supabase
           .from("planning_details")

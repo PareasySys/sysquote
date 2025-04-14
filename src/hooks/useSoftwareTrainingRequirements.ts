@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
+import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
 
 export interface SoftwareTrainingRequirement {
   id: number;
@@ -27,7 +27,6 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
       setLoading(true);
       setError(null);
       
-      // Use 'as any' to bypass the type checking for table names
       const { data, error } = await (supabase
         .from("software_training_requirements" as any)
         .select("*")
@@ -51,11 +50,9 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
     if (!softwareTypeId) return;
     
     try {
-      // Check if requirement already exists
       const existingReq = requirements.find(req => req.plan_id === planId);
       
       if (existingReq) {
-        // Update existing requirement
         const { error } = await (supabase
           .from("software_training_requirements" as any)
           .update({ resource_id: resourceId })
@@ -72,10 +69,10 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
           )
         );
         
-        // Update any existing planning_details for quotes that use this software
         await updatePlanningDetailsForSoftware(softwareTypeId, planId, resourceId);
+        
+        await syncPlanningDetailsAfterChanges();
       } else {
-        // Create new requirement
         const { data, error } = await (supabase
           .from("software_training_requirements" as any)
           .insert({
@@ -93,8 +90,9 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
         if (data && data.length > 0) {
           setRequirements(prev => [...prev, data[0]]);
           
-          // Update any existing planning_details for quotes that use this software
           await updatePlanningDetailsForSoftware(softwareTypeId, planId, resourceId);
+          
+          await syncPlanningDetailsAfterChanges();
         }
       }
       
@@ -105,14 +103,12 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
     }
   };
 
-  // New function to update planning_details for all quotes that use this software
   const updatePlanningDetailsForSoftware = async (
     softwareTypeId: number,
     planId: number,
     resourceId: number
   ) => {
     try {
-      // First, find all quotes that have this software in their software_type_ids array
       const { data: quotesWithSoftware, error: quotesError } = await supabase
         .from("quotes")
         .select("quote_id")
@@ -130,11 +126,9 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
       
       console.log(`Found ${quotesWithSoftware.length} quotes with software type ${softwareTypeId}`);
       
-      // For each quote, update or create planning details
       for (const quote of quotesWithSoftware) {
         const quoteId = quote.quote_id;
         
-        // Check if planning detail already exists
         const { data: existingDetail, error: detailError } = await supabase
           .from("planning_details")
           .select("id")
@@ -148,7 +142,6 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
         }
         
         if (existingDetail && existingDetail.length > 0) {
-          // Update existing planning detail
           const { error: updateError } = await supabase
             .from("planning_details")
             .update({
@@ -164,7 +157,6 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
             console.log(`Updated planning detail for quote ${quoteId} with resource ${resourceId}`);
           }
         } else {
-          // Create new planning detail
           const { error: insertError } = await supabase
             .from("planning_details")
             .insert({
@@ -173,7 +165,7 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
               software_types_id: softwareTypeId,
               resource_id: resourceId,
               resource_category: "Software",
-              allocated_hours: 4, // Default to 4 hours for software training
+              allocated_hours: 4,
               work_on_saturday: false,
               work_on_sunday: false
             });
@@ -206,8 +198,9 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
       
       if (error) throw error;
       
-      // Remove resource ID from planning_details for all quotes that use this software
       await removeResourceFromPlanningDetails(softwareTypeId, planId);
+      
+      await syncPlanningDetailsAfterChanges();
       
       setRequirements(prev => prev.filter(req => req.id !== existingReq.id));
       toast.success("Training requirement removed");
@@ -217,13 +210,11 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
     }
   };
 
-  // New function to remove resource ID from planning_details
   const removeResourceFromPlanningDetails = async (
     softwareTypeId: number,
     planId: number
   ) => {
     try {
-      // Find all quotes that have this software
       const { data: quotesWithSoftware, error: quotesError } = await supabase
         .from("quotes")
         .select("quote_id")
@@ -236,7 +227,6 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
       
       if (!quotesWithSoftware || quotesWithSoftware.length === 0) return;
       
-      // For each quote, set the resource_id to null in planning_details
       for (const quote of quotesWithSoftware) {
         const { error: updateError } = await supabase
           .from("planning_details")

@@ -4,6 +4,7 @@ import { useMachineTypes } from "./useMachineTypes";
 import { useSoftwareTypes } from "./useSoftwareTypes";
 import { useTrainingPlans } from "./useTrainingPlans";
 import { toast } from "sonner";
+import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
 
 export interface TrainingOffer {
   id: number;
@@ -134,6 +135,9 @@ export const useTrainingOffers = () => {
       // Also update any planning_details that use this machine type and plan
       await updatePlanningDetailsForAllQuotes(machine_type_id, plan_id, hours_required, false);
       
+      // Sync planning details to ensure everything is consistent
+      await syncPlanningDetailsAfterChanges();
+      
       toast.success("Training hours updated");
       return true;
     } catch (err: any) {
@@ -187,6 +191,9 @@ export const useTrainingOffers = () => {
       
       // Also update any planning_details that use this software type and plan
       await updatePlanningDetailsForAllQuotes(software_type_id, plan_id, hours_required, true);
+      
+      // Sync planning details to ensure everything is consistent
+      await syncPlanningDetailsAfterChanges();
       
       toast.success("Software training hours updated");
       return true;
