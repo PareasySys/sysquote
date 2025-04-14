@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useMachineTypes } from "./useMachineTypes";
@@ -239,23 +240,23 @@ export const useTrainingOffers = () => {
           let resourceId: number | null = null;
           
           if (isSoftware) {
-            const { data: requirement } = await supabase
+            // FIX: Using array return and checking length instead of single
+            const { data: requirements } = await supabase
               .from("software_training_requirements")
               .select("resource_id")
               .eq("software_type_id", type_id)
-              .eq("plan_id", plan_id)
-              .single();
+              .eq("plan_id", plan_id);
               
-            resourceId = requirement?.resource_id || null;
+            resourceId = requirements && requirements.length > 0 ? requirements[0].resource_id : null;
           } else {
-            const { data: requirement } = await supabase
+            // FIX: Using array return and checking length instead of single
+            const { data: requirements } = await supabase
               .from("machine_training_requirements")
               .select("resource_id")
               .eq("machine_type_id", type_id)
-              .eq("plan_id", plan_id)
-              .single();
+              .eq("plan_id", plan_id);
               
-            resourceId = requirement?.resource_id || null;
+            resourceId = requirements && requirements.length > 0 ? requirements[0].resource_id : null;
           }
           
           const { data: planningDetails, error: detailsError } = await supabase

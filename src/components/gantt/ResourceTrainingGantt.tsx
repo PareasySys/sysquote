@@ -1,4 +1,3 @@
-
 // ResourceTrainingGantt.tsx
 
 import React, { useEffect } from "react"; // Removed useState as it wasn't used directly here
@@ -42,7 +41,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
         console.error("Error syncing software training hours:", err);
       });
     }
-  }, [quoteId, planId]);
+  }, [quoteId, planId, workOnSaturday, workOnSunday]);
 
   // --- Weekend Settings Update ---
   useEffect(() => {

@@ -93,21 +93,25 @@ export async function syncPlanningDetailsAfterChanges() {
       // For software entries, check if we need to update resource or hours from training requirements and offers
       if (detail.software_types_id) {
         // Get resource from software training requirements
-        const { data: softwareReq } = await supabase
+        const { data: softwareReqs, error: reqError } = await supabase
           .from("software_training_requirements")
           .select("resource_id")
           .eq("software_type_id", detail.software_types_id)
-          .eq("plan_id", detail.plan_id)
-          .single();
+          .eq("plan_id", detail.plan_id);
+        
+        // Use maybeSingle to avoid 406 error for singular results
+        const softwareReq = softwareReqs && softwareReqs.length > 0 ? softwareReqs[0] : null;
         
         // Get hours from training offers
-        const { data: trainingOffer } = await supabase
+        // FIX: Use .is() for null values rather than .eq("null")
+        const { data: offers, error: offerError } = await supabase
           .from("training_offers")
           .select("hours_required")
           .eq("software_type_id", detail.software_types_id)
           .eq("plan_id", detail.plan_id)
-          .eq("machine_type_id", null) // Make sure we get software offers only
-          .single();
+          .is("machine_type_id", "null");
+          
+        const trainingOffer = offers && offers.length > 0 ? offers[0] : null;
           
         // If we have a resource in softwareReq but it's different from what's in details, update it
         if (softwareReq && softwareReq.resource_id !== detail.resource_id) {
@@ -127,21 +131,24 @@ export async function syncPlanningDetailsAfterChanges() {
       // For machine entries, do the same kind of checks for resource and hours
       if (detail.machine_types_id) {
         // Get resource from machine training requirements
-        const { data: machineReq } = await supabase
+        const { data: machineReqs } = await supabase
           .from("machine_training_requirements")
           .select("resource_id")
           .eq("machine_type_id", detail.machine_types_id)
-          .eq("plan_id", detail.plan_id)
-          .single();
+          .eq("plan_id", detail.plan_id);
+        
+        const machineReq = machineReqs && machineReqs.length > 0 ? machineReqs[0] : null;
         
         // Get hours from training offers
-        const { data: trainingOffer } = await supabase
+        // FIX: Use .is() for null values rather than .eq("null")
+        const { data: offers } = await supabase
           .from("training_offers")
           .select("hours_required")
           .eq("machine_type_id", detail.machine_types_id)
           .eq("plan_id", detail.plan_id)
-          .eq("software_type_id", null) // Make sure we get machine offers only
-          .single();
+          .is("software_type_id", "null");
+          
+        const trainingOffer = offers && offers.length > 0 ? offers[0] : null;
           
         // If we have a resource in machineReq but it's different from what's in details, update it
         if (machineReq && machineReq.resource_id !== detail.resource_id) {
@@ -189,10 +196,11 @@ export async function syncSoftwareTrainingHoursAndResources() {
     console.log("Starting software training hours and resources sync");
     
     // Get all software training offers to make sure we have the correct hours
+    // FIX: Use .is() for null values rather than .eq("null")
     const { data: softwareOffers, error: offersError } = await supabase
       .from("training_offers")
       .select("*")
-      .is("machine_type_id", null)
+      .is("machine_type_id", "null")
       .not("software_type_id", "is", null);
       
     if (offersError) {
