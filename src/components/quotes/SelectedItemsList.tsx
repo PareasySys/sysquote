@@ -220,138 +220,97 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
       </div>;
   }
   
+  // Combine both machines and software into a single array of items
+  const allItems = [
+    ...machines.map(machine => ({ 
+      ...machine, 
+      itemType: 'machine' as const,
+    })), 
+    ...software.map(softwareItem => ({ 
+      ...softwareItem, 
+      itemType: 'software' as const 
+    }))
+  ];
+  
   return <div className="space-y-3">
-      {/* Machine Section */}
-      {machines.length > 0 && (
-        <>
-          <h3 className="text-lg font-medium text-gray-200 mt-2">Selected Machines</h3>
-          {machines.map(machine => (
-            <div key={machine.machine_type_id} className="space-y-2">
-              <Card className="bg-slate-800/80 border border-white/5 p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-700 rounded flex-shrink-0 overflow-hidden">
-                      {machine.photo_url ? 
-                        <img 
-                          src={machine.photo_url} 
-                          alt={machine.name} 
-                          className="w-full h-full object-cover" 
-                          onError={e => {
-                            (e.target as HTMLImageElement).src = "/placeholder.svg";
-                          }} 
-                        /> 
-                        : 
-                        <div className="w-full h-full flex items-center justify-center bg-slate-700 text-slate-500 text-xs">
-                          No img
-                        </div>
-                      }
-                    </div>
-                    <div className="overflow-hidden">
-                      <h4 className="text-sm font-medium text-gray-200 truncate">
-                        {machine.name || "Unknown Machine"}
-                      </h4>
-                      {machine.description && 
-                        <p className="text-xs text-gray-400 truncate max-w-md text-left">
-                          {machine.description}
-                        </p>
-                      }
-                    </div>
-                  </div>
-
-                  {/* Training Plans Icons */}
-                  <div className="flex flex-wrap gap-2 justify-end">
-                    {!plansLoading && plans.map(plan => {
-                      const hours = getHours(machine.machine_type_id, 'machine', plan.plan_id);
-                      const iconUrl = plan.icon_name ? 
-                        `${supabase.storage.from('training_plan_icons').getPublicUrl(plan.icon_name + '.svg').data.publicUrl}` : 
-                        null;
-                        
-                      return (
-                        <div key={plan.plan_id} className="flex items-center gap-1 bg-slate-700/50 rounded p-1">
-                          {iconUrl ? 
-                            <img src={iconUrl} alt={plan.name} className="w-5 h-5" title={plan.name} /> : 
-                            <div className="w-5 h-5 bg-gray-600 rounded-full"></div>
-                          }
-                          <span className="text-xs font-medium text-gray-200">{hours}h</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+      {/* All Items Section */}
+      {allItems.map(item => (
+        <div key={`${item.itemType}-${item.itemType === 'machine' ? item.machine_type_id : item.software_type_id}`} className="space-y-2">
+          <Card className="bg-slate-800/80 border border-white/5 p-3">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-700 rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
+                  {item.photo_url ? 
+                    <img 
+                      src={item.photo_url} 
+                      alt={item.name} 
+                      className="w-full h-full object-cover" 
+                      onError={e => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        if (item.itemType === 'software') {
+                          (e.target as HTMLImageElement).parentElement!.appendChild(
+                            getSoftwareIcon(item.name) as any
+                          );
+                        } else {
+                          (e.target as HTMLImageElement).src = "/placeholder.svg";
+                        }
+                      }} 
+                    /> 
+                    : item.itemType === 'software' ? 
+                      getSoftwareIcon(item.name)
+                      : 
+                      <div className="w-full h-full flex items-center justify-center bg-slate-700 text-slate-500 text-xs">
+                        No img
+                      </div>
+                  }
                 </div>
-              </Card>
-            </div>
-          ))}
-        </>
-      )}
-
-      {/* Software Section */}
-      {software.length > 0 && (
-        <>
-          <h3 className="text-lg font-medium text-gray-200 mt-4">Selected Software</h3>
-          {software.map(softwareItem => (
-            <div key={softwareItem.software_type_id} className="space-y-2">
-              <Card className="bg-slate-800/80 border border-white/5 p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-700 rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
-                      {softwareItem.photo_url ? 
-                        <img 
-                          src={softwareItem.photo_url} 
-                          alt={softwareItem.name} 
-                          className="w-full h-full object-cover" 
-                          onError={e => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                            (e.target as HTMLImageElement).parentElement!.appendChild(
-                              getSoftwareIcon(softwareItem.name) as any
-                            );
-                          }} 
-                        /> 
-                        : 
-                        getSoftwareIcon(softwareItem.name)
-                      }
-                    </div>
-                    <div className="overflow-hidden">
-                      <h4 className="text-sm font-medium text-gray-200 truncate">
-                        {softwareItem.name || "Unknown Software"}
-                      </h4>
-                      {softwareItem.description && 
-                        <p className="text-xs text-gray-400 truncate max-w-md text-left">
-                          {softwareItem.description}
-                        </p>
-                      }
-                      {softwareItem.always_included &&
-                        <p className="text-xs text-amber-400 font-medium">
-                          Always included
-                        </p>
-                      }
-                    </div>
-                  </div>
-
-                  {/* Training Plans Icons */}
-                  <div className="flex flex-wrap gap-2 justify-end">
-                    {!plansLoading && plans.map(plan => {
-                      const hours = getHours(softwareItem.software_type_id, 'software', plan.plan_id);
-                      const iconUrl = plan.icon_name ? 
-                        `${supabase.storage.from('training_plan_icons').getPublicUrl(plan.icon_name + '.svg').data.publicUrl}` : 
-                        null;
-                        
-                      return (
-                        <div key={plan.plan_id} className="flex items-center gap-1 bg-slate-700/50 rounded p-1">
-                          {iconUrl ? 
-                            <img src={iconUrl} alt={plan.name} className="w-5 h-5" title={plan.name} /> : 
-                            <div className="w-5 h-5 bg-gray-600 rounded-full"></div>
-                          }
-                          <span className="text-xs font-medium text-gray-200">{hours}h</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="overflow-hidden">
+                  <h4 className="text-sm font-medium text-gray-200 truncate">
+                    {item.name || "Unknown Item"}
+                    {item.itemType === 'software' && (item as QuoteSoftware).always_included && 
+                      <span className="ml-2 text-xs text-amber-400 font-medium">
+                        (Always included)
+                      </span>
+                    }
+                  </h4>
+                  {item.description && 
+                    <p className="text-xs text-gray-400 truncate max-w-md text-left">
+                      {item.description}
+                    </p>
+                  }
+                  <p className="text-xs text-gray-400">
+                    Type: {item.itemType === 'machine' ? 'Machine' : 'Software'}
+                  </p>
                 </div>
-              </Card>
+              </div>
+
+              {/* Training Plans Icons */}
+              <div className="flex flex-wrap gap-2 justify-end">
+                {!plansLoading && plans.map(plan => {
+                  const itemId = item.itemType === 'machine' ? 
+                    (item as QuoteMachine).machine_type_id : 
+                    (item as QuoteSoftware).software_type_id;
+                    
+                  const hours = getHours(itemId, item.itemType, plan.plan_id);
+                  const iconUrl = plan.icon_name ? 
+                    `${supabase.storage.from('training_plan_icons').getPublicUrl(plan.icon_name + '.svg').data.publicUrl}` : 
+                    null;
+                    
+                  return (
+                    <div key={plan.plan_id} className="flex items-center gap-1 bg-slate-700/50 rounded p-1">
+                      {iconUrl ? 
+                        <img src={iconUrl} alt={plan.name} className="w-5 h-5" title={plan.name} /> : 
+                        <div className="w-5 h-5 bg-gray-600 rounded-full"></div>
+                      }
+                      <span className="text-xs font-medium text-gray-200">{hours}h</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          ))}
-        </>
-      )}
+          </Card>
+        </div>
+      ))}
       
       {/* Overall Total Training Hours by Plan */}
       <Card className="bg-slate-700/50 border border-white/5 p-3 mt-4">

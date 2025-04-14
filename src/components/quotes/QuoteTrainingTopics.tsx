@@ -6,13 +6,13 @@ import { QuoteSoftware } from "@/hooks/useQuoteSoftware";
 
 interface QuoteTrainingTopicsProps {
   selectedMachines: QuoteMachine[];
-  selectedSoftware?: QuoteSoftware[];
+  selectedSoftware: QuoteSoftware[];
 }
 
 // This is now a wrapper component that uses the tree view implementation
 const QuoteTrainingTopics: React.FC<QuoteTrainingTopicsProps> = ({ 
   selectedMachines,
-  selectedSoftware = []
+  selectedSoftware
 }) => {
   return (
     <QuoteTrainingTopicsTree 
