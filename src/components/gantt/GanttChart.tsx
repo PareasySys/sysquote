@@ -192,7 +192,7 @@ const GanttChart: React.FC<GanttChartProps> = ({
         </div>
         
         <div className="gantt-grid" ref={gridRef} onScroll={handleGridScroll}>
-          <div>
+          <div className= "gantt-columns">
             {resourceGroups.map(group => (
               <div key={`group-${group.resourceId}`}>
                 {group.machines.map((machine, machineIndex) => (
