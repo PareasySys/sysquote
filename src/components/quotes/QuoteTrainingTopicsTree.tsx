@@ -30,6 +30,7 @@ import {
   Car
 } from "lucide-react";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
+import { QuoteSoftware } from "@/hooks/useQuoteSoftware";
 import { supabase } from "@/lib/supabaseClient";
 
 interface ExpandedState {
@@ -38,19 +39,17 @@ interface ExpandedState {
 
 interface QuoteTrainingTopicsTreeProps {
   selectedMachines: QuoteMachine[];
+  selectedSoftware?: QuoteSoftware[];
 }
 
-const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selectedMachines }) => {
+const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ 
+  selectedMachines,
+  selectedSoftware = []
+}) => {
   const { machines, loading: machinesLoading } = useMachineTypes();
   const { software, loading: softwareLoading } = useSoftwareTypes();
   const { plans, loading: plansLoading } = useTrainingPlans();
   
-  // Selected node states
-  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
-  const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
-  const [selectedNodeKey, setSelectedNodeKey] = useState<string | null>(null);
-
   // Store all fetched topics by their item and plan
   const [topicsByItemAndPlan, setTopicsByItemAndPlan] = useState<{
     [key: string]: TrainingTopic[]
@@ -98,6 +97,12 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
     const selectedMachineIds = selectedMachines.map(m => m.machine_type_id);
     return machines.filter(machine => selectedMachineIds.includes(machine.machine_type_id));
   }, [machines, selectedMachines]);
+
+  // Filter software to only show selected ones in the quote
+  const filteredSoftware = useMemo(() => {
+    const selectedSoftwareIds = selectedSoftware.map(s => s.software_type_id);
+    return software.filter(s => selectedSoftwareIds.includes(s.software_type_id));
+  }, [software, selectedSoftware]);
 
   // Fetch topics for a specific item and plan
   const fetchTopicsForItemAndPlan = async (itemId: number, planId: number, itemType: string) => {
@@ -299,7 +304,7 @@ const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selec
             onToggle={() => toggleRootExpanded('software')}
           />
           
-          {expanded['software'] && software.map(softwareItem => {
+          {expanded['software'] && filteredSoftware.map(softwareItem => {
             const softwareKey = `software-${softwareItem.software_type_id}`;
             return (
               <React.Fragment key={softwareKey}>

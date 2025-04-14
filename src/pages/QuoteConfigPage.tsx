@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,9 +18,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import MachineSelector from "@/components/quotes/MachineSelector";
-import SelectedMachineList from "@/components/quotes/SelectedMachineList";
+import SoftwareSelector from "@/components/quotes/SoftwareSelector";
+import SelectedItemsList from "@/components/quotes/SelectedItemsList";
 import QuoteTrainingTopics from "@/components/quotes/QuoteTrainingTopics";
 import { useQuoteMachines } from "@/hooks/useQuoteMachines";
+import { useQuoteSoftware } from "@/hooks/useQuoteSoftware";
 import { Input } from "@/components/ui/input";
 import { useGeographicAreas } from "@/hooks/useGeographicAreas";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,6 +53,15 @@ const QuoteConfigPage: React.FC = () => {
     saveMachines,
     removeMachine
   } = useQuoteMachines(quoteId);
+  const {
+    selectedSoftware,
+    softwareTypeIds,
+    alwaysIncludedIds,
+    loading: softwareLoading,
+    error: softwareError,
+    saveSoftware,
+    removeSoftware
+  } = useQuoteSoftware(quoteId);
   const { areas, loading: areasLoading } = useGeographicAreas();
   
   const [isEditing, setIsEditing] = useState(false);
@@ -134,6 +146,15 @@ const QuoteConfigPage: React.FC = () => {
     const success = await saveMachines(quoteId, machineIds);
     if (success) {
       toast.success("Machines saved successfully");
+    }
+  };
+
+  const handleSoftwareSave = async (softwareIds: number[]) => {
+    if (!quoteId) return;
+    
+    const success = await saveSoftware(softwareIds);
+    if (success) {
+      toast.success("Software saved successfully");
     }
   };
 
@@ -386,13 +407,23 @@ const QuoteConfigPage: React.FC = () => {
                   onSave={handleMachineSave}
                   quoteId={quoteId}
                 />
+
+                {/* Software Selection */}
+                <div className="mt-6">
+                  <SoftwareSelector
+                    selectedSoftwareIds={softwareTypeIds}
+                    alwaysIncludedIds={alwaysIncludedIds}
+                    onSave={handleSoftwareSave}
+                    quoteId={quoteId}
+                  />
+                </div>
               </div>
               
               <div className="w-full lg:w-2/3">
                 <Card className="bg-slate-800/80 border border-white/5 p-4 mb-6">
-                  <h2 className="text-xl font-semibold mb-4 text-gray-200">Selected Machines</h2>
+                  <h2 className="text-xl font-semibold mb-4 text-gray-200">Selected Items</h2>
                   
-                  {machinesLoading ? (
+                  {machinesLoading || softwareLoading ? (
                     <div className="p-4 text-center">
                       <TextShimmerWave
                         className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
@@ -402,26 +433,31 @@ const QuoteConfigPage: React.FC = () => {
                         scaleDistance={1.1}
                         rotateYDistance={10}
                       >
-                        Loading Machine Selection
+                        Loading Selection
                       </TextShimmerWave>
                     </div>
-                  ) : machinesError ? (
+                  ) : machinesError || softwareError ? (
                     <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
-                      <p className="text-red-300">{machinesError}</p>
+                      <p className="text-red-300">{machinesError || softwareError}</p>
                     </div>
                   ) : (
-                    <SelectedMachineList 
+                    <SelectedItemsList 
                       machines={selectedMachines}
-                      onRemove={removeMachine}
-                      loading={machinesLoading}
+                      software={selectedSoftware}
+                      onRemoveMachine={removeMachine}
+                      onRemoveSoftware={removeSoftware}
+                      loading={machinesLoading || softwareLoading}
                       quoteId={quoteId}
                     />
                   )}
                 </Card>
                 
-                {selectedMachines.length > 0 ? (
+                {(selectedMachines.length > 0 || selectedSoftware.length > 0) ? (
                   <div className="mt-6">
-                    <QuoteTrainingTopics selectedMachines={selectedMachines} />
+                    <QuoteTrainingTopics 
+                      selectedMachines={selectedMachines} 
+                      selectedSoftware={selectedSoftware}
+                    />
                     
                     <div className="mt-6 flex justify-center">
                       <Button 
@@ -437,7 +473,7 @@ const QuoteConfigPage: React.FC = () => {
                   <Card className="bg-slate-800/80 border border-white/5 p-4 mt-6">
                     <h2 className="text-xl font-semibold mb-4 text-gray-200">Training Topics</h2>
                     <div className="text-gray-400 p-4 text-center border border-dashed border-gray-700 rounded-lg">
-                      Select machines to view applicable training topics
+                      Select machines or software to view applicable training topics
                     </div>
                   </Card>
                 )}
