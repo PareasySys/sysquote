@@ -29,6 +29,7 @@ interface ResourceGroup {
     machineName: string;
     displayHours?: number; // For displaying total original hours in the list
     requirements: ScheduledTaskSegment[]; // Stores segments for this machine
+    resourceCategory?: 'Machine' | 'Software'; // Add category to distinguish resource types
   }[];
 }
 
@@ -84,26 +85,51 @@ const GanttChart: React.FC<GanttChartProps> = ({
     const groups = new Map<number, ResourceGroup>();
     requirements.forEach(seg => {
       if (seg.resource_id == null) return; // Skip if no resource_id
+      
       if (!groups.has(seg.resource_id)) {
-        groups.set(seg.resource_id, { resourceId: seg.resource_id, resourceName: seg.resource_name || `Resource ${seg.resource_id}`, machines: [] });
+        groups.set(seg.resource_id, { 
+          resourceId: seg.resource_id, 
+          resourceName: seg.resource_name || `Resource ${seg.resource_id}`, 
+          machines: [] 
+        });
       }
+      
       const resourceGroup = groups.get(seg.resource_id)!;
       const machineName = seg.machine_name || "Unknown Machine";
       let machineGroup = resourceGroup.machines.find(m => m.machineName === machineName);
+      
       if (!machineGroup) {
-        machineGroup = { machineName, displayHours: 0, requirements: [] };
+        machineGroup = { 
+          machineName, 
+          displayHours: 0, 
+          requirements: [],
+          resourceCategory: seg.resource_category 
+        };
         resourceGroup.machines.push(machineGroup);
       }
+      
       machineGroup.requirements.push(seg);
     });
+    
     groups.forEach(group => {
       group.machines.forEach(machine => {
         const uniqueTasks = new Map<string | number, number>();
-        machine.requirements.forEach(seg => { if (seg.originalRequirementId != null && !uniqueTasks.has(seg.originalRequirementId)) uniqueTasks.set(seg.originalRequirementId, seg.total_training_hours); });
+        machine.requirements.forEach(seg => { 
+          if (seg.originalRequirementId != null && !uniqueTasks.has(seg.originalRequirementId)) 
+            uniqueTasks.set(seg.originalRequirementId, seg.total_training_hours); 
+        });
         machine.displayHours = Array.from(uniqueTasks.values()).reduce((sum, h) => sum + (h || 0), 0);
       });
-      group.machines.sort((a, b) => a.machineName.localeCompare(b.machineName));
+      
+      // Sort machines alphabetically, but put software types after machine types
+      group.machines.sort((a, b) => {
+        if ((a.resourceCategory || 'Machine') !== (b.resourceCategory || 'Machine')) {
+          return (a.resourceCategory || 'Machine') === 'Machine' ? -1 : 1;
+        }
+        return a.machineName.localeCompare(b.machineName);
+      });
     });
+    
     return Array.from(groups.values());
   }, [requirements]);
 
@@ -215,7 +241,7 @@ const GanttChart: React.FC<GanttChartProps> = ({
     <div className="gantt-container">
       {/* Fixed Header Row */}
       <div className="gantt-header-row">
-        <div className="gantt-resource-header-cell">Resources & Machines</div>
+        <div className="gantt-resource-header-cell">Resources & Machines/Software</div>
         <div className="gantt-timeline-header-wrapper">
           <div className="gantt-timeline-header-content" ref={timelineHeaderRef} style={{ width: `${totalTimelineWidth}px` }}>
             <div className="gantt-months">{months.map(month => (<div key={`month-${month}`} className="gantt-month" style={{ minWidth: `${daysPerMonth * DAY_WIDTH}px`, width: `${daysPerMonth * DAY_WIDTH}px` }}>Month {month}</div>))}</div>
@@ -231,7 +257,20 @@ const GanttChart: React.FC<GanttChartProps> = ({
               {resourceGroups.map(group => (
                 <div key={`resource-group-${group.resourceId}`} className="gantt-resource-group">
                   <div className="gantt-resource-name" style={{ height: `${RESOURCE_HEADER_HEIGHT}px` }}>{group.resourceName}</div>
-                  {group.machines.map((machine) => (<div key={`machine-label-${group.resourceId}-${machine.machineName}`} className="gantt-resource-machine" style={{ height: `${MACHINE_ROW_HEIGHT}px` }}>{machine.machineName} ({ machine.displayHours || 0}h)</div>))}
+                  {group.machines.map((machine) => (
+                    <div 
+                      key={`machine-label-${group.resourceId}-${machine.machineName}`} 
+                      className={`gantt-resource-machine ${machine.resourceCategory === 'Software' ? 'software-resource' : ''}`}
+                      style={{ height: `${MACHINE_ROW_HEIGHT}px` }}
+                    >
+                      <div className="flex items-center">
+                        {machine.resourceCategory === 'Software' ? (
+                          <span className="mr-1 text-xs px-1 bg-indigo-700/50 rounded">SW</span>
+                        ) : null}
+                        {machine.machineName} ({machine.displayHours || 0}h)
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
            </div>
@@ -258,13 +297,15 @@ const GanttChart: React.FC<GanttChartProps> = ({
               {tasksToRender.map((seg) => (
                 <div
                   key={seg.id} // Using id from ScheduledTaskSegment
-                  className="gantt-task"
+                  className={`gantt-task ${seg.resource_category === 'Software' ? 'software-task' : ''}`}
                   style={{
                     top: `${seg.top + 3}px`,
                     left: `${seg.left}px`, // Uses calculated left with offset
                     width: `${seg.width}px`, // Uses width calculated based on hours
                     height: `${MACHINE_ROW_HEIGHT - 6}px`,
                     backgroundColor: getResourceColor(seg.resource_id),
+                    opacity: seg.resource_category === 'Software' ? 0.85 : 1,
+                    borderStyle: seg.resource_category === 'Software' ? 'dashed' : 'solid'
                   }}
                   title={`${seg.machine_name}: ${seg.segment_hours}h this block (Total ${seg.total_training_hours}h). Start: M${seg.month} D${seg.dayOfMonth} Offset: ${seg.start_hour_offset.toFixed(1)}h. Logical Duration: ${seg.duration_days} day(s).`}
                 >

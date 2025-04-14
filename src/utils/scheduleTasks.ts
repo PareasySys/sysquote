@@ -1,112 +1,124 @@
-
+/**
+ * Utils function for scheduling training tasks into daily segments
+ * @file src/utils/scheduleTasks.ts
+ */
 import { TrainingRequirement } from '@/hooks/useTrainingRequirements';
 import { ScheduledTaskSegment } from './types';
 
 // Constants
-const DAILY_HOUR_LIMIT = 8; // Maximum hours per day
+const DAILY_HOUR_LIMIT = 8; // Maximum hours of work per day
 
 /**
- * Schedule training tasks based on requirements and weekend settings
- * 
- * @param requirements - Raw training requirements data
- * @param workOnSaturday - Whether work is allowed on Saturdays
- * @param workOnSunday - Whether work is allowed on Sundays
- * @returns Array of scheduled task segments
+ * Schedule a set of training tasks across calendar days, respecting daily hour limits
+ * and weekend settings.
  */
 export function scheduleTrainingTasks(
   requirements: TrainingRequirement[],
-  workOnSaturday: boolean,
-  workOnSunday: boolean
+  workOnSaturday: boolean = false,
+  workOnSunday: boolean = false
 ): ScheduledTaskSegment[] {
-  if (requirements.length === 0) return [];
+  console.log(`scheduleTasks: Scheduling ${requirements.length} requirements, workOnSat=${workOnSaturday}, workOnSun=${workOnSunday}`);
   
-  // Create a map to organize requirements by resource
-  const resourceRequirements: Record<number, TrainingRequirement[]> = {};
+  if (!requirements || requirements.length === 0) {
+    console.log('scheduleTasks: No requirements to schedule');
+    return [];
+  }
+
+  // Group by resource to avoid scheduling conflicts
+  const resourceGroups = new Map<number, TrainingRequirement[]>();
   
-  // Group requirements by resource
   requirements.forEach(req => {
-    if (!req.resource_id) return;
-    
-    if (!resourceRequirements[req.resource_id]) {
-      resourceRequirements[req.resource_id] = [];
+    if (!resourceGroups.has(req.resource_id)) {
+      resourceGroups.set(req.resource_id, []);
     }
-    resourceRequirements[req.resource_id].push(req);
+    resourceGroups.get(req.resource_id)!.push(req);
   });
   
-  const scheduledSegments: ScheduledTaskSegment[] = [];
-  let segmentIdCounter = 0;
+  let allSegments: ScheduledTaskSegment[] = [];
   
-  // Schedule tasks for each resource
-  Object.entries(resourceRequirements).forEach(([resourceIdStr, reqs]) => {
-    const resourceId = parseInt(resourceIdStr, 10);
-    let currentDay = 1; // Start from day 1
-    let hourOffset = 0; // Hours offset within current day
+  // Process each resource individually
+  resourceGroups.forEach((resourceReqs, resourceId) => {
+    console.log(`scheduleTasks: Processing resource ${resourceId} with ${resourceReqs.length} requirements`);
     
-    reqs.forEach(req => {
+    let currentDay = 1; // Start on day 1
+    let availableHoursToday = DAILY_HOUR_LIMIT;
+    
+    // Sort requirements - helps with visualization and processing
+    resourceReqs.sort((a, b) => (a.machine_name || '').localeCompare(b.machine_name || ''));
+    
+    // Process each requirement
+    resourceReqs.forEach(req => {
       let remainingHours = req.training_hours;
+      const originalRequirementId = req.id || `${req.resource_id}-${req.machine_name}`;
       
+      console.log(`scheduleTasks: Scheduling ${req.training_hours}h for ${req.machine_name} (Resource: ${req.resource_name}, Type: ${req.resource_category || 'Unknown'})`);
+      
+      // Keep track of logical start day for this requirement
+      const startDay = currentDay;
+      
+      // Continue until all hours are allocated
       while (remainingHours > 0) {
-        // Skip weekends based on configuration
-        if (!workOnSaturday && isWeekendDay(currentDay, 6)) {
+        // Skip weekends if not working on those days
+        if (isDayWeekend(currentDay, workOnSaturday, workOnSunday)) {
           currentDay++;
-          hourOffset = 0;
-          continue;
-        }
-        if (!workOnSunday && isWeekendDay(currentDay, 0)) {
-          currentDay++;
-          hourOffset = 0;
+          availableHoursToday = DAILY_HOUR_LIMIT; // Reset hours for the new day
           continue;
         }
         
-        // Calculate how many hours can be allocated in the current day
-        const availableHours = DAILY_HOUR_LIMIT - hourOffset;
-        const hoursToAllocate = Math.min(availableHours, remainingHours);
+        // Determine how many hours we can schedule today
+        const hoursToUseToday = Math.min(remainingHours, availableHoursToday);
         
-        // Create a segment
-        scheduledSegments.push({
-          id: `segment-${segmentIdCounter++}`,
-          originalRequirementId: req.id || req.requirement_id || `req-${resourceId}-${req.machine_name}`,
-          resource_id: resourceId,
-          resource_name: req.resource_name,
-          machine_name: req.machine_name,
-          total_training_hours: req.training_hours,
-          segment_hours: hoursToAllocate,
-          start_day: currentDay,
-          duration_days: 1, // Each segment is within a single day
-          start_hour_offset: hourOffset
-        });
+        // Create segment for today's work
+        if (hoursToUseToday > 0) {
+          allSegments.push({
+            id: `${originalRequirementId}-day${currentDay}-${availableHoursToday}`,
+            originalRequirementId,
+            resource_id: req.resource_id,
+            resource_name: req.resource_name,
+            machine_name: req.machine_name, // Shows both machine and software names
+            resource_category: req.resource_category || 'Machine',
+            segment_hours: hoursToUseToday,
+            total_training_hours: req.training_hours,
+            start_day: currentDay,
+            duration_days: 1, // Each segment is 1 day
+            start_hour_offset: DAILY_HOUR_LIMIT - availableHoursToday // Hours already used today
+          });
+        }
         
-        // Update remaining hours and current position
-        remainingHours -= hoursToAllocate;
-        hourOffset += hoursToAllocate;
+        // Update remaining hours and available hours
+        remainingHours -= hoursToUseToday;
+        availableHoursToday -= hoursToUseToday;
         
-        // Move to next day if current day is full
-        if (hourOffset >= DAILY_HOUR_LIMIT) {
+        // Move to next day if we've used all hours today
+        if (availableHoursToday <= 0) {
           currentDay++;
-          hourOffset = 0;
+          availableHoursToday = DAILY_HOUR_LIMIT; // Reset hours for the new day
         }
       }
     });
   });
   
-  return scheduledSegments;
+  // Sort segments by day and resource
+  allSegments.sort((a, b) => {
+    if (a.start_day !== b.start_day) return a.start_day - b.start_day;
+    if (a.resource_id !== b.resource_id) return a.resource_id - b.resource_id;
+    return (a.machine_name || '').localeCompare(b.machine_name || '');
+  });
+  
+  console.log(`scheduleTasks: Generated ${allSegments.length} scheduled segments`);
+  return allSegments;
 }
 
-/**
- * Determine if a given day is a specific day of the week
- * 
- * @param dayNumber - The day number (1-based)
- * @param weekdayToCheck - The weekday to check (0 = Sunday, 6 = Saturday)
- * @returns True if the day is the specified weekday
- */
-function isWeekendDay(dayNumber: number, weekdayToCheck: number): boolean {
-  // Convert 1-based day number to 0-based for modulo arithmetic
-  const zeroBased = dayNumber - 1;
+// Helper function to check if a day is a weekend
+function isDayWeekend(
+  dayNumber: number,
+  workOnSaturday: boolean,
+  workOnSunday: boolean
+): boolean {
+  // Days are 1-indexed, calculate day of week (0-6, with 0 = Sunday)
+  const dayOfWeek = (dayNumber - 1) % 7;
   
-  // Day of week is calculated with modulo 7
-  // Adding 1 because we're assuming day 1 is a Monday
-  // So (day + 1) % 7 will give: 1->2 (Tue), 2->3 (Wed), ... 5->6 (Sat), 6->0 (Sun)
-  const dayOfWeek = (zeroBased + 1) % 7;
-  
-  return dayOfWeek === weekdayToCheck;
+  // Check if it's a weekend day we should skip
+  return (dayOfWeek === 6 && !workOnSaturday) || // Saturday (6)
+         (dayOfWeek === 0 && !workOnSunday);    // Sunday (0)
 }

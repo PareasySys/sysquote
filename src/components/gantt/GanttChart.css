@@ -174,7 +174,6 @@
     border-top: none; /* No top border for the first machine in a group */
 }
 
-
 /* --- Grid --- */
 .gantt-grid-scroll-container {
   flex: 1;
@@ -339,4 +338,14 @@
 
 .gantt-empty {
   font-style: italic;
+}
+
+.software-resource {
+  color: #c4b5fd; /* text-indigo-300 */
+  font-style: italic;
+}
+
+.software-task {
+  border-width: 1px;
+  border-radius: 4px;
 }

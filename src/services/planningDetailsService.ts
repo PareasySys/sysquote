@@ -28,13 +28,16 @@ export async function fetchPlanningDetails(
         machine_types_id,
         machine_types:machine_types_id (name),
         software_types_id,
-        software_types:software_types_id (name)
+        software_types:software_types_id (name),
+        resource_category
       `)
       .eq('quote_id', quoteId)
       .eq('plan_id', planId)
       .not('resource_id', 'is', null);
     
     if (error) throw error;
+    
+    console.log("Raw planning details data:", data);
     
     // Map to TrainingRequirement format
     const requirements: TrainingRequirement[] = data.map(detail => ({
@@ -44,9 +47,11 @@ export async function fetchPlanningDetails(
       resource_id: detail.resource_id,
       resource_name: detail.resources?.name || 'Unnamed Resource',
       machine_name: detail.machine_types?.name || detail.software_types?.name || 'Unknown',
-      training_hours: detail.allocated_hours
+      training_hours: detail.allocated_hours,
+      resource_category: detail.resource_category as 'Machine' | 'Software'
     }));
     
+    console.log("Mapped training requirements:", requirements);
     return requirements;
     
   } catch (err) {
