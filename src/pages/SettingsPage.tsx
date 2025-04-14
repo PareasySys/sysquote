@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -18,17 +17,6 @@ import { useTabOrder } from "@/hooks/useTabOrder";
 import { Button } from "@/components/ui/button";
 import { syncAllPlanningDetailsWithRequirements } from "@/services/planningDetailsService";
 import { toast } from "sonner";
-
-// Import all tab components
-import MachineTypesTab from "@/components/settings/MachineTypesTab";
-import SoftwareTypesTab from "@/components/settings/SoftwareTypesTab";
-import ResourcesTab from "@/components/settings/ResourcesTab";
-import TrainingPlansTab from "@/components/settings/TrainingPlansTab";
-import AreaCostsTab from "@/components/settings/AreaCostsTab";
-
-// Import the missing components that we'll need to create
-import TrainingTopicsTab from "@/components/settings/TrainingTopicsTab";
-import TrainingOffersTab from "@/components/settings/TrainingOffersTab";
 
 const initialTabs = [
   { id: "machines", label: "Machine Types", order: 0 },
