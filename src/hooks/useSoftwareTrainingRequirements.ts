@@ -3,91 +3,142 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 
-export interface TopicItem {
-  topic_id: number;
-  topic_name: string;
-  description?: string | null;
-  parent_topic_id?: number | null;
-  hours_required?: number;
+export interface SoftwareTrainingRequirement {
+  id: number;
+  software_type_id: number;
+  plan_id: number;
+  resource_id: number | null;
+  created_at?: string;
 }
 
-export const useSoftwareTrainingRequirements = (softwareIds: number[]) => {
-  const [topicsBySoftware, setTopicsBySoftware] = useState<Record<string, TopicItem[]>>({});
+export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
+  const [requirements, setRequirements] = useState<SoftwareTrainingRequirement[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchTrainingRequirements = async () => {
-      if (softwareIds.length === 0) {
-        setTopicsBySoftware({});
-        setLoading(false);
-        return;
+  const fetchRequirements = async () => {
+    if (!softwareTypeId) {
+      setRequirements([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Use 'as any' to bypass the type checking for table names
+      const { data, error } = await (supabase
+        .from("software_training_requirements" as any)
+        .select("*")
+        .eq("software_type_id", softwareTypeId)) as unknown as {
+          data: SoftwareTrainingRequirement[] | null;
+          error: any;
+        };
+      
+      if (error) throw error;
+      
+      setRequirements(data || []);
+    } catch (err: any) {
+      console.error("Error fetching software training requirements:", err);
+      setError(err.message || "Failed to load training requirements");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveRequirement = async (planId: number, resourceId: number) => {
+    if (!softwareTypeId) return;
+    
+    try {
+      // Check if requirement already exists
+      const existingReq = requirements.find(req => req.plan_id === planId);
+      
+      if (existingReq) {
+        // Update existing requirement
+        const { error } = await (supabase
+          .from("software_training_requirements" as any)
+          .update({ resource_id: resourceId })
+          .eq("id", existingReq.id)) as unknown as {
+            error: any;
+          };
+        
+        if (error) throw error;
+        
+        setRequirements(prev => 
+          prev.map(req => req.id === existingReq.id 
+            ? { ...req, resource_id: resourceId } 
+            : req
+          )
+        );
+      } else {
+        // Create new requirement
+        const { data, error } = await (supabase
+          .from("software_training_requirements" as any)
+          .insert({
+            software_type_id: softwareTypeId,
+            plan_id: planId,
+            resource_id: resourceId
+          })
+          .select()) as unknown as {
+            data: SoftwareTrainingRequirement[] | null;
+            error: any;
+          };
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setRequirements(prev => [...prev, data[0]]);
+        }
       }
       
-      try {
-        setLoading(true);
-        setError(null);
-        
-        console.log("Fetching software training requirements for:", softwareIds);
-        
-        // Query the software training requirements table and join with training topics
-        const { data, error: fetchError } = await supabase
-          .from("software_training_requirements")
-          .select(`
-            software_type_id,
-            plan_id,
-            training_topics (
-              topic_id,
-              topic_name,
-              description,
-              parent_topic_id
-            )
-          `)
-          .in("software_type_id", softwareIds);
-          
-        if (fetchError) throw fetchError;
-        
-        console.log("Software training requirements data:", data);
-        
-        // Format data by software ID
-        const topicMap: Record<string, TopicItem[]> = {};
-        
-        if (data) {
-          data.forEach(req => {
-            if (!req || !req.software_type_id) return;
-            
-            const softwareKey = `software_${req.software_type_id}`;
-            
-            if (!topicMap[softwareKey]) {
-              topicMap[softwareKey] = [];
-            }
-            
-            if (req.training_topics) {
-              const topic: TopicItem = {
-                topic_id: req.training_topics.topic_id,
-                topic_name: req.training_topics.topic_name,
-                description: req.training_topics.description,
-                parent_topic_id: req.training_topics.parent_topic_id,
-                hours_required: req.plan_id // Using plan_id temporarily as hours_required
-              };
-              
-              topicMap[softwareKey].push(topic);
-            }
-          });
-        }
-        
-        setTopicsBySoftware(topicMap);
-      } catch (err: any) {
-        console.error("Error fetching software training requirements:", err);
-        setError(err.message || "Failed to load software training requirements");
-        toast.error("Failed to load software training requirements");
-      } finally {
-        setLoading(false);
-      }
-    };
+      toast.success("Training requirement saved");
+    } catch (err: any) {
+      console.error("Error saving software training requirement:", err);
+      toast.error(err.message || "Failed to save requirement");
+    }
+  };
+
+  const removeRequirement = async (planId: number) => {
+    if (!softwareTypeId) return;
+
+    const existingReq = requirements.find(req => req.plan_id === planId);
+    if (!existingReq) return;
     
-    fetchTrainingRequirements();
-  }, [softwareIds]);
-  
-  return { topicsBySoftware, loading, error };
+    try {
+      const { error } = await (supabase
+        .from("software_training_requirements" as any)
+        .delete()
+        .eq("id", existingReq.id)) as unknown as {
+          error: any;
+        };
+      
+      if (error) throw error;
+      
+      setRequirements(prev => prev.filter(req => req.id !== existingReq.id));
+      toast.success("Training requirement removed");
+    } catch (err: any) {
+      console.error("Error removing software training requirement:", err);
+      toast.error(err.message || "Failed to remove requirement");
+    }
+  };
+
+  const getResourceForPlan = (planId: number): number | undefined => {
+    const req = requirements.find(req => req.plan_id === planId);
+    return req?.resource_id || undefined;
+  };
+
+  useEffect(() => {
+    fetchRequirements();
+  }, [softwareTypeId]);
+
+  return {
+    requirements,
+    loading,
+    error,
+    saveRequirement,
+    removeRequirement,
+    getResourceForPlan,
+    fetchRequirements
+  };
 };

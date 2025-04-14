@@ -3,14 +3,11 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
 import { SoftwareType } from "@/hooks/useSoftwareTypes";
 
 interface SoftwareTypeCardProps {
   software?: SoftwareType;
   isAddCard?: boolean;
-  isSelected?: boolean;
-  showSelectionIndicator?: boolean;
   onEdit?: (software: SoftwareType) => void;
   onAddNew?: () => void;
 }
@@ -18,8 +15,6 @@ interface SoftwareTypeCardProps {
 const SoftwareTypeCard: React.FC<SoftwareTypeCardProps> = ({ 
   software, 
   isAddCard = false,
-  isSelected = false,
-  showSelectionIndicator = false,
   onEdit,
   onAddNew
 }) => {
@@ -67,12 +62,7 @@ const SoftwareTypeCard: React.FC<SoftwareTypeCardProps> = ({
   return (
     <div className="w-full">
       <AspectRatio ratio={3/4} className="w-full">
-        <Card className={`relative overflow-hidden h-full cursor-pointer w-full border-0 ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
-          {showSelectionIndicator && isSelected && (
-            <div className="absolute top-2 right-2 z-30 bg-blue-500 text-white rounded-full p-1">
-              <Check className="h-4 w-4" />
-            </div>
-          )}
+        <Card className="relative overflow-hidden h-full cursor-default w-full border-0">
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
           {software?.photo_url ? (
             <img 
