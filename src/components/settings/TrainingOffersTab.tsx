@@ -10,7 +10,6 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { syncAllPlanningDetailsWithRequirements } from "@/services/planningDetailsService";
 
 const TrainingOffersTab = () => {
   const {
@@ -91,14 +90,6 @@ const TrainingOffersTab = () => {
         const newEditCells = { ...editCells };
         delete newEditCells[key];
         setEditCells(newEditCells);
-        
-        // Sync planning details after updating training hours
-        try {
-          await syncAllPlanningDetailsWithRequirements();
-          console.log("Planning details synchronized after training hours update");
-        } catch (syncErr) {
-          console.error("Error syncing planning details:", syncErr);
-        }
       }
     } catch (err) {
       console.error("Error saving cell:", err);

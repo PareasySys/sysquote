@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { fetchPlanningDetails, updateWeekendSettings, syncAllPlanningDetailsWithRequirements } from '@/services/planningDetailsService';
+import { fetchPlanningDetails } from '@/services/planningDetailsService';
 import { scheduleTrainingTasks } from '@/utils/scheduleTasks';
 import { ScheduledTaskSegment } from '@/utils/types';
 
@@ -42,9 +42,6 @@ export function useTrainingRequirements(
     setError(null);
 
     try {
-      // First, sync all planning details to ensure they have up-to-date resource associations
-      await syncAllPlanningDetailsWithRequirements();
-      
       const details = await fetchPlanningDetails(quoteId, planId);
       console.log(`useTrainingRequirements: Fetched ${details.length} raw planning details.`);
       

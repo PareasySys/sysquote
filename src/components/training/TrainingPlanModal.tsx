@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -15,7 +16,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { syncTrainingPlanChanges } from "@/services/planningDetailsService";
 
 interface TrainingPlanModalProps {
   open: boolean;
@@ -72,27 +72,18 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
           console.error("Error updating training plan:", error);
           throw error;
         }
-        
-        try {
-          await syncTrainingPlanChanges(plan.plan_id);
-          console.log(`Planning details synchronized after updating plan ${plan.plan_id}`);
-        } catch (syncErr) {
-          console.error("Error syncing planning details:", syncErr);
-        }
-        
         toast.success("Training plan updated successfully");
       } else {
-        const { data, error } = await supabase.from("training_plans").insert({
+        const { error } = await supabase.from("training_plans").insert({
           name,
           description,
           icon_name: iconName,
-        }).select();
+        });
 
         if (error) {
           console.error("Error creating training plan:", error);
           throw error;
         }
-        
         toast.success("Training plan created successfully");
       }
 
