@@ -128,7 +128,8 @@
   display: block;
   flex-direction: column;
   flex: 2;
-  height: 100%; /* Ensure it stretches to full height */
+  height: 100%;
+  padding-top: 30px;/* Ensure it stretches to full height */
 }
 
 .gantt-machine-row {
