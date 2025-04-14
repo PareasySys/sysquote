@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useMachineTypes } from "./useMachineTypes";
@@ -24,7 +23,6 @@ export const useTrainingOffers = () => {
   const { software } = useSoftwareTypes();
   const { plans } = useTrainingPlans();
 
-  // Create a 2D matrix representation of hours for machine-plan combinations
   const offersMatrix = machines.map(machine => {
     const machineRow = {
       itemId: machine.machine_type_id,
@@ -47,7 +45,6 @@ export const useTrainingOffers = () => {
     return machineRow;
   });
 
-  // Create a separate matrix for software-plan combinations
   const softwareOffersMatrix = software.map(softwareItem => {
     const softwareRow = {
       itemId: softwareItem.software_type_id,
@@ -145,8 +142,7 @@ export const useTrainingOffers = () => {
       return false;
     }
   };
-  
-  // Corrected function to update software training hours
+
   const updateSoftwareTrainingHours = async (
     software_type_id: number,
     plan_id: number,
@@ -169,7 +165,10 @@ export const useTrainingOffers = () => {
           })
           .eq("id", existingOffer.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error updating existing software training offer:", error);
+          throw error;
+        }
       } else {
         // Create new record with explicit NULL for machine_type_id
         const { error } = await supabase
@@ -178,10 +177,15 @@ export const useTrainingOffers = () => {
             software_type_id,
             plan_id,
             machine_type_id: null,  // Explicitly set to NULL
-            hours_required
+            hours_required,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error creating new software training offer:", error);
+          throw error;
+        }
       }
       
       // Refetch to update state
@@ -198,8 +202,7 @@ export const useTrainingOffers = () => {
       return false;
     }
   };
-  
-  // Update planning_details allocated_hours when training offers change for ALL quotes
+
   const updatePlanningDetailsForAllQuotes = async (
     type_id: number,
     plan_id: number,

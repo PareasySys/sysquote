@@ -383,7 +383,7 @@ export type Database = {
           created_at: string
           hours_required: number
           id: number
-          machine_type_id: number
+          machine_type_id: number | null
           plan_id: number
           software_type_id: number | null
           updated_at: string
@@ -392,7 +392,7 @@ export type Database = {
           created_at?: string
           hours_required?: number
           id?: number
-          machine_type_id: number
+          machine_type_id?: number | null
           plan_id: number
           software_type_id?: number | null
           updated_at?: string
@@ -401,7 +401,7 @@ export type Database = {
           created_at?: string
           hours_required?: number
           id?: number
-          machine_type_id?: number
+          machine_type_id?: number | null
           plan_id?: number
           software_type_id?: number | null
           updated_at?: string
