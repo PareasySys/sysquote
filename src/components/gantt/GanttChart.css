@@ -38,7 +38,7 @@
 .gantt-timeline {
   display: flex;
   flex: 1;
-  overflow: hidden; /* Hide scrollbar for header timeline */
+  overflow-x: hidden; /* Hide scrollbar for header timeline */
 }
 
 .gantt-months {
@@ -130,7 +130,6 @@
   flex-direction: column;
   flex: 1;
   overflow-x: auto;
-  overflow-y: hidden;
 }
 
 .gantt-row {
@@ -167,6 +166,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   z-index: 1;
+  cursor: pointer;
 }
 
 .gantt-loading {
@@ -200,6 +200,5 @@
 .gantt-resources-and-grid {
   display: flex;
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: auto;
 }

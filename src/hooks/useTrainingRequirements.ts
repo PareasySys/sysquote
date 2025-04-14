@@ -43,54 +43,81 @@ export const useTrainingRequirements = (
         return;
       }
       
-      // Transform planning details into training requirements
-      // Each planning detail record will be treated as a unique training requirement
-      const transformedRequirements: TrainingRequirement[] = planningDetails.map((detail, index) => {
+      // Group planning details by resource_id to process sequentially
+      const resourceGroups = planningDetails.reduce((acc, detail) => {
         const resourceId = detail.resource_id || 0;
-        const resourceName = detail.resource_name || "Unassigned";
-        const hours = detail.allocated_hours || 0;
-        const machineName = detail.type_name || "Unknown Machine";
-        
-        // Calculate duration in days (assuming 8 hours per working day)
-        let durationDays = Math.ceil(hours / 8);
-        if (durationDays < 1) durationDays = 1;
-        
-        // Use the actual weekend settings from the database record, not the global settings
-        const detailWorkOnSaturday = detail.work_on_saturday || false;
-        const detailWorkOnSunday = detail.work_on_sunday || false;
-        
-        // Only extend duration if this specific detail has weekend work disabled
-        if (!detailWorkOnSaturday || !detailWorkOnSunday) {
-          // Calculate how many weekends will be encountered during the duration
-          // For simplicity, assuming uniform distribution of weekends (2 days per 7)
-          const daysOff = (!detailWorkOnSaturday && !detailWorkOnSunday) ? 2 : 1;
-          const weekendAdjustment = Math.floor(durationDays / 5) * daysOff;
-          durationDays += weekendAdjustment;
+        if (!acc[resourceId]) {
+          acc[resourceId] = [];
         }
+        acc[resourceId].push(detail);
+        return acc;
+      }, {} as Record<number, typeof planningDetails>);
+      
+      let allRequirements: TrainingRequirement[] = [];
+      let requirementId = 1;
+      
+      // Process each resource's training details sequentially
+      Object.entries(resourceGroups).forEach(([resourceId, details]) => {
+        const numericResourceId = parseInt(resourceId);
+        // Sort by machine/software type name for consistent ordering
+        const sortedDetails = details.sort((a, b) => {
+          const nameA = a.type_name || '';
+          const nameB = b.type_name || '';
+          return nameA.localeCompare(nameB);
+        });
         
-        // Stagger the tasks by resources and machines
-        // Group by resource and machine
-        const sameResourceMachines = planningDetails.filter(
-          d => d.resource_id === detail.resource_id && d.type_name === detail.type_name
-        );
-        const resourceMachineIndex = sameResourceMachines.findIndex(d => d.id === detail.id);
-        let startDay = resourceMachineIndex * 2 + 1;
+        // Start day for this resource's first training
+        // Stagger start days by resource ID to avoid overlap
+        let currentDay = 1 + (numericResourceId % 3);
         
-        // Further stagger based on resource to avoid multiple resources starting at the same time
-        startDay += (resourceId % 5) * 2; 
-        
-        return {
-          requirement_id: index + 1, // Use index for unique requirement_id
-          resource_id: resourceId,
-          resource_name: resourceName,
-          machine_name: machineName,
-          training_hours: hours,
-          start_day: startDay,
-          duration_days: durationDays || 1
-        };
+        // Process each detail for this resource sequentially
+        sortedDetails.forEach((detail) => {
+          const resourceName = detail.resource_name || "Unassigned";
+          const hours = detail.allocated_hours || 0;
+          const machineName = detail.type_name || "Unknown Machine";
+          
+          // Calculate duration in days (assuming 8 hours per working day)
+          let durationDays = Math.ceil(hours / 8);
+          if (durationDays < 1) durationDays = 1;
+          
+          // Get weekend settings from the database record
+          const detailWorkOnSaturday = detail.work_on_saturday || false;
+          const detailWorkOnSunday = detail.work_on_sunday || false;
+          
+          // Create the requirement
+          const requirement: TrainingRequirement = {
+            requirement_id: requirementId++,
+            resource_id: numericResourceId,
+            resource_name: resourceName,
+            machine_name: machineName,
+            training_hours: hours,
+            start_day: currentDay,
+            duration_days: durationDays
+          };
+          
+          allRequirements.push(requirement);
+          
+          // Move to next available starting day
+          currentDay += durationDays;
+          
+          // Skip weekends for the next training if needed
+          if (!detailWorkOnSaturday || !detailWorkOnSunday) {
+            // Find how many weekend days to skip
+            for (let day = currentDay; day < currentDay + 7; day++) {
+              // Check if this is a weekend day that should be skipped
+              const dayOfWeek = day % 7;
+              const isSaturday = dayOfWeek === 6;
+              const isSunday = dayOfWeek === 0;
+              
+              if ((isSaturday && !detailWorkOnSaturday) || (isSunday && !detailWorkOnSunday)) {
+                currentDay++; // Skip this day
+              }
+            }
+          }
+        });
       });
       
-      setRequirements(transformedRequirements);
+      setRequirements(allRequirements);
       
     } catch (err: any) {
       console.error("Error fetching training requirements:", err);
