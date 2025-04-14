@@ -4,7 +4,7 @@ import { useMachineTypes } from "./useMachineTypes";
 import { useSoftwareTypes } from "./useSoftwareTypes";
 import { useTrainingPlans } from "./useTrainingPlans";
 import { toast } from "sonner";
-import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
+import { syncPlanningDetailsAfterChanges, syncSoftwareTrainingHoursAndResources } from "@/services/planningDetailsSync";
 
 export interface TrainingOffer {
   id: number;
@@ -189,10 +189,10 @@ export const useTrainingOffers = () => {
       // Refetch to update state
       await fetchOffers();
       
-      // Also update any planning_details that use this software type and plan
-      await updatePlanningDetailsForAllQuotes(software_type_id, plan_id, hours_required, true);
+      // Sync software training hours across all quotes with this software type
+      await syncSoftwareTrainingHoursAndResources();
       
-      // Sync planning details to ensure everything is consistent
+      // Also sync any other planning details that might be affected
       await syncPlanningDetailsAfterChanges();
       
       toast.success("Software training hours updated");

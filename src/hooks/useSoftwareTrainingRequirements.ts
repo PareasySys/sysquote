@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
+import { syncPlanningDetailsAfterChanges, syncSoftwareTrainingHoursAndResources } from "@/services/planningDetailsSync";
 
 export interface SoftwareTrainingRequirement {
   id: number;
@@ -69,9 +69,10 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
           )
         );
         
-        await updatePlanningDetailsForSoftware(softwareTypeId, planId, resourceId);
-        
+        await syncSoftwareTrainingHoursAndResources();
         await syncPlanningDetailsAfterChanges();
+        
+        toast.success("Training requirement saved");
       } else {
         const { data, error } = await (supabase
           .from("software_training_requirements" as any)
@@ -90,8 +91,7 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
         if (data && data.length > 0) {
           setRequirements(prev => [...prev, data[0]]);
           
-          await updatePlanningDetailsForSoftware(softwareTypeId, planId, resourceId);
-          
+          await syncSoftwareTrainingHoursAndResources();
           await syncPlanningDetailsAfterChanges();
         }
       }
@@ -200,6 +200,7 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
       
       await removeResourceFromPlanningDetails(softwareTypeId, planId);
       
+      await syncSoftwareTrainingHoursAndResources();
       await syncPlanningDetailsAfterChanges();
       
       setRequirements(prev => prev.filter(req => req.id !== existingReq.id));

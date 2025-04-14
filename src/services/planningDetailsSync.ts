@@ -179,3 +179,135 @@ export async function syncPlanningDetailsAfterChanges() {
     return false;
   }
 }
+
+/**
+ * Ensures that planning details for software items reflect the correct hours from training_offers
+ * and the correct resource assignments from software_training_requirements
+ */
+export async function syncSoftwareTrainingHoursAndResources() {
+  try {
+    console.log("Starting software training hours and resources sync");
+    
+    // Get all software training offers to make sure we have the correct hours
+    const { data: softwareOffers, error: offersError } = await supabase
+      .from("training_offers")
+      .select("*")
+      .is("machine_type_id", null)
+      .not("software_type_id", "is", null);
+      
+    if (offersError) {
+      console.error("Error fetching software training offers:", offersError);
+      return false;
+    }
+    
+    if (!softwareOffers || softwareOffers.length === 0) {
+      console.log("No software training offers found, nothing to sync");
+      return true;
+    }
+    
+    // Get all software training requirements to make sure we have the correct resources
+    const { data: softwareReqs, error: reqsError } = await supabase
+      .from("software_training_requirements")
+      .select("*");
+      
+    if (reqsError) {
+      console.error("Error fetching software training requirements:", reqsError);
+      return false;
+    }
+    
+    // Get all quotes that contain software
+    const { data: quotesWithSoftware, error: quotesError } = await supabase
+      .from("quotes")
+      .select("quote_id, software_type_ids");
+      
+    if (quotesError) {
+      console.error("Error fetching quotes with software:", quotesError);
+      return false;
+    }
+    
+    // Process each software offer to ensure planning_details are up to date
+    let updateCount = 0;
+    for (const offer of softwareOffers) {
+      const softwareId = offer.software_type_id;
+      const planId = offer.plan_id;
+      const hoursRequired = offer.hours_required;
+      
+      // Find the resource for this software and plan
+      const softwareReq = softwareReqs.find(
+        req => req.software_type_id === softwareId && req.plan_id === planId
+      );
+      
+      const resourceId = softwareReq?.resource_id || null;
+      
+      // Find all quotes that include this software
+      for (const quote of quotesWithSoftware) {
+        if (!quote.software_type_ids || !quote.software_type_ids.includes(softwareId)) {
+          continue;
+        }
+        
+        // Check if planning detail already exists
+        const { data: existingDetail } = await supabase
+          .from("planning_details")
+          .select("id, allocated_hours, resource_id")
+          .eq("quote_id", quote.quote_id)
+          .eq("plan_id", planId)
+          .eq("software_types_id", softwareId)
+          .maybeSingle();
+          
+        if (existingDetail) {
+          // Update if hours or resource have changed
+          if (existingDetail.allocated_hours !== hoursRequired || 
+              (resourceId && existingDetail.resource_id !== resourceId)) {
+            
+            const { error: updateError } = await supabase
+              .from("planning_details")
+              .update({
+                allocated_hours: hoursRequired,
+                resource_id: resourceId,
+                resource_category: "Software",
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", existingDetail.id);
+              
+            if (updateError) {
+              console.error(`Error updating planning detail for quote ${quote.quote_id}:`, updateError);
+            } else {
+              updateCount++;
+              console.log(`Updated hours to ${hoursRequired} and resource to ${resourceId} for quote ${quote.quote_id}, software ${softwareId}, plan ${planId}`);
+            }
+          }
+        } else {
+          // Create new planning detail
+          const { error: insertError } = await supabase
+            .from("planning_details")
+            .insert({
+              quote_id: quote.quote_id,
+              plan_id: planId,
+              software_types_id: softwareId,
+              machine_types_id: null,
+              resource_id: resourceId,
+              allocated_hours: hoursRequired,
+              resource_category: "Software",
+              work_on_saturday: false,
+              work_on_sunday: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+            
+          if (insertError) {
+            console.error(`Error creating planning detail for quote ${quote.quote_id}:`, insertError);
+          } else {
+            updateCount++;
+            console.log(`Created planning detail for quote ${quote.quote_id}, software ${softwareId}, plan ${planId} with ${hoursRequired} hours`);
+          }
+        }
+      }
+    }
+    
+    console.log(`Software training hours sync complete. Updated ${updateCount} planning details.`);
+    return true;
+  } catch (error) {
+    console.error("Error synchronizing software training hours:", error);
+    return false;
+  }
+}

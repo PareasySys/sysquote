@@ -1,3 +1,4 @@
+
 // ResourceTrainingGantt.tsx
 
 import React, { useEffect } from "react"; // Removed useState as it wasn't used directly here
@@ -8,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { updateWeekendSettings } from "@/services/planningDetailsService"; // Keep this
 import { useTrainingRequirements } from "@/hooks/useTrainingRequirements"; // Adjust path
+import { syncSoftwareTrainingHoursAndResources } from "@/services/planningDetailsSync";
 
 interface ResourceTrainingGanttProps {
   quoteId: string | undefined;
@@ -28,6 +30,19 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     error,
     fetchRequirements
   } = useTrainingRequirements(quoteId, planId, workOnSaturday, workOnSunday);
+
+  // --- Sync Software Hours Before Loading Requirements ---
+  useEffect(() => {
+    if (quoteId && planId) {
+      // Sync software hours and resources before loading requirements
+      syncSoftwareTrainingHoursAndResources().then(() => {
+        // After syncing, fetch the requirements
+        fetchRequirements();
+      }).catch(err => {
+        console.error("Error syncing software training hours:", err);
+      });
+    }
+  }, [quoteId, planId]);
 
   // --- Weekend Settings Update ---
   useEffect(() => {
