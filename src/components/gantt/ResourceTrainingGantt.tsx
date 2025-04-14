@@ -71,7 +71,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     <Card className="p-4 bg-slate-800/80 border border-white/5">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-200">Resource Training Schedule</h3>
-        <p className="text-gray-400 text-sm">
+        <div className="text-gray-400 text-sm">
           {loading ? (
             <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
               Loading schedule...
@@ -79,7 +79,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
           ) : (
             `Showing ${planningDetails.length} training assignments`
           )}
-        </p>
+        </div>
       </div>
 
       {error && (

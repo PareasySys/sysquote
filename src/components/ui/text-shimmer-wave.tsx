@@ -20,7 +20,7 @@ type TextShimmerWave = {
 
 export function TextShimmerWave({
   children,
-  as: Component = 'p',
+  as: Component = 'span', // Changed default from 'p' to 'span' to avoid nesting issues
   className,
   duration = 1,
   zDistance = 10,
