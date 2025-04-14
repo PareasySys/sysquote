@@ -4,19 +4,24 @@ import { Card } from "@/components/ui/card";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
 import { SoftwareType } from "@/hooks/useSoftwareTypes";
+import { Check, Edit, Server } from "lucide-react";
 
 interface SoftwareTypeCardProps {
   software?: SoftwareType;
   isAddCard?: boolean;
   onEdit?: (software: SoftwareType) => void;
   onAddNew?: () => void;
+  isSelected?: boolean;
+  showSelectionIndicator?: boolean;
 }
 
 const SoftwareTypeCard: React.FC<SoftwareTypeCardProps> = ({ 
   software, 
   isAddCard = false,
   onEdit,
-  onAddNew
+  onAddNew,
+  isSelected = false,
+  showSelectionIndicator = false
 }) => {
   const handleClick = () => {
     if (isAddCard && onAddNew) {
@@ -62,7 +67,9 @@ const SoftwareTypeCard: React.FC<SoftwareTypeCardProps> = ({
   return (
     <div className="w-full">
       <AspectRatio ratio={3/4} className="w-full">
-        <Card className="relative overflow-hidden h-full cursor-default w-full border-0">
+        <Card 
+          className={`relative overflow-hidden h-full cursor-pointer w-full border-0 ${isSelected && showSelectionIndicator ? 'ring-2 ring-blue-500' : ''}`}
+        >
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
           {software?.photo_url ? (
             <img 
@@ -75,44 +82,39 @@ const SoftwareTypeCard: React.FC<SoftwareTypeCardProps> = ({
             />
           ) : (
             <div className="bg-slate-800 w-full h-full flex items-center justify-center">
-              <span className="text-slate-500 text-sm">No Image</span>
+              <Server className="h-12 w-12 text-slate-600" />
             </div>
           )}
           
-          <div className="absolute bottom-0 left-0 right-0 p-2 z-20">
+          <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
             <h3 className="text-sm font-semibold text-white mb-1">{software?.name}</h3>
-            <div className="flex gap-1">
-              {software?.always_included && (
-                <div className="px-1.5 py-0.5 bg-blue-900/70 rounded text-[10px] text-blue-300">
-                  Always
-                </div>
-              )}
-            </div>
+            {software?.description && (
+              <p className="text-xs text-gray-300 line-clamp-2">{software.description}</p>
+            )}
           </div>
           
-          <Button
-            size="icon"
-            variant="ghost"
-            className="absolute top-1 right-1 bg-slate-800/60 hover:bg-slate-700 z-20 h-8 w-8"
-            onClick={handleEditClick}
-          >
-            <svg 
-              viewBox="0 0 24 24" 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-6 w-6"
+          {/* Selection indicator - only shown when showSelectionIndicator is true */}
+          {showSelectionIndicator && (
+            <div className={`absolute top-2 right-2 h-6 w-6 rounded-full flex items-center justify-center transition-all z-20 ${
+              isSelected 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-slate-700/60 text-gray-400'
+            }`}>
+              <Check className="h-4 w-4" />
+            </div>
+          )}
+          
+          {/* Edit button - only shown when onEdit is provided */}
+          {onEdit && !showSelectionIndicator && (
+            <Button 
+              onClick={handleEditClick}
+              className="absolute top-2 right-2 h-8 w-8 p-0 bg-slate-800/80 hover:bg-slate-700 z-20"
+              size="icon"
+              variant="ghost"
             >
-              <g id="SVGRepo_iconCarrier">
-                <g id="Complete">
-                  <g id="edit">
-                    <g>
-                      <path d="M20,16v4a2,2,0,0,1-2,2H4a2,2,0,0,1-2-2V6A2,2,0,0,1,4,4H8" fill="none" stroke="#ffffff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
-                      <polygon fill="none" points="12.5 15.8 22 6.2 17.8 2 8.3 11.5 8 16 12.5 15.8" stroke="#ffffff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></polygon>
-                    </g>
-                  </g>
-                </g>
-              </g>
-            </svg>
-          </Button>
+              <Edit className="h-4 w-4 text-white" />
+            </Button>
+          )}
         </Card>
       </AspectRatio>
     </div>

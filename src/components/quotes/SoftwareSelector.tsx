@@ -2,12 +2,11 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
-import { Server } from "lucide-react";
+import { Server, Check } from "lucide-react";
 import { syncSoftwarePlanningDetails } from "@/services/planningDetailsService";
+import SoftwareTypeCard from "@/components/software/SoftwareTypeCard";
 
 interface SoftwareSelectorProps {
   selectedSoftwareIds: number[];
@@ -64,33 +63,43 @@ const SoftwareSelector: React.FC<SoftwareSelectorProps> = ({
     }
   };
 
-  const handleCheckboxChange = (softwareTypeId: number, isChecked: boolean) => {
-    setSelected(prev => {
-      if (isChecked) {
-        return [...prev, softwareTypeId];
-      } else {
-        return prev.filter(id => id !== softwareTypeId);
-      }
-    });
-  };
-
-  const handleSave = async () => {
+  const handleSoftwareClick = async (softwareTypeId: number) => {
     try {
-      setLoading(true);
+      // Don't allow deselecting always included software
+      if (alwaysIncludedIds.includes(softwareTypeId)) {
+        return;
+      }
       
-      // Save software selection
-      await onSave(selected);
+      let updatedSelection: number[];
+      
+      if (selected.includes(softwareTypeId)) {
+        // Remove from selection
+        updatedSelection = selected.filter(id => id !== softwareTypeId);
+      } else {
+        // Add to selection
+        updatedSelection = [...selected, softwareTypeId];
+      }
+      
+      // Update local state immediately for responsive UI
+      setSelected(updatedSelection);
+      
+      // Save to database
+      await onSave(updatedSelection);
       
       // Also sync with planning_details if we have a quoteId and plans
       if (quoteId && plans.length > 0) {
-        await syncSoftwarePlanningDetails(quoteId, selected, plans);
+        await syncSoftwarePlanningDetails(quoteId, updatedSelection, plans);
       }
-      
     } catch (err) {
-      console.error("Error saving software:", err);
-    } finally {
-      setLoading(false);
+      console.error("Error updating software selection:", err);
+      toast.error("Failed to update software selection");
+      // Revert local state on error
+      setSelected(selectedSoftwareIds);
     }
+  };
+
+  const isSoftwareSelected = (softwareTypeId: number) => {
+    return selected.includes(softwareTypeId) || alwaysIncludedIds.includes(softwareTypeId);
   };
 
   return (
@@ -104,72 +113,22 @@ const SoftwareSelector: React.FC<SoftwareSelectorProps> = ({
           No software types available
         </div>
       ) : (
-        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {softwareTypes.map((software) => (
             <div 
-              key={software.software_type_id} 
-              className={`flex items-center gap-3 p-2 rounded border ${
-                software.always_included ? 'bg-amber-950/30 border-amber-800/50' : 'bg-slate-700/50 border-gray-700/50 hover:border-gray-600/50'
-              }`}
+              key={software.software_type_id}
+              onClick={() => handleSoftwareClick(software.software_type_id)}
+              className={`cursor-pointer ${software.always_included ? 'opacity-90 cursor-not-allowed' : ''}`}
             >
-              <div className="flex-shrink-0 w-8 h-8 bg-slate-600 rounded-sm overflow-hidden flex items-center justify-center">
-                {software.photo_url ? (
-                  <img 
-                    src={software.photo_url} 
-                    alt={software.name} 
-                    className="w-full h-full object-cover"
-                    onError={e => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      (e.target as HTMLImageElement).parentElement!.appendChild(
-                        <Server className="w-6 h-6 text-gray-400" /> as unknown as Node
-                      );
-                    }} 
-                  />
-                ) : (
-                  <Server className="w-5 h-5 text-gray-400" />
-                )}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-200 flex items-center">
-                  {software.name}
-                  {software.always_included && (
-                    <span className="ml-2 text-xs bg-amber-600/50 text-amber-200 px-1.5 py-0.5 rounded">
-                      Always Included
-                    </span>
-                  )}
-                </div>
-                {software.description && (
-                  <div className="text-xs text-gray-400 truncate">
-                    {software.description}
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex-shrink-0">
-                <Checkbox
-                  checked={selected.includes(software.software_type_id) || software.always_included}
-                  disabled={software.always_included}
-                  onCheckedChange={(checked) => {
-                    handleCheckboxChange(software.software_type_id, checked as boolean);
-                  }}
-                  className="border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                />
-              </div>
+              <SoftwareTypeCard 
+                software={software}
+                isSelected={isSoftwareSelected(software.software_type_id)}
+                showSelectionIndicator={true}
+              />
             </div>
           ))}
         </div>
       )}
-      
-      <div className="mt-4 flex justify-end">
-        <Button 
-          onClick={handleSave}
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          Save Software Selection
-        </Button>
-      </div>
     </Card>
   );
 };
