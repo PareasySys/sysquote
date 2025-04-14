@@ -125,8 +125,8 @@
 }
 
 .gantt-grid {
-  display: flex;
-  flex-direction: column;
+  display: block;
+  /* flex-direction: column; */
   flex: 1;
   height: 100%; /* Ensure it stretches to full height */
 }
