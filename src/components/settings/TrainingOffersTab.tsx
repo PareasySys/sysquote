@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 
 const TrainingOffersTab = () => {
   const {
@@ -75,18 +76,25 @@ const TrainingOffersTab = () => {
     const key = `${isForSoftware ? 'software' : 'machine'}-${itemId}-${planId}`;
     const hours = editCells[key];
     
-    if (isForSoftware) {
-      await updateSoftwareTrainingHours(itemId, planId, hours);
-    } else {
-      await updateTrainingHours(itemId, planId, hours);
+    try {
+      let success = false;
+      
+      if (isForSoftware) {
+        success = await updateSoftwareTrainingHours(itemId, planId, hours);
+      } else {
+        success = await updateTrainingHours(itemId, planId, hours);
+      }
+      
+      // Remove cell from edit mode only if the update was successful
+      if (success) {
+        const newEditCells = { ...editCells };
+        delete newEditCells[key];
+        setEditCells(newEditCells);
+      }
+    } catch (err) {
+      console.error("Error saving cell:", err);
+      toast.error("Failed to save training hours");
     }
-
-    // Remove cell from edit mode
-    const newEditCells = {
-      ...editCells
-    };
-    delete newEditCells[key];
-    setEditCells(newEditCells);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>, itemId: number, planId: number, isForSoftware: boolean = false) => {

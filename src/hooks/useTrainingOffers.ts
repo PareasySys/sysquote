@@ -146,7 +146,7 @@ export const useTrainingOffers = () => {
     }
   };
   
-  // New function to update software training hours
+  // Corrected function to update software training hours
   const updateSoftwareTrainingHours = async (
     software_type_id: number,
     plan_id: number,
@@ -171,13 +171,13 @@ export const useTrainingOffers = () => {
 
         if (error) throw error;
       } else {
-        // Create new record
+        // Create new record with explicit NULL for machine_type_id
         const { error } = await supabase
           .from("training_offers")
           .insert({
             software_type_id,
             plan_id,
-            machine_type_id: null,
+            machine_type_id: null,  // Explicitly set to NULL
             hours_required
           });
 
