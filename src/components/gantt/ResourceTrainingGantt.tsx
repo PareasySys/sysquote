@@ -1,12 +1,15 @@
+// ResourceTrainingGantt.tsx
 
 import React, { useEffect, useState } from "react";
-import GanttChart from "./GanttChart";
+import GanttChart from "./GanttChart"; // Adjust path
 import { Card } from "@/components/ui/card";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { fetchPlanningDetails, updateWeekendSettings } from "@/services/planningDetailsService";
-import { TrainingRequirement, useTrainingRequirements } from "@/hooks/useTrainingRequirements";
+// Remove fetchPlanningDetails from here if only used for count now
+import { updateWeekendSettings } from "@/services/planningDetailsService"; // Keep this
+import { useTrainingRequirements } from "@/hooks/useTrainingRequirements"; // Adjust path
+// Remove TrainingRequirement if not used directly here
 
 interface ResourceTrainingGanttProps {
   quoteId: string | undefined;
@@ -22,43 +25,24 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
   workOnSunday
 }) => {
   const {
-    requirements,
+    scheduledTasks, // Use the scheduled tasks from the hook
     loading,
     error,
-    fetchRequirements
+    fetchRequirements // Use the retry function from the hook
   } = useTrainingRequirements(quoteId, planId, workOnSaturday, workOnSunday);
-  
-  const [planningDetails, setPlanningDetails] = useState<any[]>([]);
 
-  // Fetch planning details for counting
-  useEffect(() => {
-    const loadPlanningDetails = async () => {
-      if (!quoteId || !planId) {
-        setPlanningDetails([]);
-        return;
-      }
-      
-      try {
-        const details = await fetchPlanningDetails(quoteId, planId);
-        setPlanningDetails(details);
-      } catch (err) {
-        console.error("Error fetching planning details:", err);
-      }
-    };
-    
-    loadPlanningDetails();
-  }, [quoteId, planId]);
-
-  // Update weekend settings when they change
+  // --- Weekend Settings Update --- (Keep this effect)
   useEffect(() => {
     if (quoteId && planId) {
-      // Update weekend settings in database
       updateWeekendSettings(quoteId, planId, workOnSaturday, workOnSunday);
     }
   }, [quoteId, planId, workOnSaturday, workOnSunday]);
 
+
+  // --- Display Logic ---
   if (!planId) {
-    return (
+    // ... (keep existing message)
+     return (
       <Card className="p-6 bg-slate-800/80 border border-white/5">
         <div className="text-center text-gray-400">
           Please select a training plan to view the resource schedule.
@@ -67,17 +51,22 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     );
   }
 
+  // Calculate total assignments based on *scheduled segments* if needed for display text
+  const totalAssignments = scheduledTasks.length; // Or sum original requirements if preferred
+
   return (
     <Card className="p-4 bg-slate-800/80 border border-white/5">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-200">Resource Training Schedule</h3>
         <div className="text-gray-400 text-sm">
-          {loading ? (
+          {loading && !scheduledTasks.length ? ( // Show loading only if no data yet
             <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
-              Loading schedule...
+              Loading and scheduling...
             </TextShimmerWave>
           ) : (
-            `Showing ${planningDetails.length} training assignments`
+            // Display count based on segments or original tasks
+            `Showing ${totalAssignments} scheduled training segments`
+            // Or: `Showing schedule for ${uniqueOriginalTaskCount} training requirements`
           )}
         </div>
       </div>
@@ -88,15 +77,18 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      
-      <div className="h-[500px] overflow-hidden">
+
+      <div className="h-[500px] overflow-hidden"> {/* Ensure this container has height */}
         <GanttChart
-          requirements={requirements}
-          loading={loading}
-          error={error}
-          workOnSaturday={workOnSaturday}
-          workOnSunday={workOnSunday}
-          onRetry={fetchRequirements}
+          // Pass the scheduled tasks to the GanttChart
+          // The prop name is still 'requirements', we need to adapt GanttChart slightly
+          // OR rename the prop in GanttChart to 'tasks' or 'segments'
+          requirements={scheduledTasks}
+          loading={loading && !scheduledTasks.length} // Show loading overlay if still processing
+          error={null} // Error is handled above, don't pass it down again
+          workOnSaturday={workOnSaturday} // Gantt still needs this for weekend styling
+          workOnSunday={workOnSunday}     // Gantt still needs this for weekend styling
+          onRetry={fetchRequirements}     // Pass down retry
         />
       </div>
     </Card>
