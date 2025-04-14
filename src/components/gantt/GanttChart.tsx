@@ -67,8 +67,11 @@ const GanttChart: React.FC<GanttChartProps> = ({
       machineGroup.hours += req.training_hours;
     });
 
-    // Convert to array
-    return Array.from(groups.values());
+    // Convert to array and sort each resource's machines alphabetically
+    return Array.from(groups.values()).map(group => {
+      group.machines.sort((a, b) => a.machineName.localeCompare(b.machineName));
+      return group;
+    });
   }, [requirements]);
 
   // Generate months (1-12)
@@ -188,49 +191,50 @@ const GanttChart: React.FC<GanttChartProps> = ({
         </div>
         
         <div className="gantt-grid" ref={gridRef} onScroll={handleGridScroll}>
-          {resourceGroups.map(group => (
-            <div key={`group-${group.resourceId}`}>
-              {group.machines.map((machine, machineIndex) => (
-                <div key={`machine-row-${group.resourceId}-${machineIndex}`} className="gantt-machine-row">
-                  {months.map(month => 
-                    days.map(day => (
-                      <div 
-                        key={`cell-${group.resourceId}-${machineIndex}-${month}-${day}`} 
-                        className={`gantt-cell ${isWeekend(month, day) ? 'weekend' : ''}`}
-                      />
-                    ))
-                  )}
-                  
-                  {machine.requirements.map(req => {
-                    // Calculate position based on the custom calendar (12 months x 30 days)
-                    const { month, dayOfMonth } = getDayPosition(req.start_day);
+          <div>
+            {resourceGroups.map(group => (
+              <div key={`group-${group.resourceId}`}>
+                {group.machines.map((machine, machineIndex) => (
+                  <div key={`machine-row-${group.resourceId}-${machineIndex}`} className="gantt-machine-row">
+                    {months.map(month => 
+                      days.map(day => (
+                        <div 
+                          key={`cell-${group.resourceId}-${machineIndex}-${month}-${day}`} 
+                          className={`gantt-cell ${isWeekend(month, day) ? 'weekend' : ''}`}
+                        />
+                      ))
+                    )}
                     
-                    // Convert to pixels for positioning
-                    const left = ((month - 1) * 30 + (dayOfMonth - 1)) * 30; // 30px per day
-                    
-                    // When calculating duration, don't extend for weekends if not working on those days
-                    // We use the database flag directly from the requirement
-                    const width = req.duration_days * 30; // 30px per day
-                    
-                    return (
-                      <div 
-                        key={`task-${req.requirement_id}`} 
-                        className="gantt-task" 
-                        style={{
-                          left: `${left}px`,
-                          width: `${width}px`,
-                          backgroundColor: getResourceColor(req.resource_id)
-                        }}
-                        title={`${req.machine_name}: ${req.training_hours}h, Start: Month ${month}, Day ${dayOfMonth}, Duration: ${req.duration_days} days`}
-                      >
-                        {req.machine_name}: {req.training_hours}h
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          ))}
+                    {machine.requirements.map(req => {
+                      // Calculate position based on the custom calendar (12 months x 30 days)
+                      const { month, dayOfMonth } = getDayPosition(req.start_day);
+                      
+                      // Convert to pixels for positioning
+                      const left = ((month - 1) * 30 + (dayOfMonth - 1)) * 30; // 30px per day
+                      
+                      // When calculating duration, don't extend for weekends if not working on those days
+                      const width = req.duration_days * 30; // 30px per day
+                      
+                      return (
+                        <div 
+                          key={`task-${req.requirement_id}`} 
+                          className="gantt-task" 
+                          style={{
+                            left: `${left}px`,
+                            width: `${width}px`,
+                            backgroundColor: getResourceColor(req.resource_id)
+                          }}
+                          title={`${req.machine_name}: ${req.training_hours}h, Start: Month ${month}, Day ${dayOfMonth}, Duration: ${req.duration_days} days`}
+                        >
+                          {req.machine_name}: {req.training_hours}h
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

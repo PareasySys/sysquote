@@ -67,8 +67,8 @@ export const useTrainingRequirements = (
         });
         
         // Start day for this resource's first training
-        // Stagger start days by resource ID to avoid overlap
-        let currentDay = 1 + (numericResourceId % 3);
+        // Always start on day 1 for each resource to avoid initial gaps
+        let currentDay = 1;
         
         // Process each detail for this resource sequentially
         sortedDetails.forEach((detail) => {
@@ -97,22 +97,26 @@ export const useTrainingRequirements = (
           
           allRequirements.push(requirement);
           
-          // Move to next available starting day
+          // Move to next available starting day - immediately after this training
           currentDay += durationDays;
           
           // Skip weekends for the next training if needed
           if (!detailWorkOnSaturday || !detailWorkOnSunday) {
-            // Find how many weekend days to skip
-            for (let day = currentDay; day < currentDay + 7; day++) {
-              // Check if this is a weekend day that should be skipped
-              const dayOfWeek = day % 7;
-              const isSaturday = dayOfWeek === 6;
-              const isSunday = dayOfWeek === 0;
+            let additionalDays = 0;
+            
+            // Check each day to see if it's a weekend that should be skipped
+            for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+              const dayToCheck = currentDay + dayOffset;
+              const dayOfWeek = dayToCheck % 7; // 0-6, where 0 is Sunday and 6 is Saturday
               
-              if ((isSaturday && !detailWorkOnSaturday) || (isSunday && !detailWorkOnSunday)) {
-                currentDay++; // Skip this day
+              if ((dayOfWeek === 0 && !detailWorkOnSunday) ||
+                  (dayOfWeek === 6 && !detailWorkOnSaturday)) {
+                // If it's a weekend day we're skipping, increment additional days
+                additionalDays++;
               }
             }
+            
+            currentDay += additionalDays;
           }
         });
       });

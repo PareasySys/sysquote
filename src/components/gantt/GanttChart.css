@@ -120,7 +120,7 @@
   padding: 6px 0 6px 20px;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.7);
-  min-height: 30px;
+  height: 30px; /* Fixed height for each machine row */
   display: flex;
   align-items: center;
 }
@@ -129,23 +129,24 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  overflow-x: auto;
 }
 
 .gantt-row {
   display: flex;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 30px;
 }
 
 .gantt-machine-row {
   display: flex;
   position: relative;
-  min-height: 30px;
+  height: 30px; /* Fixed height to match resource-machine */
 }
 
 .gantt-cell {
   width: 30px;
   min-width: 30px;
+  height: 30px; /* Fixed height to ensure full stretch */
   border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -157,7 +158,8 @@
   color: white;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  padding-left: 8px;
   font-size: 0.75rem;
   font-weight: 500;
   top: 3px; /* Center in the row */
@@ -201,4 +203,5 @@
   display: flex;
   flex: 1;
   overflow: auto;
+  position: relative;
 }
