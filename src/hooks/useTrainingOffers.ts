@@ -1,11 +1,9 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useMachineTypes } from "./useMachineTypes";
 import { useSoftwareTypes } from "./useSoftwareTypes";
 import { useTrainingPlans } from "./useTrainingPlans";
 import { toast } from "sonner";
-import { dataSyncService } from "@/services/dataSyncService";
 
 export interface TrainingOffer {
   id: number;
@@ -133,8 +131,8 @@ export const useTrainingOffers = () => {
       // Refetch to update state
       await fetchOffers();
       
-      // Sync changes to planning details across all affected quotes
-      await dataSyncService.syncTrainingOfferChanges(machine_type_id, null, plan_id);
+      // Also update any planning_details that use this machine type and plan
+      await updatePlanningDetailsForAllQuotes(machine_type_id, plan_id, hours_required, false);
       
       toast.success("Training hours updated");
       return true;
@@ -187,8 +185,8 @@ export const useTrainingOffers = () => {
       // Refetch to update state
       await fetchOffers();
       
-      // Sync changes to planning details across all affected quotes
-      await dataSyncService.syncTrainingOfferChanges(null, software_type_id, plan_id);
+      // Also update any planning_details that use this software type and plan
+      await updatePlanningDetailsForAllQuotes(software_type_id, plan_id, hours_required, true);
       
       toast.success("Software training hours updated");
       return true;
@@ -196,6 +194,119 @@ export const useTrainingOffers = () => {
       console.error("Error updating software training hours:", err);
       toast.error(err.message || "Failed to update software training hours");
       return false;
+    }
+  };
+
+  const updatePlanningDetailsForAllQuotes = async (
+    type_id: number,
+    plan_id: number,
+    hours_required: number,
+    isSoftware: boolean = false
+  ) => {
+    try {
+      const columnName = isSoftware ? 'software_type_ids' : 'machine_type_ids';
+      
+      // First, get all quotes that have this type in their types array
+      const { data: quotesWithType, error: quotesError } = await supabase
+        .from("quotes")
+        .select("quote_id")
+        .contains(columnName, [type_id]);
+      
+      if (quotesError) {
+        console.error(`Error finding quotes with ${isSoftware ? 'software' : 'machine'} type:`, quotesError);
+        return;
+      }
+      
+      if (!quotesWithType || quotesWithType.length === 0) return;
+      
+      console.log(`Updating planning details for ${quotesWithType.length} quotes that use ${isSoftware ? 'software' : 'machine'} type ${type_id}`);
+      
+      // For each quote that has this type, update its planning details
+      for (const quote of quotesWithType) {
+        try {
+          // Get all planning details for this quote, type, and plan
+          const typesIdColumn = isSoftware ? 'software_types_id' : 'machine_types_id';
+          
+          // Also get the resource_id from software/machine training requirements
+          // This is to make sure we keep the resource assignment
+          let resourceId: number | null = null;
+          
+          if (isSoftware) {
+            const { data: requirement } = await supabase
+              .from("software_training_requirements")
+              .select("resource_id")
+              .eq("software_type_id", type_id)
+              .eq("plan_id", plan_id)
+              .single();
+              
+            resourceId = requirement?.resource_id || null;
+          } else {
+            const { data: requirement } = await supabase
+              .from("machine_training_requirements")
+              .select("resource_id")
+              .eq("machine_type_id", type_id)
+              .eq("plan_id", plan_id)
+              .single();
+              
+            resourceId = requirement?.resource_id || null;
+          }
+          
+          const { data: planningDetails, error: detailsError } = await supabase
+            .from("planning_details")
+            .select("id")
+            .eq("quote_id", quote.quote_id)
+            .eq("plan_id", plan_id)
+            .eq(typesIdColumn, type_id);
+          
+          if (detailsError) {
+            console.error(`Error checking planning details for quote ${quote.quote_id}:`, detailsError);
+            continue;
+          }
+          
+          if (!planningDetails || planningDetails.length === 0) {
+            // If no planning details exist for this combination, create one
+            const { error: insertError } = await supabase
+              .from("planning_details")
+              .insert({
+                quote_id: quote.quote_id,
+                plan_id: plan_id,
+                machine_types_id: isSoftware ? null : type_id,
+                software_types_id: isSoftware ? type_id : null,
+                resource_id: resourceId,
+                allocated_hours: hours_required,
+                resource_category: isSoftware ? 'Software' : 'Machine',
+                work_on_saturday: false,
+                work_on_sunday: false
+              });
+              
+            if (insertError) {
+              console.error(`Error creating planning detail for quote ${quote.quote_id}:`, insertError);
+            }
+          } else {
+            // Update each planning detail with the new allocated hours
+            for (const detail of planningDetails) {
+              const { error: updateError } = await supabase
+                .from("planning_details")
+                .update({ 
+                  allocated_hours: hours_required,
+                  resource_id: resourceId, // Make sure we update the resource_id too
+                  updated_at: new Date().toISOString()
+                })
+                .eq("id", detail.id);
+                
+              if (updateError) {
+                console.error(`Error updating planning detail ${detail.id}:`, updateError);
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`Error processing quote ${quote.quote_id}:`, err);
+        }
+      }
+      
+      console.log(`Successfully updated planning details for all affected quotes`);
+    } catch (err) {
+      console.error("Error updating planning details hours:", err);
     }
   };
 

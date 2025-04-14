@@ -261,3 +261,189 @@ export async function syncSoftwarePlanningDetails(
     throw err;
   }
 }
+
+/**
+ * Update planning details when resource information changes
+ * This ensures that all planning details using this resource get updated
+ */
+export async function syncResourceChanges(resourceId: number): Promise<void> {
+  try {
+    // Get all planning details that use this resource
+    const { data: planningDetails, error: fetchError } = await supabase
+      .from('planning_details')
+      .select('id, quote_id, plan_id')
+      .eq('resource_id', resourceId);
+    
+    if (fetchError) throw fetchError;
+    
+    // If no planning details use this resource, nothing to update
+    if (!planningDetails || planningDetails.length === 0) {
+      console.log(`No planning details found using resource ${resourceId}`);
+      return;
+    }
+    
+    // Update the updated_at timestamp to trigger any dependent processes
+    const operations = planningDetails.map(detail => 
+      supabase
+        .from('planning_details')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', detail.id)
+    );
+    
+    // Run all update operations
+    if (operations.length > 0) {
+      await Promise.all(operations.map(op => op));
+      console.log(`Updated timestamp for ${operations.length} planning details using resource ${resourceId}`);
+    }
+  } catch (err) {
+    console.error("Error syncing resource changes to planning details:", err);
+    throw err;
+  }
+}
+
+/**
+ * Update planning details when a training plan is modified
+ * This ensures all planning details related to this plan stay in sync
+ */
+export async function syncTrainingPlanChanges(planId: number): Promise<void> {
+  try {
+    // Get all planning details that use this plan
+    const { data: planningDetails, error: fetchError } = await supabase
+      .from('planning_details')
+      .select('id')
+      .eq('plan_id', planId);
+    
+    if (fetchError) throw fetchError;
+    
+    // If no planning details use this plan, nothing to update
+    if (!planningDetails || planningDetails.length === 0) {
+      console.log(`No planning details found using plan ${planId}`);
+      return;
+    }
+    
+    // Update the updated_at timestamp to trigger any dependent processes
+    const operations = planningDetails.map(detail => 
+      supabase
+        .from('planning_details')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', detail.id)
+    );
+    
+    // Run all update operations
+    if (operations.length > 0) {
+      await Promise.all(operations.map(op => op));
+      console.log(`Updated timestamp for ${operations.length} planning details using plan ${planId}`);
+    }
+  } catch (err) {
+    console.error("Error syncing training plan changes to planning details:", err);
+    throw err;
+  }
+}
+
+/**
+ * Sync planning details when area costs change
+ * This updates any planning details related to quotes using these areas
+ */
+export async function syncAreaCostChanges(areaId: number): Promise<void> {
+  try {
+    // Find all quotes that use this area
+    const { data: quotes, error: quotesError } = await supabase
+      .from('quotes')
+      .select('quote_id')
+      .eq('area_id', areaId);
+    
+    if (quotesError) throw quotesError;
+    
+    // If no quotes use this area, nothing to update
+    if (!quotes || quotes.length === 0) {
+      console.log(`No quotes found using area ${areaId}`);
+      return;
+    }
+    
+    // For each affected quote, update the timestamp on all its planning details
+    for (const quote of quotes) {
+      const { error: updateError } = await supabase
+        .from('planning_details')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('quote_id', quote.quote_id);
+      
+      if (updateError) {
+        console.error(`Error updating planning details for quote ${quote.quote_id}:`, updateError);
+      } else {
+        console.log(`Updated planning details for quote ${quote.quote_id} due to area change`);
+      }
+    }
+  } catch (err) {
+    console.error("Error syncing area cost changes to planning details:", err);
+    throw err;
+  }
+}
+
+/**
+ * Ensure planning details have correct resource_id values
+ * Use this after updating training requirements to ensure consistency
+ */
+export async function syncAllPlanningDetailsWithRequirements(): Promise<void> {
+  try {
+    // Get all software training requirements
+    const { data: softwareReqs, error: softwareError } = await supabase
+      .from('software_training_requirements')
+      .select('software_type_id, plan_id, resource_id');
+      
+    if (softwareError) throw softwareError;
+    
+    // Get all machine training requirements
+    const { data: machineReqs, error: machineError } = await supabase
+      .from('machine_training_requirements')
+      .select('machine_type_id, plan_id, resource_id');
+      
+    if (machineError) throw machineError;
+    
+    // Process software requirements first
+    if (softwareReqs && softwareReqs.length > 0) {
+      for (const req of softwareReqs) {
+        if (!req.resource_id) continue; // Skip if no resource assigned
+        
+        // Update all planning details for this software+plan combination
+        const { error: updateError } = await supabase
+          .from('planning_details')
+          .update({ 
+            resource_id: req.resource_id,
+            resource_category: 'Software'
+          })
+          .eq('software_types_id', req.software_type_id)
+          .eq('plan_id', req.plan_id);
+          
+        if (updateError) {
+          console.error(`Error updating planning details for software ${req.software_type_id}:`, updateError);
+        }
+      }
+    }
+    
+    // Then process machine requirements
+    if (machineReqs && machineReqs.length > 0) {
+      for (const req of machineReqs) {
+        if (!req.resource_id) continue; // Skip if no resource assigned
+        
+        // Update all planning details for this machine+plan combination
+        const { error: updateError } = await supabase
+          .from('planning_details')
+          .update({ 
+            resource_id: req.resource_id,
+            resource_category: 'Machine'
+          })
+          .eq('machine_types_id', req.machine_type_id)
+          .eq('plan_id', req.plan_id);
+          
+        if (updateError) {
+          console.error(`Error updating planning details for machine ${req.machine_type_id}:`, updateError);
+        }
+      }
+    }
+    
+    console.log("Completed synchronization of all planning details with training requirements");
+  } catch (err) {
+    console.error("Error syncing planning details with requirements:", err);
+    throw err;
+  }
+}

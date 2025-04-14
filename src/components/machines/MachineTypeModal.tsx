@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -11,10 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { MachineType } from "@/hooks/useMachineTypes";
+import { useImageUpload } from "@/hooks/use-image-upload";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import { dataSyncService } from "@/services/dataSyncService";
+import { Loader2, Upload } from "lucide-react";
+import { useTrainingPlans } from "@/hooks/useTrainingPlans";
+import { useMachineTrainingRequirements } from "@/hooks/useMachineTrainingRequirements";
+import { useResources } from "@/hooks/useResources";
+import { useTrainingTopics } from "@/hooks/useTrainingTopics";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface MachineTypeModalProps {
   open: boolean;
@@ -31,21 +35,123 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [photoUrl, setPhotoUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const { 
+    previewUrl, 
+    setPreviewUrl, 
+    uploadImage, 
+    isUploading 
+  } = useImageUpload();
+  
+  const { 
+    plans, 
+    loading: loadingPlans 
+  } = useTrainingPlans();
+  const { 
+    resources, 
+    loading: loadingResources 
+  } = useResources();
+  const { 
+    requirements, 
+    saveRequirement, 
+    deleteRequirement 
+  } = useMachineTrainingRequirements(machine?.machine_type_id);
+  
+  const { deleteTopicsByItemId } = useTrainingTopics([]);
+
+  const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
 
   useEffect(() => {
     if (machine) {
       setName(machine.name || "");
       setDescription(machine.description || "");
-      setPhotoUrl(machine.photo_url || "");
+      setPhotoURL(machine.photo_url);
+      setPreviewUrl(machine.photo_url);
     } else {
       setName("");
       setDescription("");
-      setPhotoUrl("");
+      setPhotoURL(null);
+      setPreviewUrl(null);
     }
-  }, [machine]);
+  }, [machine, setPreviewUrl]);
+
+  useEffect(() => {
+    const initialSelectedResources: Record<number, number | undefined> = {};
+    
+    if (requirements && requirements.length > 0) {
+      requirements.forEach((req) => {
+        initialSelectedResources[req.plan_id] = req.resource_id;
+      });
+    }
+    
+    setSelectedResources(initialSelectedResources);
+  }, [requirements]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    try {
+      const localUrl = URL.createObjectURL(file);
+      setPreviewUrl(localUrl);
+      
+      const url = await uploadImage(file);
+      setPhotoURL(url);
+      
+      toast.success("Image uploaded successfully");
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!machine) return;
+
+    try {
+      setIsDeleting(true);
+
+      if (machine.machine_type_id) {
+        await deleteTopicsByItemId(machine.machine_type_id, "machine");
+      }
+      
+      try {
+        await supabase
+          .from("machine_training_requirements")
+          .delete()
+          .eq("machine_type_id", machine.machine_type_id);
+      } catch (error) {
+        console.error("Error deleting training requirements:", error);
+      }
+      
+      try {
+        await supabase
+          .from("training_offers")
+          .delete()
+          .eq("machine_type_id", machine.machine_type_id);
+      } catch (error) {
+        console.error("Error deleting training offers:", error);
+      }
+      
+      const { error } = await supabase
+        .from("machine_types")
+        .delete()
+        .eq("machine_type_id", machine.machine_type_id);
+
+      if (error) throw error;
+
+      toast.success("Machine deleted successfully");
+      onSave();
+      onClose();
+    } catch (error: any) {
+      console.error("Error deleting machine:", error);
+      toast.error(error.message || "Failed to delete machine");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -62,120 +168,151 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
           .update({
             name,
             description,
-            photo_url: photoUrl,
+            photo_url: photoURL,
           })
           .eq("machine_type_id", machine.machine_type_id);
 
         if (error) {
-          console.error("Error updating machine type:", error);
+          console.error("Error updating machine:", error);
           throw error;
         }
-        
-        // Sync changes to planning details
-        await dataSyncService.syncMachineTypeChanges(machine.machine_type_id);
-        
-        toast.success("Machine type updated successfully");
+        toast.success("Machine updated successfully");
       } else {
         const { data, error } = await supabase.from("machine_types").insert({
           name,
           description,
-          photo_url: photoUrl,
+          photo_url: photoURL,
         }).select();
 
         if (error) {
-          console.error("Error creating machine type:", error);
+          console.error("Error creating machine:", error);
           throw error;
         }
-        
-        // Sync changes to planning details if we have a new machine
-        if (data && data.length > 0) {
-          await dataSyncService.syncMachineTypeChanges(data[0].machine_type_id);
-        }
-        
-        toast.success("Machine type created successfully");
+        toast.success("Machine created successfully");
       }
 
       onSave();
       onClose();
     } catch (error: any) {
-      console.error("Error saving machine type:", error);
-      toast.error(error.message || "Failed to save machine type");
+      console.error("Error saving machine:", error);
+      toast.error(error.message || "Failed to save machine");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!machine) return;
+  const handleResourceChange = async (planId: number, resourceId: number | undefined) => {
+    setSelectedResources((prev) => ({
+      ...prev,
+      [planId]: resourceId,
+    }));
 
-    try {
-      setIsDeleting(true);
-      
-      // Store machine ID before deletion for syncing
-      const machineTypeId = machine.machine_type_id;
-
-      const { error } = await supabase
-        .from("machine_types")
-        .delete()
-        .eq("machine_type_id", machineTypeId);
-
-      if (error) throw error;
-
-      // Sync changes after deletion
-      await dataSyncService.syncMachineTypeChanges(machineTypeId);
-      
-      toast.success("Machine type deleted successfully");
-      onSave();
-      onClose();
-    } catch (error: any) {
-      console.error("Error deleting machine type:", error);
-      toast.error(error.message || "Failed to delete machine type");
-    } finally {
-      setIsDeleting(false);
+    if (resourceId) {
+      await saveRequirement(planId, resourceId);
+    } else {
+      await deleteRequirement(planId);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] bg-slate-900 border-slate-800 text-slate-100">
+      <DialogContent className="sm:max-w-[800px] bg-slate-900 border-slate-800 text-slate-100">
         <DialogHeader>
           <DialogTitle>
-            {machine ? "Edit Machine Type" : "Add New Machine Type"}
+            {machine ? "Edit Machine" : "Add New Machine"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name" className="text-white">Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="bg-slate-800 border-slate-700 text-slate-100"
-              placeholder="Enter machine name"
-            />
-          </div>
+        <div className="grid grid-cols-2 gap-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name" className="text-white">Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="bg-slate-800 border-slate-700 text-slate-100 focus:ring-0 focus:ring-offset-0 focus:border-blue-500 focus-visible:ring-0 focus-visible:ring-offset-0"
+                placeholder="Enter machine name"
+              />
+            </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="description" className="text-white">Description</Label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 min-h-[100px]"
-              placeholder="Enter machine description"
-            />
-          </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description" className="text-white">Description</Label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 focus:ring-0 focus:ring-offset-0 min-h-[100px]"
+                placeholder="Enter machine description"
+              />
+            </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="photoUrl" className="text-white">Photo URL</Label>
-            <Input
-              id="photoUrl"
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-              className="bg-slate-800 border-slate-700 text-slate-100"
-              placeholder="Enter photo URL"
-            />
+            <div className="grid gap-2">
+              <Label htmlFor="photo" className="text-white">Photo</Label>
+              <div className="flex flex-col items-center gap-4">
+                {previewUrl && (
+                  <div className="relative w-40 h-40 mx-auto overflow-hidden rounded-lg border border-slate-700">
+                    <img
+                      src={previewUrl}
+                      alt={name}
+                      className="w-full h-full object-contain"
+                      onError={() => setPreviewUrl("/placeholder.svg")}
+                    />
+                  </div>
+                )}
+                <label
+                  htmlFor="photo-upload"
+                  className="cursor-pointer flex items-center justify-center gap-2 p-2 border border-dashed border-slate-600 rounded-lg w-full hover:bg-slate-800/50 transition-colors"
+                >
+                  <Upload className="h-4 w-4 text-slate-400" />
+                  <span className="text-slate-300 text-sm">
+                    {isUploading ? "Uploading..." : "Upload Image"}
+                  </span>
+                  <input
+                    id="photo-upload"
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="grid gap-3">
+              <h3 className="font-medium text-white border-b border-slate-700 pb-2">Training Requirements</h3>
+              
+              {loadingPlans || loadingResources ? (
+                <div className="text-slate-400 text-sm">Loading training plans...</div>
+              ) : (
+                <div className="space-y-4">
+                  {plans.map((plan) => (
+                    <div key={plan.plan_id} className="flex flex-col gap-1.5">
+                      <Label className="text-sm text-slate-300">{plan.name}</Label>
+                      <Select
+                        value={selectedResources[plan.plan_id]?.toString() || "none"}
+                        onValueChange={(value) => handleResourceChange(plan.plan_id, value === "none" ? undefined : Number(value))}
+                      >
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100 focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-blue-500">
+                          <SelectValue placeholder="No resource required" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
+                          <SelectItem value="none">No resource required</SelectItem>
+                          {resources.map((resource) => (
+                            <SelectItem key={resource.resource_id} value={resource.resource_id.toString()}>
+                              {resource.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

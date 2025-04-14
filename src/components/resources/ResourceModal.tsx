@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -14,7 +15,7 @@ import { useResourceIcons } from "@/hooks/useResourceIcons";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { dataSyncService } from "@/services/dataSyncService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ResourceModalProps {
   open: boolean;
@@ -31,23 +32,19 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [hourlyRate, setHourlyRate] = useState<number>(0);
-  const [isActive, setIsActive] = useState<boolean>(true);
   const [iconName, setIconName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { icons } = useResourceIcons();
-  const [searchQuery, setSearchQuery] = useState("");
+  const { icons, loading: loadingIcons } = useResourceIcons();
   
   useEffect(() => {
     if (resource) {
       setName(resource.name || "");
       setHourlyRate(resource.hourly_rate || 0);
-      setIsActive(resource.is_active !== undefined ? resource.is_active : true);
       setIconName(resource.icon_name || "");
     } else {
       setName("");
       setHourlyRate(0);
-      setIsActive(true);
       setIconName("");
     }
   }, [resource]);
@@ -55,6 +52,11 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Resource name is required");
+      return;
+    }
+
+    if (hourlyRate < 0) {
+      toast.error("Hourly rate cannot be negative");
       return;
     }
 
@@ -67,7 +69,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
           .update({
             name,
             hourly_rate: hourlyRate,
-            is_active: isActive,
+            is_active: true, // Always set to true since we're removing the switch
             icon_name: iconName,
           })
           .eq("resource_id", resource.resource_id);
@@ -76,27 +78,19 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
           console.error("Error updating resource:", error);
           throw error;
         }
-        
-        await dataSyncService.syncResourceChanges(resource.resource_id);
-        
         toast.success("Resource updated successfully");
       } else {
-        const { data, error } = await supabase.from("resources").insert({
+        const { error } = await supabase.from("resources").insert({
           name,
           hourly_rate: hourlyRate,
-          is_active: isActive,
+          is_active: true, // Always set to true since we're removing the switch
           icon_name: iconName,
-        }).select();
+        });
 
         if (error) {
           console.error("Error creating resource:", error);
           throw error;
         }
-        
-        if (data && data.length > 0) {
-          await dataSyncService.syncResourceChanges(data[0].resource_id);
-        }
-        
         toast.success("Resource created successfully");
       }
 
@@ -115,17 +109,13 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
 
     try {
       setIsDeleting(true);
-      
-      const resourceId = resource.resource_id;
 
       const { error } = await supabase
         .from("resources")
         .delete()
-        .eq("resource_id", resourceId);
+        .eq("resource_id", resource.resource_id);
 
       if (error) throw error;
-      
-      await dataSyncService.syncResourceChanges(resourceId);
 
       toast.success("Resource deleted successfully");
       onSave();
@@ -138,9 +128,10 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
     }
   };
 
-  const filteredIcons = icons.filter(
-    (icon) => icon.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleHourlyRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value === "" ? 0 : parseFloat(e.target.value);
+    setHourlyRate(value);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -164,69 +155,62 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="hourlyRate" className="text-white">Hourly Rate</Label>
+            <Label htmlFor="hourlyRate" className="text-white">Hourly Rate (€)</Label>
             <Input
               id="hourlyRate"
               type="number"
+              step="0.01"
               value={hourlyRate}
-              onChange={(e) => setHourlyRate(parseFloat(e.target.value) || 0)}
+              onChange={handleHourlyRateChange}
               className="bg-slate-800 border-slate-700 text-slate-100"
               placeholder="Enter hourly rate"
             />
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="isActive" className="text-white">Status</Label>
-            <div className="flex items-center space-x-2">
-              <select
-                id="isActive"
-                value={isActive ? "active" : "inactive"}
-                onChange={(e) => setIsActive(e.target.value === "active")}
-                className="w-full p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
-          
-          <div className="grid gap-2">
             <Label className="text-white">Icon</Label>
-            <Input
-              placeholder="Search icons..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="mb-2 bg-slate-800 border-slate-700 text-slate-100"
-            />
-            <div className="grid grid-cols-4 gap-2 max-h-[200px] overflow-y-auto border border-slate-700 rounded-md p-2 bg-slate-800">
-              {filteredIcons.map((icon) => (
-                <div
-                  key={icon.name}
-                  className={`cursor-pointer p-2 rounded-md flex flex-col items-center justify-center ${
-                    iconName === icon.name ? "ring-2 ring-blue-500 bg-slate-700" : "hover:bg-slate-700"
-                  }`}
-                  onClick={() => setIconName(icon.name)}
-                >
-                  <img
-                    src={icon.url}
-                    alt={icon.name}
-                    className="h-10 w-10 object-contain"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = "/placeholder.svg";
-                    }}
+            
+            {loadingIcons ? (
+              <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <Skeleton 
+                    key={i}
+                    className="aspect-square rounded-md h-16"
                   />
-                  <span className="text-xs mt-1 text-center overflow-hidden text-ellipsis w-full">
-                    {icon.name}
-                  </span>
-                </div>
-              ))}
-              {filteredIcons.length === 0 && (
-                <div className="col-span-4 text-center py-4 text-slate-400">
-                  No icons match your search
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : icons.length > 0 ? (
+              <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 bg-slate-800 rounded-md border border-slate-700">
+                {icons.map((icon) => (
+                  <button
+                    key={icon.name}
+                    type="button"
+                    onClick={() => setIconName(icon.name)}
+                    className={`cursor-pointer rounded-md p-2 hover:bg-slate-700 flex flex-col items-center justify-center transition-all ${
+                      iconName === icon.name ? 'ring-2 ring-blue-500 bg-slate-700' : 'bg-slate-800'
+                    }`}
+                    title={icon.name}
+                  >
+                    <div className="h-10 w-10 flex items-center justify-center">
+                      <img 
+                        src={icon.url} 
+                        alt={icon.name}
+                        className="max-h-full max-w-full"
+                        onError={(e) => {
+                          console.error(`Error loading icon: ${icon.url}`);
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/placeholder.svg";
+                        }}
+                      />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center bg-slate-800 rounded-md border border-slate-700">
+                <p className="text-slate-400">No icons available in the resource_icons bucket.</p>
+              </div>
+            )}
           </div>
         </div>
 
