@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 
@@ -16,7 +16,8 @@ export const useMachineTrainingRequirements = (machineTypeId?: number) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchRequirements = async () => {
+  // Memoize the fetchRequirements function
+  const fetchRequirements = useCallback(async () => {
     if (!machineTypeId) {
       setRequirements([]);
       setLoading(false);
@@ -29,8 +30,6 @@ export const useMachineTrainingRequirements = (machineTypeId?: number) => {
       
       console.log("Fetching machine training requirements for machine type ID:", machineTypeId);
       
-      // Use direct SQL query instead of table name since the TypeScript definitions
-      // don't include our new table yet
       const { data, error: fetchError } = await supabase
         .from('machine_training_requirements')
         .select('*')
@@ -39,7 +38,6 @@ export const useMachineTrainingRequirements = (machineTypeId?: number) => {
       if (fetchError) throw fetchError;
       
       console.log("Machine training requirements fetched:", data);
-      // Cast the data to our defined interface
       setRequirements(data as MachineTrainingRequirement[]);
     } catch (err: any) {
       console.error("Error fetching machine training requirements:", err);
@@ -47,9 +45,10 @@ export const useMachineTrainingRequirements = (machineTypeId?: number) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [machineTypeId]);
 
-  const saveRequirement = async (planId: number, resourceId: number) => {
+  // Memoize the saveRequirement function
+  const saveRequirement = useCallback(async (planId: number, resourceId: number) => {
     if (!machineTypeId) return null;
 
     try {
@@ -92,9 +91,10 @@ export const useMachineTrainingRequirements = (machineTypeId?: number) => {
       toast.error(err.message || "Failed to save machine training requirement");
       return null;
     }
-  };
+  }, [machineTypeId, requirements]);
 
-  const deleteRequirement = async (planId: number) => {
+  // Memoize the deleteRequirement function
+  const deleteRequirement = useCallback(async (planId: number) => {
     if (!machineTypeId) return false;
 
     try {
@@ -113,11 +113,17 @@ export const useMachineTrainingRequirements = (machineTypeId?: number) => {
       toast.error(err.message || "Failed to delete machine training requirement");
       return false;
     }
-  };
+  }, [machineTypeId, requirements]);
+
+  // Memoize the getResourceForPlan function
+  const getResourceForPlan = useCallback((planId: number): number | undefined => {
+    const req = requirements.find(r => r.plan_id === planId);
+    return req?.resource_id;
+  }, [requirements]);
 
   useEffect(() => {
     fetchRequirements();
-  }, [machineTypeId]);
+  }, [fetchRequirements]);
 
   return {
     requirements,
@@ -125,6 +131,7 @@ export const useMachineTrainingRequirements = (machineTypeId?: number) => {
     error,
     fetchRequirements,
     saveRequirement,
-    deleteRequirement
+    deleteRequirement,
+    getResourceForPlan
   };
 };

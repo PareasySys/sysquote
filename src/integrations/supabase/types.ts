@@ -185,7 +185,6 @@ export type Database = {
           id: number
           plan_id: number
           quote_id: string
-          resource_id: number | null
           training_hours: number
           updated_at: string | null
         }
@@ -194,7 +193,6 @@ export type Database = {
           id?: number
           plan_id: number
           quote_id: string
-          resource_id?: number | null
           training_hours?: number
           updated_at?: string | null
         }
@@ -203,7 +201,6 @@ export type Database = {
           id?: number
           plan_id?: number
           quote_id?: string
-          resource_id?: number | null
           training_hours?: number
           updated_at?: string | null
         }
@@ -221,13 +218,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "quotes"
             referencedColumns: ["quote_id"]
-          },
-          {
-            foreignKeyName: "quote_training_plan_hours_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "resources"
-            referencedColumns: ["resource_id"]
           },
         ]
       }

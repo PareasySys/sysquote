@@ -61,7 +61,8 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
   const { 
     requirements, 
     saveRequirement, 
-    deleteRequirement 
+    deleteRequirement,
+    getResourceForPlan
   } = useMachineTrainingRequirements(machineTypeId);
   
   const { deleteTopicsByItemId } = useTrainingTopics([]);
@@ -69,7 +70,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
   // Store selected resources in a local state
   const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
 
-  // Reset form when the machine prop changes
+  // Reset form when the machine prop changes - FIX: Remove form from dependency array
   useEffect(() => {
     if (machine) {
       setName(machine.name || "");
@@ -84,18 +85,24 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     }
   }, [machine, setPreviewUrl]);
 
-  // Initialize selectedResources from requirements only once when requirements change
+  // Initialize selectedResources from requirements - FIX: Add console.log for debugging and protect against invalid references
   useEffect(() => {
-    if (requirements && requirements.length > 0) {
+    // Only run this effect if we have both plans and requirements
+    if (requirements && requirements.length > 0 && plans && plans.length > 0) {
+      console.log("Initializing selectedResources from requirements", requirements);
       const initialSelectedResources: Record<number, number | undefined> = {};
       
-      requirements.forEach((req) => {
-        initialSelectedResources[req.plan_id] = req.resource_id;
+      plans.forEach((plan) => {
+        // Use the memoized getResourceForPlan function
+        const resourceId = plan && plan.plan_id ? getResourceForPlan(plan.plan_id) : undefined;
+        if (resourceId) {
+          initialSelectedResources[plan.plan_id] = resourceId;
+        }
       });
       
       setSelectedResources(initialSelectedResources);
     }
-  }, [requirements]);
+  }, [requirements, plans, getResourceForPlan]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -214,11 +221,13 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
   };
 
   const handleResourceChange = async (planId: number, resourceId: number | undefined) => {
+    // Update local state first for immediate UI feedback
     setSelectedResources((prev) => ({
       ...prev,
       [planId]: resourceId,
     }));
 
+    // Then perform the backend update
     if (resourceId) {
       await saveRequirement(planId, resourceId);
     } else {

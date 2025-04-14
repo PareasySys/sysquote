@@ -26,6 +26,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
 }) => {
   // Track a state to make sure sync is only done once per component mount
   const [hasSynced, setHasSynced] = useState(false);
+  const [syncInProgress, setSyncInProgress] = useState(false);
   
   const {
     scheduledTasks,
@@ -37,20 +38,28 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
   // --- Sync Software Hours Before Loading Requirements ---
   useEffect(() => {
     // This ensures we don't get into an endless sync loop
-    if (quoteId && planId && !hasSynced) {
+    if (quoteId && planId && !hasSynced && !syncInProgress) {
+      // Set both flags to prevent multiple sync attempts
       setHasSynced(true);
+      setSyncInProgress(true);
+      
+      console.log("Starting software training hours sync...");
       
       // Sync software hours and resources before loading requirements
       syncSoftwareTrainingHoursAndResources()
         .then(() => {
+          console.log("Software training hours sync completed");
           // After syncing, fetch the requirements
-          fetchRequirements();
+          return fetchRequirements();
         })
         .catch(err => {
           console.error("Error syncing software training hours:", err);
+        })
+        .finally(() => {
+          setSyncInProgress(false);
         });
     }
-  }, [quoteId, planId, hasSynced, fetchRequirements]);
+  }, [quoteId, planId, hasSynced, fetchRequirements, syncInProgress]);
   
   // Reset sync state when planId changes
   useEffect(() => {
@@ -122,4 +131,3 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
 };
 
 export default ResourceTrainingGantt;
-
