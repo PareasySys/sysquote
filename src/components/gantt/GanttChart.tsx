@@ -1,5 +1,4 @@
-
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import "./GanttChart.css";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,15 +31,12 @@ const GanttChart: React.FC<GanttChartProps> = ({
   workOnSunday,
   onRetry
 }) => {
-  // Refs for synchronized scrolling
   const gridRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
-  
-  // Group requirements by resource and then by machine
+
   const resourceGroups = useMemo(() => {
     const groups = new Map<number, ResourceGroup>();
     requirements.forEach(req => {
-      // Create or get the resource group
       if (!groups.has(req.resource_id)) {
         groups.set(req.resource_id, {
           resourceId: req.resource_id,
@@ -50,7 +46,6 @@ const GanttChart: React.FC<GanttChartProps> = ({
       }
       const resourceGroup = groups.get(req.resource_id)!;
 
-      // Find or create machine group
       const machineName = req.machine_name || "Unknown Machine";
       let machineGroup = resourceGroup.machines.find(m => m.machineName === machineName);
       if (!machineGroup) {
@@ -62,61 +57,66 @@ const GanttChart: React.FC<GanttChartProps> = ({
         resourceGroup.machines.push(machineGroup);
       }
 
-      // Add requirement to machine group and sum up hours
       machineGroup.requirements.push(req);
       machineGroup.hours += req.training_hours;
     });
 
-    // Convert to array and sort each resource's machines alphabetically
     return Array.from(groups.values()).map(group => {
       group.machines.sort((a, b) => a.machineName.localeCompare(b.machineName));
       return group;
     });
   }, [requirements]);
 
-  // Generate months (1-12)
   const months = useMemo(() => {
     return Array.from({
       length: 12
     }, (_, i) => i + 1);
   }, []);
 
-  // Generate days (1-30) for each month
   const days = useMemo(() => {
     return Array.from({
       length: 30
     }, (_, i) => i + 1);
   }, []);
 
-  // Calculate which day of the month a particular day falls on
   const getDayPosition = (day: number): {
     month: number;
     dayOfMonth: number;
   } => {
-    const month = Math.floor((day - 1) / 30) + 1; // 1-based month
-    const dayOfMonth = (day - 1) % 30 + 1; // 1-based day of month
+    const month = Math.floor((day - 1) / 30) + 1;
+    const dayOfMonth = (day - 1) % 30 + 1;
     return {
       month,
       dayOfMonth
     };
   };
 
-  // Check if a day is a weekend (6 = Saturday, 7/0 = Sunday)
   const isWeekend = (month: number, day: number): boolean => {
-    // Create a date representation (using an arbitrary year)
     const dayOfYear = (month - 1) * 30 + day;
     const dayOfWeek = dayOfYear % 7;
-
-    // Based on our model: 6 = Saturday, 0 = Sunday
     return (dayOfWeek === 6 && !workOnSaturday) || (dayOfWeek === 0 && !workOnSunday);
   };
 
-  // Handle horizontal scroll sync between grid and header
   const handleGridScroll = () => {
     if (gridRef.current && headerRef.current) {
       headerRef.current.scrollLeft = gridRef.current.scrollLeft;
     }
   };
+
+  useEffect(() => {
+    const adjustGridHeight = () => {
+      if (gridRef.current) {
+        const container = gridRef.current.closest('.gantt-container');
+        if (container) {
+          gridRef.current.style.minHeight = `${container.clientHeight - 70}px`;
+        }
+      }
+    };
+
+    adjustGridHeight();
+    window.addEventListener('resize', adjustGridHeight);
+    return () => window.removeEventListener('resize', adjustGridHeight);
+  }, []);
 
   if (loading) {
     return <div className="gantt-loading">
@@ -206,15 +206,9 @@ const GanttChart: React.FC<GanttChartProps> = ({
                     )}
                     
                     {machine.requirements.map(req => {
-                      // Calculate position based on the custom calendar (12 months x 30 days)
                       const { month, dayOfMonth } = getDayPosition(req.start_day);
-                      
-                      // Convert to pixels for positioning
-                      const left = ((month - 1) * 30 + (dayOfMonth - 1)) * 30; // 30px per day
-                      
-                      // When calculating duration, don't extend for weekends if not working on those days
-                      const width = req.duration_days * 30; // 30px per day
-                      
+                      const left = ((month - 1) * 30 + (dayOfMonth - 1)) * 30;
+                      const width = req.duration_days * 30;
                       return (
                         <div 
                           key={`task-${req.requirement_id}`} 
@@ -241,18 +235,16 @@ const GanttChart: React.FC<GanttChartProps> = ({
   );
 };
 
-// Helper function to generate consistent colors based on resource ID
 function getResourceColor(id: number): string {
-  // Fixed set of colors for consistency
   const colors = [
-    '#3B82F6', // Blue
-    '#F97316', // Orange
-    '#10B981', // Green
-    '#8B5CF6', // Purple
-    '#EC4899', // Pink
-    '#EF4444', // Red
-    '#F59E0B', // Amber
-    '#06B6D4'  // Cyan
+    '#3B82F6',
+    '#F97316',
+    '#10B981',
+    '#8B5CF6',
+    '#EC4899',
+    '#EF4444',
+    '#F59E0B',
+    '#06B6D4'
   ];
   return colors[id % colors.length];
 }

@@ -1,4 +1,3 @@
-
 .gantt-container {
   display: flex;
   flex-direction: column;
@@ -129,18 +128,14 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-}
-
-.gantt-row {
-  display: flex;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  min-height: 30px;
+  min-height: 100%; /* Ensure it stretches to full height */
 }
 
 .gantt-machine-row {
   display: flex;
   position: relative;
   height: 30px; /* Fixed height to match resource-machine */
+  flex-shrink: 0; /* Prevent rows from shrinking */
 }
 
 .gantt-cell {
@@ -148,6 +143,13 @@
   min-width: 30px;
   height: 30px; /* Fixed height to ensure full stretch */
   border-right: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0; /* Prevent cells from shrinking */
+}
+
+.gantt-row {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 30px;
 }
 
 .gantt-task {
