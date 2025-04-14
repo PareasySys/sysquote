@@ -63,8 +63,15 @@ const QuotePlanningPage: React.FC = () => {
       return;
     }
     
-    if (plans && plans.length > 0 && !selectedPlanId) {
-      setSelectedPlanId(plans[0].plan_id);
+    if (plans && plans.length > 0) {
+      // Find the Standard plan and set it as the default selected plan
+      const standardPlan = plans.find(plan => plan.name.toLowerCase() === 'standard');
+      if (standardPlan) {
+        setSelectedPlanId(standardPlan.plan_id);
+      } else {
+        // Fallback to the first plan if no Standard plan is found
+        setSelectedPlanId(plans[0].plan_id);
+      }
     }
     
     fetchQuoteSettings();
@@ -261,7 +268,8 @@ const QuotePlanningPage: React.FC = () => {
                 </div>
 
                 <Tabs 
-                  defaultValue={plans && plans.length > 0 ? plans[0].plan_id.toString() : ""} 
+                  defaultValue={selectedPlanId ? selectedPlanId.toString() : ""} 
+                  value={selectedPlanId ? selectedPlanId.toString() : ""}
                   onValueChange={(value) => setSelectedPlanId(parseInt(value))}
                 >
                   <TabsList className="bg-slate-700">
