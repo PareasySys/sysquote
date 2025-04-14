@@ -16,19 +16,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { useTabOrder } from "@/hooks/useTabOrder";
 import { Button } from "@/components/ui/button";
-import { syncAllPlanningDetailsWithRequirements } from "@/services/planningDetailsService";
-import { toast } from "sonner";
 
-// Import all tab components
+// Tab components
 import MachineTypesTab from "@/components/settings/MachineTypesTab";
 import SoftwareTypesTab from "@/components/settings/SoftwareTypesTab";
 import ResourcesTab from "@/components/settings/ResourcesTab";
 import TrainingPlansTab from "@/components/settings/TrainingPlansTab";
 import AreaCostsTab from "@/components/settings/AreaCostsTab";
-
-// Import the missing components that we'll need to create
-import TrainingTopicsTab from "@/components/settings/TrainingTopicsTab";
 import TrainingOffersTab from "@/components/settings/TrainingOffersTab";
+import TrainingTopicsTab from "@/components/settings/TrainingTopicsTab";
 
 const initialTabs = [
   { id: "machines", label: "Machine Types", order: 0 },
@@ -68,20 +64,6 @@ const SettingsPage = () => {
       saveTabOrder();
     }
     setIsEditingTabs(!isEditingTabs);
-  };
-
-  const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
-    
-    if (activeTab !== tabId && ["machines", "software", "resources", "plans"].includes(activeTab)) {
-      syncAllPlanningDetailsWithRequirements()
-        .then(() => {
-          console.log("Planning details synchronized after tab change");
-        })
-        .catch(err => {
-          console.error("Error syncing planning details after tab change:", err);
-        });
-    }
   };
 
   const renderTabContent = () => {
@@ -214,7 +196,7 @@ const SettingsPage = () => {
                   <Tabs 
                     tabs={tabs} 
                     activeTab={activeTab}
-                    onTabChange={(tabId) => handleTabChange(tabId)}
+                    onTabChange={(tabId) => setActiveTab(tabId)}
                   />
                 )}
                 
