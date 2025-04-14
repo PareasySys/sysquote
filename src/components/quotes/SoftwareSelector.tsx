@@ -1,150 +1,176 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import { Card } from "@/components/ui/card";
-import { useSoftwareTypes } from "@/hooks/useSoftwareTypes";
-import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Laptop, Database, Code } from "lucide-react";
+import { useTrainingPlans } from "@/hooks/useTrainingPlans";
+import { Server } from "lucide-react";
+import { syncSoftwarePlanningDetails } from "@/services/planningDetailsService";
 
 interface SoftwareSelectorProps {
   selectedSoftwareIds: number[];
   alwaysIncludedIds: number[];
-  onSave: (selectedSoftware: number[]) => void;
+  onSave: (softwareIds: number[]) => void;
   quoteId?: string;
 }
 
-const SoftwareSelector: React.FC<SoftwareSelectorProps> = ({ 
+interface SoftwareType {
+  software_type_id: number;
+  name: string;
+  description: string | null;
+  photo_url: string | null;
+  always_included: boolean;
+}
+
+const SoftwareSelector: React.FC<SoftwareSelectorProps> = ({
   selectedSoftwareIds,
   alwaysIncludedIds,
   onSave,
   quoteId
 }) => {
-  const { software, loading, error } = useSoftwareTypes();
-  const [isSaving, setIsSaving] = useState(false);
+  const [softwareTypes, setSoftwareTypes] = useState<SoftwareType[]>([]);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const { plans } = useTrainingPlans();
 
-  // Function to handle software selection changes
-  const toggleSoftwareSelection = async (softwareTypeId: number, alwaysIncluded: boolean) => {
-    if (isSaving) {
-      toast.info("Please wait, saving in progress...");
-      return;
-    }
+  useEffect(() => {
+    setSelected(selectedSoftwareIds || []);
+  }, [selectedSoftwareIds]);
 
-    if (alwaysIncluded) {
-      toast.info("This software is always included and cannot be removed");
-      return;
-    }
+  useEffect(() => {
+    fetchSoftwareTypes();
+  }, []);
 
+  const fetchSoftwareTypes = async () => {
     try {
-      // Create a new selection array
-      const updatedSelection = selectedSoftwareIds.includes(softwareTypeId)
-        ? selectedSoftwareIds.filter(id => id !== softwareTypeId)
-        : [...selectedSoftwareIds, softwareTypeId];
+      setLoading(true);
       
-      setIsSaving(true);
+      const { data, error } = await supabase
+        .from("software_types")
+        .select("*")
+        .order("always_included", { ascending: false })
+        .order("name");
+        
+      if (error) throw error;
       
-      // Save software selection
-      await onSave(updatedSelection);
+      setSoftwareTypes(data || []);
     } catch (err) {
-      console.error("Error toggling software selection:", err);
-      toast.error("Failed to update software selection");
+      console.error("Error fetching software types:", err);
+      toast.error("Failed to load software types");
     } finally {
-      setIsSaving(false);
+      setLoading(false);
     }
   };
 
-  const isSelected = (softwareTypeId: number) => selectedSoftwareIds.includes(softwareTypeId);
-  const isAlwaysIncluded = (softwareTypeId: number) => alwaysIncludedIds.includes(softwareTypeId);
+  const handleCheckboxChange = (softwareTypeId: number, isChecked: boolean) => {
+    setSelected(prev => {
+      if (isChecked) {
+        return [...prev, softwareTypeId];
+      } else {
+        return prev.filter(id => id !== softwareTypeId);
+      }
+    });
+  };
 
-  // Get software icon based on name
-  const getSoftwareIcon = (name: string) => {
-    const lowerName = name.toLowerCase();
-    if (lowerName.includes('database')) return <Database className="h-8 w-8 text-blue-400" />;
-    if (lowerName.includes('code') || lowerName.includes('program')) return <Code className="h-8 w-8 text-green-400" />;
-    return <Laptop className="h-8 w-8 text-purple-400" />;
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      
+      // Save software selection
+      await onSave(selected);
+      
+      // Also sync with planning_details if we have a quoteId and plans
+      if (quoteId && plans.length > 0) {
+        await syncSoftwarePlanningDetails(quoteId, selected, plans);
+      }
+      
+    } catch (err) {
+      console.error("Error saving software:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="w-full">
-      <Card className="bg-slate-800/80 border border-white/5 p-4">
-        <h2 className="text-xl font-semibold mb-4 text-gray-200">Software Selection</h2>
-        
-        {loading ? (
-          <div className="p-4 text-center">
-            <TextShimmerWave
-              className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
-              duration={1}
-              spread={1}
-              zDistance={1}
-              scaleDistance={1.1}
-              rotateYDistance={10}
+    <Card className="bg-slate-800/80 border border-white/5 p-4">
+      <h2 className="text-xl font-semibold mb-4 text-gray-200">Software Selection</h2>
+      
+      {loading ? (
+        <div className="p-4 text-center text-gray-400">Loading software types...</div>
+      ) : softwareTypes.length === 0 ? (
+        <div className="p-4 text-center text-gray-400">
+          No software types available
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+          {softwareTypes.map((software) => (
+            <div 
+              key={software.software_type_id} 
+              className={`flex items-center gap-3 p-2 rounded border ${
+                software.always_included ? 'bg-amber-950/30 border-amber-800/50' : 'bg-slate-700/50 border-gray-700/50 hover:border-gray-600/50'
+              }`}
             >
-              Loading Software Types
-            </TextShimmerWave>
-          </div>
-        ) : error ? (
-          <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
-            <p className="text-red-300">{error}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {software.map((softwareItem) => (
-              <div 
-                key={softwareItem.software_type_id}
-                className="relative cursor-pointer"
-                onClick={() => toggleSoftwareSelection(softwareItem.software_type_id, softwareItem.always_included)}
-              >
-                <div 
-                  className={`
-                    bg-slate-700/80 rounded-lg border p-3 transition-all 
-                    ${isSelected(softwareItem.software_type_id) ? 'border-blue-500 shadow-md shadow-blue-500/20' : 'border-slate-600/50 hover:border-slate-500/50'}
-                    ${isAlwaysIncluded(softwareItem.software_type_id) ? 'ring-2 ring-amber-400/50' : ''}
-                  `}
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-12 h-12 bg-slate-600 rounded-lg flex items-center justify-center">
-                      {softwareItem.photo_url ? (
-                        <img 
-                          src={softwareItem.photo_url} 
-                          alt={softwareItem.name} 
-                          className="w-10 h-10 object-cover rounded" 
-                          onError={e => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                            (e.target as HTMLImageElement).parentElement!.appendChild(
-                              getSoftwareIcon(softwareItem.name) as any
-                            );
-                          }}
-                        />
-                      ) : (
-                        getSoftwareIcon(softwareItem.name)
-                      )}
-                    </div>
-                    
-                    <div className="text-center">
-                      <h3 className="text-sm font-medium text-gray-200 truncate max-w-[100px] mx-auto">
-                        {softwareItem.name}
-                      </h3>
-                      
-                      {isAlwaysIncluded(softwareItem.software_type_id) && (
-                        <span className="text-xs text-amber-400 font-medium">Always included</span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Selection indicator */}
-                  {isSelected(softwareItem.software_type_id) && (
-                    <div className="absolute top-2 right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
+              <div className="flex-shrink-0 w-8 h-8 bg-slate-600 rounded-sm overflow-hidden flex items-center justify-center">
+                {software.photo_url ? (
+                  <img 
+                    src={software.photo_url} 
+                    alt={software.name} 
+                    className="w-full h-full object-cover"
+                    onError={e => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement!.appendChild(
+                        <Server className="w-6 h-6 text-gray-400" /> as unknown as Node
+                      );
+                    }} 
+                  />
+                ) : (
+                  <Server className="w-5 h-5 text-gray-400" />
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-200 flex items-center">
+                  {software.name}
+                  {software.always_included && (
+                    <span className="ml-2 text-xs bg-amber-600/50 text-amber-200 px-1.5 py-0.5 rounded">
+                      Always Included
+                    </span>
                   )}
                 </div>
+                {software.description && (
+                  <div className="text-xs text-gray-400 truncate">
+                    {software.description}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        )}
-      </Card>
-    </div>
+              
+              <div className="flex-shrink-0">
+                <Checkbox
+                  checked={selected.includes(software.software_type_id) || software.always_included}
+                  disabled={software.always_included}
+                  onCheckedChange={(checked) => {
+                    handleCheckboxChange(software.software_type_id, checked as boolean);
+                  }}
+                  className="border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      <div className="mt-4 flex justify-end">
+        <Button 
+          onClick={handleSave}
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          Save Software Selection
+        </Button>
+      </div>
+    </Card>
   );
 };
 

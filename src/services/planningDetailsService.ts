@@ -146,15 +146,17 @@ export async function syncMachinePlanningDetails(
       }
       
       // Remove planning details for machines that are no longer selected
-      const { error: deleteError } = await supabase
-        .from('planning_details')
-        .delete()
-        .eq('quote_id', quoteId)
-        .eq('plan_id', plan.plan_id)
-        .not('machine_types_id', 'in', `(${machineTypeIds.join(',')})`)
-        .is('software_types_id', null);
-      
-      if (deleteError) throw deleteError;
+      if (machineTypeIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('planning_details')
+          .delete()
+          .eq('quote_id', quoteId)
+          .eq('plan_id', plan.plan_id)
+          .not('machine_types_id', 'in', `(${machineTypeIds.join(',')})`)
+          .is('software_types_id', null);
+          
+        if (deleteError) throw deleteError;
+      }
     }
     
     // Execute all insert operations in parallel
@@ -164,6 +166,88 @@ export async function syncMachinePlanningDetails(
     
   } catch (err) {
     console.error("Error syncing machine planning details:", err);
+    throw err;
+  }
+}
+
+/**
+ * Sync software planning details with selected software
+ * This creates or updates planning detail records for selected software
+ */
+export async function syncSoftwarePlanningDetails(
+  quoteId: string,
+  softwareTypeIds: number[],
+  plans: TrainingPlan[]
+): Promise<void> {
+  if (!quoteId || !softwareTypeIds || !plans || plans.length === 0) {
+    return;
+  }
+  
+  try {
+    // Get existing planning details for this quote
+    const { data: existingDetails, error: fetchError } = await supabase
+      .from('planning_details')
+      .select('id, quote_id, plan_id, software_types_id, machine_types_id')
+      .eq('quote_id', quoteId)
+      .is('machine_types_id', null); // Only get software-related records
+    
+    if (fetchError) throw fetchError;
+    
+    // Create a map of existing details for quick lookup
+    const existingMap: Record<string, any> = {};
+    existingDetails?.forEach(detail => {
+      if (detail.software_types_id) {
+        const key = `${detail.plan_id}_${detail.software_types_id}`;
+        existingMap[key] = detail;
+      }
+    });
+    
+    // Process each plan and selected software
+    const operations = [];
+    
+    for (const plan of plans) {
+      for (const softwareTypeId of softwareTypeIds) {
+        const key = `${plan.plan_id}_${softwareTypeId}`;
+        
+        if (existingMap[key]) {
+          // Planning detail already exists, no need to create
+          continue;
+        }
+        
+        // Create new planning detail
+        operations.push(
+          supabase
+            .from('planning_details')
+            .insert({
+              quote_id: quoteId,
+              plan_id: plan.plan_id,
+              software_types_id: softwareTypeId,
+              allocated_hours: 4 // Default to 4 hours for software
+            })
+        );
+      }
+      
+      // Remove planning details for software that are no longer selected
+      if (softwareTypeIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('planning_details')
+          .delete()
+          .eq('quote_id', quoteId)
+          .eq('plan_id', plan.plan_id)
+          .not('software_types_id', 'in', `(${softwareTypeIds.join(',')})`)
+          .is('machine_types_id', null);
+          
+        if (deleteError) throw deleteError;
+      }
+    }
+    
+    // Execute all insert operations in parallel
+    if (operations.length > 0) {
+      await Promise.all(operations.map(op => op));
+    }
+    
+  } catch (err) {
+    console.error("Error syncing software planning details:", err);
     throw err;
   }
 }

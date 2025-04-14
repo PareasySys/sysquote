@@ -44,60 +44,36 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       setLoading(true);
       setError(null);
       
-      // First try to initialize the software_type_ids column using a raw query
-      // instead of the RPC which might not exist yet
-      try {
-        await supabase.rpc('add_software_type_ids_column');
-      } catch (err) {
-        // Ignore error - this function might not exist or has already been run
-        console.log("Note: add_software_type_ids_column function might not exist yet or already run");
-      }
-      
       // Get always included software IDs
       const alwaysIncludedIds = await fetchAlwaysIncludedSoftware();
       
-      // Use raw query to get quote data
+      // Use direct query to get quote data with software_type_ids
       const { data: quoteData, error: quoteError } = await supabase
         .from('quotes')
-        .select('*')
+        .select('software_type_ids')
         .eq('quote_id', quoteId)
         .single();
       
       if (quoteError) throw quoteError;
       
-      // Extract software_type_ids - use raw SQL if needed
+      // Extract software_type_ids
       let currentIds: number[] = [];
       
-      // If quoteData has software_type_ids property, use it
-      if (quoteData && 'software_type_ids' in quoteData) {
-        currentIds = quoteData.software_type_ids || [];
-      } else {
-        // Use raw SQL query as fallback
-        const { data: rawData, error: rawError } = await supabase
-          .rpc('get_quote_software_types', { p_quote_id: quoteId });
-        
-        if (!rawError && rawData) {
-          currentIds = rawData.software_type_ids || [];
-        }
+      if (quoteData && quoteData.software_type_ids) {
+        currentIds = quoteData.software_type_ids;
       }
       
       // Ensure always included software is added
       const updatedIds = [...new Set([...currentIds, ...alwaysIncludedIds])];
       
-      // Update if there are changes using raw SQL
+      // Update if there are changes
       if (JSON.stringify(updatedIds) !== JSON.stringify(currentIds)) {
         const { error: updateError } = await supabase
-          .rpc('update_quote_software_types', { 
-            p_quote_id: quoteId, 
-            p_software_type_ids: updatedIds 
-          });
+          .from('quotes')
+          .update({ software_type_ids: updatedIds })
+          .eq('quote_id', quoteId);
         
-        if (updateError) {
-          // Fallback to direct update if RPC fails
-          await supabase.from('quotes')
-            .update({ software_type_ids: updatedIds })
-            .eq('quote_id', quoteId);
-        }
+        if (updateError) throw updateError;
       }
       
       setSoftwareTypeIds(updatedIds);
@@ -132,22 +108,13 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       // Make sure always included software is still included
       const combinedIds = [...new Set([...softwareIds, ...alwaysIncludedIds])];
       
-      // Try using the RPC function first
-      const { error: rpcError } = await supabase
-        .rpc('update_quote_software_types', { 
-          p_quote_id: quoteId, 
-          p_software_type_ids: combinedIds 
-        });
+      // Update the quote directly
+      const { error: updateError } = await supabase
+        .from('quotes')
+        .update({ software_type_ids: combinedIds })
+        .eq('quote_id', quoteId);
       
-      if (rpcError) {
-        // Fallback to direct update if RPC fails
-        const { error: updateError } = await supabase
-          .from('quotes')
-          .update({ software_type_ids: combinedIds })
-          .eq('quote_id', quoteId);
-        
-        if (updateError) throw updateError;
-      }
+      if (updateError) throw updateError;
       
       // Update local state
       setSoftwareTypeIds(combinedIds);
@@ -178,22 +145,13 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       // Filter out the software type ID from the current list
       const updatedSoftwareIds = softwareTypeIds.filter(id => id !== softwareTypeId);
       
-      // Try using the RPC function first
-      const { error: rpcError } = await supabase
-        .rpc('update_quote_software_types', { 
-          p_quote_id: quoteId, 
-          p_software_type_ids: updatedSoftwareIds 
-        });
+      // Update the quote directly
+      const { error: updateError } = await supabase
+        .from('quotes')
+        .update({ software_type_ids: updatedSoftwareIds })
+        .eq('quote_id', quoteId);
       
-      if (rpcError) {
-        // Fallback to direct update if RPC fails
-        const { error: updateError } = await supabase
-          .from('quotes')
-          .update({ software_type_ids: updatedSoftwareIds })
-          .eq('quote_id', quoteId);
-        
-        if (updateError) throw updateError;
-      }
+      if (updateError) throw updateError;
       
       // Update local state
       setSoftwareTypeIds(updatedSoftwareIds);
