@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -54,16 +55,21 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     resources, 
     loading: loadingResources 
   } = useResources();
+  
+  // Fix: Only fetch requirements if we have a machine ID to prevent unnecessary rerenders
+  const machineTypeId = machine?.machine_type_id;
   const { 
     requirements, 
     saveRequirement, 
     deleteRequirement 
-  } = useMachineTrainingRequirements(machine?.machine_type_id);
+  } = useMachineTrainingRequirements(machineTypeId);
   
   const { deleteTopicsByItemId } = useTrainingTopics([]);
 
+  // Store selected resources in a local state
   const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
 
+  // Reset form when the machine prop changes
   useEffect(() => {
     if (machine) {
       setName(machine.name || "");
@@ -78,16 +84,17 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     }
   }, [machine, setPreviewUrl]);
 
+  // Initialize selectedResources from requirements only once when requirements change
   useEffect(() => {
-    const initialSelectedResources: Record<number, number | undefined> = {};
-    
     if (requirements && requirements.length > 0) {
+      const initialSelectedResources: Record<number, number | undefined> = {};
+      
       requirements.forEach((req) => {
         initialSelectedResources[req.plan_id] = req.resource_id;
       });
+      
+      setSelectedResources(initialSelectedResources);
     }
-    
-    setSelectedResources(initialSelectedResources);
   }, [requirements]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

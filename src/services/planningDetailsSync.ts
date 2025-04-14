@@ -103,13 +103,13 @@ export async function syncPlanningDetailsAfterChanges() {
         const softwareReq = softwareReqs && softwareReqs.length > 0 ? softwareReqs[0] : null;
         
         // Get hours from training offers
-        // FIX: Use .is() for null values rather than .eq("null")
+        // FIX: Use .is() for null values but with the correct syntax
         const { data: offers, error: offerError } = await supabase
           .from("training_offers")
           .select("hours_required")
           .eq("software_type_id", detail.software_types_id)
           .eq("plan_id", detail.plan_id)
-          .is("machine_type_id", "null");
+          .is("machine_type_id", null);
           
         const trainingOffer = offers && offers.length > 0 ? offers[0] : null;
           
@@ -140,13 +140,13 @@ export async function syncPlanningDetailsAfterChanges() {
         const machineReq = machineReqs && machineReqs.length > 0 ? machineReqs[0] : null;
         
         // Get hours from training offers
-        // FIX: Use .is() for null values rather than .eq("null")
+        // FIX: Use .is() for null values but with the correct syntax
         const { data: offers } = await supabase
           .from("training_offers")
           .select("hours_required")
           .eq("machine_type_id", detail.machine_types_id)
           .eq("plan_id", detail.plan_id)
-          .is("software_type_id", "null");
+          .is("software_type_id", null);
           
         const trainingOffer = offers && offers.length > 0 ? offers[0] : null;
           
@@ -196,11 +196,11 @@ export async function syncSoftwareTrainingHoursAndResources() {
     console.log("Starting software training hours and resources sync");
     
     // Get all software training offers to make sure we have the correct hours
-    // FIX: Use .is() for null values rather than .eq("null")
+    // FIX: Use .is() for null values but with correct syntax
     const { data: softwareOffers, error: offersError } = await supabase
       .from("training_offers")
       .select("*")
-      .is("machine_type_id", "null")
+      .is("machine_type_id", null)
       .not("software_type_id", "is", null);
       
     if (offersError) {
@@ -241,14 +241,14 @@ export async function syncSoftwareTrainingHoursAndResources() {
       const hoursRequired = offer.hours_required;
       
       // Find the resource for this software and plan
-      const softwareReq = softwareReqs.find(
+      const softwareReq = softwareReqs?.find(
         req => req.software_type_id === softwareId && req.plan_id === planId
       );
       
       const resourceId = softwareReq?.resource_id || null;
       
       // Find all quotes that include this software
-      for (const quote of quotesWithSoftware) {
+      for (const quote of quotesWithSoftware || []) {
         if (!quote.software_type_ids || !quote.software_type_ids.includes(softwareId)) {
           continue;
         }
@@ -319,3 +319,4 @@ export async function syncSoftwareTrainingHoursAndResources() {
     return false;
   }
 }
+

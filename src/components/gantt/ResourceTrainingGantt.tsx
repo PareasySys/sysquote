@@ -1,6 +1,7 @@
+
 // ResourceTrainingGantt.tsx
 
-import React, { useEffect } from "react"; // Removed useState as it wasn't used directly here
+import React, { useEffect, useState } from "react"; 
 import GanttChart from "./GanttChart"; // Adjust path
 import { Card } from "@/components/ui/card";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
@@ -23,8 +24,11 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
   workOnSaturday,
   workOnSunday
 }) => {
+  // Track a state to make sure sync is only done once per component mount
+  const [hasSynced, setHasSynced] = useState(false);
+  
   const {
-    scheduledTasks, // This might be undefined briefly
+    scheduledTasks,
     loading,
     error,
     fetchRequirements
@@ -32,22 +36,32 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
 
   // --- Sync Software Hours Before Loading Requirements ---
   useEffect(() => {
-    if (quoteId && planId) {
+    // This ensures we don't get into an endless sync loop
+    if (quoteId && planId && !hasSynced) {
+      setHasSynced(true);
+      
       // Sync software hours and resources before loading requirements
-      syncSoftwareTrainingHoursAndResources().then(() => {
-        // After syncing, fetch the requirements
-        fetchRequirements();
-      }).catch(err => {
-        console.error("Error syncing software training hours:", err);
-      });
+      syncSoftwareTrainingHoursAndResources()
+        .then(() => {
+          // After syncing, fetch the requirements
+          fetchRequirements();
+        })
+        .catch(err => {
+          console.error("Error syncing software training hours:", err);
+        });
     }
-  }, [quoteId, planId, workOnSaturday, workOnSunday]);
+  }, [quoteId, planId, hasSynced, fetchRequirements]);
+  
+  // Reset sync state when planId changes
+  useEffect(() => {
+    setHasSynced(false);
+  }, [planId]);
 
   // --- Weekend Settings Update ---
   useEffect(() => {
     // Ensure quoteId and planId are valid before attempting update
     if (quoteId && typeof planId === 'number') {
-        console.log(`Updating weekend settings for plan ${planId}: Sat=${workOnSaturday}, Sun=${workOnSunday}`);
+      console.log(`Updating weekend settings for plan ${planId}: Sat=${workOnSaturday}, Sun=${workOnSunday}`);
       // Consider adding error handling for this update if needed
       updateWeekendSettings(quoteId, planId, workOnSaturday, workOnSunday)
         .catch(err => console.error("Failed to update weekend settings:", err));
@@ -66,7 +80,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
     );
   }
 
-  // --- FIX 1: Safely calculate total assignments ---
+  // --- Safely calculate total assignments ---
   // Use optional chaining and nullish coalescing. Default to 0 if scheduledTasks is null/undefined.
   const totalAssignments = scheduledTasks?.length ?? 0;
 
@@ -75,14 +89,11 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-200">Resource Training Schedule</h3>
         <div className="text-gray-400 text-sm">
-          {/* --- FIX 2: Use the safe totalAssignments for the loading check --- */}
-          {/* Show loading text if loading is true AND there are currently no assignments calculated */}
           {loading && totalAssignments === 0 ? (
             <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
               Loading and scheduling...
             </TextShimmerWave>
           ) : (
-            // Otherwise, show the count (will be 0 initially, then update)
             `Showing ${totalAssignments} scheduled training segments`
           )}
         </div>
@@ -98,11 +109,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       {/* Ensure parent container provides height */}
       <div className="h-[500px] overflow-hidden">
         <GanttChart
-          // --- FIX 3: Pass an empty array as fallback ---
-          // Ensure GanttChart always receives an array, even if scheduledTasks is temporarily undefined
           requirements={scheduledTasks || []}
-          // --- FIX 4: Adjust loading prop passed down ---
-          // Show loading overlay in GanttChart if loading is true AND we don't have tasks yet
           loading={loading && totalAssignments === 0}
           error={null} // Error is handled above
           workOnSaturday={workOnSaturday}
@@ -115,3 +122,4 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
 };
 
 export default ResourceTrainingGantt;
+
