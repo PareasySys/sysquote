@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabaseClient';
 import { TrainingRequirement } from '@/hooks/useTrainingRequirements';
 import { TrainingPlan } from '@/hooks/useTrainingPlans';
@@ -28,8 +27,7 @@ export async function fetchPlanningDetails(
         machine_types_id,
         machine_types:machine_types_id (name),
         software_types_id,
-        software_types:software_types_id (name),
-        resource_category
+        software_types:software_types_id (name)
       `)
       .eq('quote_id', quoteId)
       .eq('plan_id', planId)
@@ -40,16 +38,23 @@ export async function fetchPlanningDetails(
     console.log("Raw planning details data:", data);
     
     // Map to TrainingRequirement format
-    const requirements: TrainingRequirement[] = data.map(detail => ({
-      id: detail.id,
-      quote_id: detail.quote_id,
-      plan_id: detail.plan_id,
-      resource_id: detail.resource_id,
-      resource_name: detail.resources?.name || 'Unnamed Resource',
-      machine_name: detail.machine_types?.name || detail.software_types?.name || 'Unknown',
-      training_hours: detail.allocated_hours,
-      resource_category: detail.resource_category as 'Machine' | 'Software'
-    }));
+    const requirements: TrainingRequirement[] = data.map(detail => {
+      // Determine if this is a machine or software resource
+      const isSoftwareResource = detail.software_types_id !== null;
+      
+      return {
+        id: detail.id,
+        quote_id: detail.quote_id,
+        plan_id: detail.plan_id,
+        resource_id: detail.resource_id,
+        resource_name: detail.resources?.name || 'Unnamed Resource',
+        machine_name: isSoftwareResource 
+          ? (detail.software_types?.name || 'Unknown Software') 
+          : (detail.machine_types?.name || 'Unknown Machine'),
+        training_hours: detail.allocated_hours,
+        resource_category: isSoftwareResource ? 'Software' : 'Machine'
+      };
+    });
     
     console.log("Mapped training requirements:", requirements);
     return requirements;
