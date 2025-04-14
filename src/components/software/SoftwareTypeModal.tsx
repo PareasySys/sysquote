@@ -20,6 +20,7 @@ import { useSoftwareTrainingRequirements } from "@/hooks/useSoftwareTrainingRequ
 import { useResources } from "@/hooks/useResources";
 import { useTrainingTopics } from "@/hooks/useTrainingTopics";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { syncAllPlanningDetailsWithRequirements } from "@/services/planningDetailsService";
 
 interface SoftwareTypeModalProps {
   open: boolean;
@@ -207,9 +208,25 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
     if (resourceId) {
       console.log(`Saving resource ${resourceId} for plan ${planId}`);
       await saveRequirement(planId, resourceId);
+      
+      // Sync planning details after updating resource requirement
+      try {
+        await syncAllPlanningDetailsWithRequirements();
+        console.log(`Planning details synchronized after updating software resource for plan ${planId}`);
+      } catch (syncErr) {
+        console.error("Error syncing planning details:", syncErr);
+      }
     } else {
       console.log(`Removing resource for plan ${planId}`);
       await removeRequirement(planId);
+      
+      // Sync planning details after removing resource requirement
+      try {
+        await syncAllPlanningDetailsWithRequirements();
+        console.log(`Planning details synchronized after removing software resource for plan ${planId}`);
+      } catch (syncErr) {
+        console.error("Error syncing planning details:", syncErr);
+      }
     }
   };
 
