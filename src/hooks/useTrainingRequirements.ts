@@ -49,7 +49,7 @@ export const useTrainingRequirements = (
         const resourceId = detail.resource_id || 0;
         const resourceName = detail.resource_name || "Unassigned";
         const hours = detail.allocated_hours || 0;
-        const machineName = detail.machine_name || "Unknown Machine";
+        const machineName = detail.type_name || "Unknown Machine";
         
         // Calculate duration in days (assuming 8 hours per working day)
         let durationDays = Math.ceil(hours / 8);
