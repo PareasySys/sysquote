@@ -44,57 +44,51 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       setLoading(true);
       setError(null);
       
-      // First, check if the quote has a software_type_ids column
-      const { data: columnCheck } = await supabase
-        .from('quotes')
-        .select('quote_id, machine_type_ids')
-        .eq('quote_id', quoteId)
-        .single();
+      // First check if the function exists
+      try {
+        // Try to run the function to add the column if it doesn't exist
+        await supabase.rpc('add_software_type_ids_column');
+      } catch (err) {
+        console.log("Note: add_software_type_ids_column function might not exist yet or already run");
+      }
       
       // Get always included software IDs
       const alwaysIncludedIds = await fetchAlwaysIncludedSoftware();
-
-      // Try to add the column if it doesn't exist
-      try {
-        // Add the column first to avoid errors
-        await supabase.rpc('add_software_type_ids_column');
-
-        // Now get the current software types
-        const { data: softwareIds, error: getError } = await supabase
-          .from('quotes')
-          .select('software_type_ids')
-          .eq('quote_id', quoteId)
-          .single();
-
-        if (getError) throw getError;
-        
-        // If software_type_ids exists but is null, or doesn't include always included IDs
-        let currentIds = softwareIds.software_type_ids || [];
-        
-        // Ensure always included software is added
-        const updatedIds = [...new Set([...currentIds, ...alwaysIncludedIds])];
-        
-        // Update if there are changes
-        if (JSON.stringify(updatedIds) !== JSON.stringify(currentIds)) {
-          await supabase
-            .from('quotes')
-            .update({ software_type_ids: updatedIds })
-            .eq('quote_id', quoteId);
-        }
-        
-        setSoftwareTypeIds(updatedIds);
-      } catch (err: any) {
-        console.error("Error in software types setup:", err);
-        // Default to just the always included software
-        setSoftwareTypeIds(alwaysIncludedIds);
+      
+      // Now try to get the existing software types directly with a raw query
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('quote_id', quoteId)
+        .single();
+      
+      if (quoteError) throw quoteError;
+      
+      // Check if software_type_ids exists in the data
+      let currentIds: number[] = [];
+      if (quoteData && 'software_type_ids' in quoteData) {
+        currentIds = quoteData.software_type_ids || [];
       }
       
+      // Ensure always included software is added
+      const updatedIds = [...new Set([...currentIds, ...alwaysIncludedIds])];
+      
+      // Update if there are changes
+      if (JSON.stringify(updatedIds) !== JSON.stringify(currentIds)) {
+        await supabase
+          .from('quotes')
+          .update({ software_type_ids: updatedIds })
+          .eq('quote_id', quoteId);
+      }
+      
+      setSoftwareTypeIds(updatedIds);
+      
       // Now fetch the software details for the selected IDs
-      if (softwareTypeIds.length > 0) {
+      if (updatedIds.length > 0) {
         const { data: softwareDetails, error: detailsError } = await supabase
           .from('software_types')
           .select('*')
-          .in('software_type_id', softwareTypeIds);
+          .in('software_type_id', updatedIds);
         
         if (detailsError) throw detailsError;
         
@@ -119,11 +113,13 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       // Make sure always included software is still included
       const combinedIds = [...new Set([...softwareIds, ...alwaysIncludedIds])];
       
-      // Update the database
-      await supabase
+      // Update the database using direct query
+      const { error: updateError } = await supabase
         .from('quotes')
         .update({ software_type_ids: combinedIds })
         .eq('quote_id', quoteId);
+      
+      if (updateError) throw updateError;
       
       // Update local state
       setSoftwareTypeIds(combinedIds);
@@ -155,10 +151,12 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       const updatedSoftwareIds = softwareTypeIds.filter(id => id !== softwareTypeId);
       
       // Update the quote with the new software type IDs
-      await supabase
+      const { error: updateError } = await supabase
         .from('quotes')
         .update({ software_type_ids: updatedSoftwareIds })
         .eq('quote_id', quoteId);
+        
+      if (updateError) throw updateError;
       
       // Update local state
       setSoftwareTypeIds(updatedSoftwareIds);

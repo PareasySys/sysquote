@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchPlanningDetails } from '@/services/planningDetailsService';
 // Ensure scheduleTasks.ts is in the correct location (e.g., src/utils/)
 import { scheduleTrainingTasks } from '@/utils/scheduleTasks';
-// Ensure types.ts (or wherever ScheduledTaskSegment is defined) is in the correct location
+// Use the local types file we just created
 import { ScheduledTaskSegment } from '@/utils/types';
 
 // --- Define or Import Core Data Types ---
@@ -24,22 +24,6 @@ export interface TrainingRequirement {
   training_hours: number; // Mapped from allocated_hours
   // Remove start_day and duration_days - these are calculated by the scheduler
 }
-
-/* --- Ensure ScheduledTaskSegment is defined correctly ---
-// If not in utils/types.ts, define it here or import correctly.
-// Example definition:
-export interface ScheduledTaskSegment {
-  id: string; // Unique ID for this specific segment (e.g., "req123-seg0")
-  originalRequirementId: number | string; // ID of the source requirement (planning_details.id)
-  resource_id: number;
-  resource_name: string;
-  machine_name: string;
-  total_training_hours: number; // Total hours for the original requirement
-  segment_hours: number; // Hours allocated to this specific segment
-  start_day: number; // Calculated start day for this segment
-  duration_days: number; // Calculated duration for this segment (can be 1 or more after consolidation)
-}
-*/
 
 /**
  * Custom hook to fetch raw training requirements and schedule them

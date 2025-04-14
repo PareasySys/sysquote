@@ -4,7 +4,6 @@ import React, { useMemo, useRef, useCallback, useEffect } from "react";
 import "./GanttChart.css"; // Ensure CSS is imported
 import { Loader2, PlaneTakeoff, PlaneLanding } from "lucide-react"; // Import plane icons
 import { Button } from "@/components/ui/button";
-// Adjust path if your types file is located elsewhere (ensure it includes start_hour_offset)
 import { ScheduledTaskSegment } from '@/utils/types';
 
 // --- Constants ---
@@ -60,7 +59,6 @@ function getResourceColor(id: number): string {
   const index = Math.abs(id || 0) % colors.length; // Handle potential null/undefined ID
   return colors[index];
 }
-
 
 // --- GanttChart Component ---
 const GanttChart: React.FC<GanttChartProps> = ({
@@ -207,12 +205,10 @@ const GanttChart: React.FC<GanttChartProps> = ({
     return { tasksToRender: tasks, totalEngagementBars: engagements };
   }, [resourceGroups, requirements, getDayPosition, daysPerMonth]);
 
-
   // --- Loading/Error/Empty States ---
   if (loading) { return <div className="gantt-loading"><Loader2 className="h-6 w-6 animate-spin mr-2" /><span>Loading & Scheduling...</span></div>; }
   if (!loading && requirements.length === 0 && !error) { return <div className="gantt-empty"><p>No training assignments scheduled for the selected plan.</p></div>; }
   if (error) { return <div className="gantt-error"><p>Error: {error}</p></div>; }
-
 
   // --- Render ---
   return (
@@ -259,9 +255,9 @@ const GanttChart: React.FC<GanttChartProps> = ({
             </div>
             {/* Task Layer */}
             <div className="gantt-task-layer">
-              {tasksToRender.map(seg => (
+              {tasksToRender.map((seg) => (
                 <div
-                  key={seg.id} // Unique segment ID
+                  key={seg.id} // Using id from ScheduledTaskSegment
                   className="gantt-task"
                   style={{
                     top: `${seg.top + 3}px`,
