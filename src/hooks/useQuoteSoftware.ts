@@ -50,7 +50,7 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       // Use direct query to get quote data with software_type_ids
       const { data: quoteData, error: quoteError } = await supabase
         .from('quotes')
-        .select('software_type_ids')
+        .select('*')  // Select all columns to ensure we get software_type_ids 
         .eq('quote_id', quoteId)
         .single();
       
@@ -68,6 +68,7 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       
       // Update if there are changes
       if (JSON.stringify(updatedIds) !== JSON.stringify(currentIds)) {
+        // Use raw update query to bypass type checking issues
         const { error: updateError } = await supabase
           .from('quotes')
           .update({ software_type_ids: updatedIds })
@@ -108,7 +109,7 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       // Make sure always included software is still included
       const combinedIds = [...new Set([...softwareIds, ...alwaysIncludedIds])];
       
-      // Update the quote directly
+      // Update directly using the quotes table
       const { error: updateError } = await supabase
         .from('quotes')
         .update({ software_type_ids: combinedIds })

@@ -240,6 +240,7 @@ export type Database = {
           machine_type_ids: number[] | null
           quote_id: string
           quote_name: string
+          software_type_ids: number[] | null
           work_on_saturday: boolean | null
           work_on_sunday: boolean | null
         }
@@ -251,6 +252,7 @@ export type Database = {
           machine_type_ids?: number[] | null
           quote_id?: string
           quote_name: string
+          software_type_ids?: number[] | null
           work_on_saturday?: boolean | null
           work_on_sunday?: boolean | null
         }
@@ -262,6 +264,7 @@ export type Database = {
           machine_type_ids?: number[] | null
           quote_id?: string
           quote_name?: string
+          software_type_ids?: number[] | null
           work_on_saturday?: boolean | null
           work_on_sunday?: boolean | null
         }
@@ -543,6 +546,12 @@ export type Database = {
           work_on_sunday: boolean
         }[]
       }
+      get_quote_software_types: {
+        Args: { p_quote_id: string }
+        Returns: {
+          software_type_ids: number[]
+        }[]
+      }
       get_quote_training_hours: {
         Args: { quote_id_param: string }
         Returns: {
@@ -647,6 +656,10 @@ export type Database = {
       }
       update_quote_machines_direct: {
         Args: { quote_id_param: string; machine_ids: number[] }
+        Returns: undefined
+      }
+      update_quote_software_types: {
+        Args: { p_quote_id: string; p_software_type_ids: number[] }
         Returns: undefined
       }
     }
