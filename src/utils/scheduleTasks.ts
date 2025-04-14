@@ -1,151 +1,177 @@
-// Create a new file (e.g., utils/scheduleTasks.ts) or add within useTrainingRequirements.ts
+// src/utils/scheduleTasks.ts
 
-import { TrainingRequirement } from "@/hooks/useTrainingRequirements"; // Adjust import path
-import { ScheduledTaskSegment } from "./types"; // Assuming you created a types file
+// Adjust import paths as needed
+import { TrainingRequirement } from "@/hooks/useTrainingRequirements";
+import { ScheduledTaskSegment } from "./types"; // Assuming types.ts exists here
 
 const DAILY_HOUR_LIMIT = 8;
 
-// Helper to check if a day is a weekend based on global day number
-// Assumes Day 1 is Monday (index 0). Adjust if your calendar starts differently.
-const isWeekend = (
+// Helper to check if a specific day number is a weekend
+const isDayWeekend = (
   dayNumber: number,
   workOnSaturday: boolean,
   workOnSunday: boolean
 ): boolean => {
-  const dayOfWeek = (dayNumber - 1) % 7; // 0=Mon, 1=Tue, ..., 5=Sat, 6=Sun
-  if (!workOnSaturday && dayOfWeek === 5) {
-    return true;
-  }
-  if (!workOnSunday && dayOfWeek === 6) {
-    return true;
-  }
+  if (dayNumber <= 0) return false;
+  // Day 1 = Mon, ..., Day 6 = Sat, Day 7 = Sun
+  const dayOfWeek = ((dayNumber - 1) % 7) + 1;
+  if (!workOnSaturday && dayOfWeek === 6) return true;
+  if (!workOnSunday && dayOfWeek === 7) return true;
   return false;
 };
+
+// Helper to find the next working day, starting from a given day
+const findNextWorkingDay = (
+    startDay: number,
+    workOnSaturday: boolean,
+    workOnSunday: boolean
+): number => {
+    let day = startDay;
+    while (isDayWeekend(day, workOnSaturday, workOnSunday)) {
+        day++;
+    }
+    return day;
+}
 
 export const scheduleTrainingTasks = (
   rawRequirements: TrainingRequirement[],
   workOnSaturday: boolean,
   workOnSunday: boolean
 ): ScheduledTaskSegment[] => {
-  const scheduledSegments: ScheduledTaskSegment[] = [];
-  const resourceSchedule: { [resourceId: number]: { currentDay: number; hoursDoneToday: number } } = {};
+  console.log("--- Starting Scheduling (v4: Reverted Weekend Check Logic) ---");
+  const dailySegments: ScheduledTaskSegment[] = [];
+  // Tracks the next available day and hours used *on that specific day* for each resource
+  const resourceNextAvailable: { [resourceId: number]: { day: number; hoursUsed: number } } = {};
 
-  // Group requirements by resource
   const reqsByResource = rawRequirements.reduce((acc, req) => {
-    if (!acc[req.resource_id]) {
-      acc[req.resource_id] = [];
-    }
-    acc[req.resource_id].push(req);
-    // Optional: Sort requirements within each resource group if needed (e.g., by name)
-    // acc[req.resource_id].sort((a, b) => a.machine_name.localeCompare(b.machine_name));
+    const key = req.resource_id;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(req);
     return acc;
   }, {} as { [resourceId: number]: TrainingRequirement[] });
 
-  // Schedule for each resource independently
   for (const resourceIdStr in reqsByResource) {
     const resourceId = parseInt(resourceIdStr, 10);
     const resourceReqs = reqsByResource[resourceId];
 
-    // Initialize resource's schedule tracker
-    if (!resourceSchedule[resourceId]) {
-        resourceSchedule[resourceId] = { currentDay: 1, hoursDoneToday: 0 };
+    // Initialize resource tracker: Earliest WORK day is Day 2 or later
+    const initialWorkDay = findNextWorkingDay(2, workOnSaturday, workOnSunday);
+    if (!resourceNextAvailable[resourceId]) {
+        resourceNextAvailable[resourceId] = { day: initialWorkDay, hoursUsed: 0 };
+        console.log(`Resource ${resourceId}: Initializing to start Day ${initialWorkDay}`);
     }
-    let { currentDay, hoursDoneToday } = resourceSchedule[resourceId];
+
+    // Get the resource's current state *before* processing its requirements
+    let currentDayForResource = resourceNextAvailable[resourceId].day;
+    let hoursUsedOnCurrentDay = resourceNextAvailable[resourceId].hoursUsed;
 
     for (const req of resourceReqs) {
-      let remainingHoursForTask = req.training_hours;
+      console.log(` Processing Req ID: ${req.requirement_id}, Res: ${resourceId}, Machine: ${req.machine_name}, Hours: ${req.training_hours}`);
+      let hoursRemaining = req.training_hours;
       let segmentIndex = 0;
 
-      while (remainingHoursForTask > 0) {
-        // --- Find the next available working slot ---
-        let movedToNextDay = false;
-        while (isWeekend(currentDay, workOnSaturday, workOnSunday) || hoursDoneToday >= DAILY_HOUR_LIMIT) {
-          currentDay++;
-          hoursDoneToday = 0;
-          movedToNextDay = true;
-          // Skip subsequent weekends if we landed on one
-          while (isWeekend(currentDay, workOnSaturday, workOnSunday)) {
-            currentDay++;
-          }
+      // Process segments for this requirement
+      while (hoursRemaining > 0) {
+
+        // --- Find next available slot (check weekend/full day BEFORE calculating) ---
+        let dayAdvanced = false;
+        while (isDayWeekend(currentDayForResource, workOnSaturday, workOnSunday) || hoursUsedOnCurrentDay >= DAILY_HOUR_LIMIT) {
+          currentDayForResource++;
+          hoursUsedOnCurrentDay = 0; // Reset hours for the new day
+          dayAdvanced = true;
+          // Ensure the incremented day is also not a weekend
+          currentDayForResource = findNextWorkingDay(currentDayForResource, workOnSaturday, workOnSunday);
+        }
+        if (dayAdvanced) {
+            console.log(`  Advanced to next working day for Res ${resourceId}: Day ${currentDayForResource}`);
+        }
+        // --- End find next available slot ---
+
+        // Now currentDayForResource is a valid working day with some hours available
+        const hoursAvailableToday = DAILY_HOUR_LIMIT - hoursUsedOnCurrentDay;
+        const hoursForThisSegment = Math.min(hoursRemaining, hoursAvailableToday);
+
+        if (hoursForThisSegment <= 0) {
+           console.error(" Calculated zero/negative hours for segment. Breaking.", { req, currentDayForResource, hoursUsedOnCurrentDay, hoursRemaining });
+           break;
         }
 
-        // --- Determine segment details ---
-        const hoursAvailableToday = DAILY_HOUR_LIMIT - hoursDoneToday;
-        const hoursToDoThisSegment = Math.min(remainingHoursForTask, hoursAvailableToday);
+        console.log(`  Segment ${segmentIndex}: Day ${currentDayForResource}, Hours ${hoursForThisSegment}. Used ${hoursUsedOnCurrentDay}/${DAILY_HOUR_LIMIT} today.`);
 
-        // Segments are currently per-day allocation. We group consecutive days later.
-        // For now, let's just store the daily work.
-         scheduledSegments.push({
-           id: `${req.requirement_id}-seg${segmentIndex}`,
-           originalRequirementId: req.requirement_id,
-           resource_id: req.resource_id,
-           resource_name: req.resource_name,
-           machine_name: req.machine_name,
-           total_training_hours: req.training_hours, // Store original total
-           segment_hours: hoursToDoThisSegment,
-           start_day: currentDay, // This is the day the work happens
-           duration_days: 1, // Initially, each segment is one day
-           // segment_index: segmentIndex // Keep track if needed later
-         });
+        // Create the segment
+        dailySegments.push({
+          id: `${req.requirement_id}-seg${segmentIndex}`,
+          originalRequirementId: req.requirement_id || `req-${resourceId}-${segmentIndex}`,
+          resource_id: req.resource_id,
+          resource_name: req.resource_name,
+          machine_name: req.machine_name,
+          total_training_hours: req.training_hours,
+          segment_hours: hoursForThisSegment,
+          start_day: currentDayForResource, // Use the confirmed working day
+          duration_days: 1,
+        });
 
+        // Update state for the next iteration/task
+        hoursRemaining -= hoursForThisSegment;
+        hoursUsedOnCurrentDay += hoursForThisSegment; // Increment hours used on *this* day
+        segmentIndex++;
 
-        // --- Update state ---
-        remainingHoursForTask -= hoursToDoThisSegment;
-        hoursDoneToday += hoursToDoThisSegment;
-        segmentIndex++; // Increment for next potential segment of *this task*
-      }
-    }
-    // Update the resource's schedule state for the next resource (if any)
-    // Not strictly needed here as resources schedule independently based on this logic
-     resourceSchedule[resourceId] = { currentDay, hoursDoneToday };
-  }
+        // --- Update Resource Tracker ---
+        // Store the current day and the hours used on it. This state will be picked up
+        // at the start of the next segment's loop or the next task's loop.
+        resourceNextAvailable[resourceId] = { day: currentDayForResource, hoursUsed: hoursUsedOnCurrentDay };
+        // --- End Update Resource Tracker ---
 
+      } // End while (hoursRemaining > 0)
+      console.log(` Finished processing Req ID: ${req.requirement_id}`);
+    } // End for (const req of resourceReqs)
+  } // End for (const resourceIdStr in reqsByResource)
 
-  // --- Consolidate consecutive segments ---
+  console.log("--- Finished Daily Segment Creation ---", dailySegments.length, "segments created.");
+  if (dailySegments.length === 0) return [];
+
+  // --- Consolidation ---
+  console.log("--- Starting Consolidation ---");
   const consolidatedSegments: ScheduledTaskSegment[] = [];
-  if (scheduledSegments.length === 0) return [];
-
-  // Sort primarily by resource, then original requirement, then start day
-  scheduledSegments.sort((a, b) => {
-      if (a.resource_id !== b.resource_id) return a.resource_id - b.resource_id;
-      if (a.originalRequirementId !== b.originalRequirementId) {
-          // Handle potential string/number comparison issues if IDs are mixed
-          const idA = String(a.originalRequirementId);
-          const idB = String(b.originalRequirementId);
-          return idA.localeCompare(idB);
-      }
-      return a.start_day - b.start_day;
+  dailySegments.sort((a, b) => {
+    if (a.resource_id !== b.resource_id) return a.resource_id - b.resource_id;
+    const idA = String(a.originalRequirementId);
+    const idB = String(b.originalRequirementId);
+    if (idA !== idB) return idA.localeCompare(idB);
+    return a.start_day - b.start_day;
   });
 
-
   let currentConsolidated: ScheduledTaskSegment | null = null;
-
-  for (const segment of scheduledSegments) {
-      if (currentConsolidated &&
-          segment.originalRequirementId === currentConsolidated.originalRequirementId &&
-          segment.start_day === currentConsolidated.start_day + currentConsolidated.duration_days &&
-          !isWeekend(segment.start_day, workOnSaturday, workOnSunday) // Ensure we don't merge across a weekend gap
-          )
-      {
-          // This segment continues the previous one
-          currentConsolidated.duration_days += segment.duration_days; // Add duration (which is 1)
-          currentConsolidated.segment_hours += segment.segment_hours;
-      } else {
-          // Start a new consolidated segment
-          if (currentConsolidated) {
-              consolidatedSegments.push(currentConsolidated);
-          }
-           // Create a new object, don't modify the original segment from the loop
-           currentConsolidated = { ...segment };
-           // Ensure duration is at least 1 even if segment_hours is small
-           currentConsolidated.duration_days = Math.max(1, currentConsolidated.duration_days);
+  for (const segment of dailySegments) {
+    // Can we merge this segment with the previous consolidated block?
+    if (
+      currentConsolidated &&
+      segment.originalRequirementId === currentConsolidated.originalRequirementId &&
+      segment.resource_id === currentConsolidated.resource_id &&
+      // Check if it starts *exactly* on the next working day after the current block ends
+      findNextWorkingDay(currentConsolidated.start_day + currentConsolidated.duration_days, workOnSaturday, workOnSunday) === segment.start_day
+    ) {
+      // Merge: Calculate new duration based on days spanned and add hours
+      currentConsolidated.duration_days = (segment.start_day + segment.duration_days) - currentConsolidated.start_day; // Duration is end_day - start_day + 1
+      currentConsolidated.segment_hours += segment.segment_hours;
+      console.log(`  Merged segment ${segment.id}. New Duration: ${currentConsolidated.duration_days}`);
+    } else {
+      // Cannot merge. Push previous block if it exists.
+      if (currentConsolidated) {
+         console.log(`  Pushing consolidated: ID ${currentConsolidated.id}, Start ${currentConsolidated.start_day}, Dur ${currentConsolidated.duration_days}`);
+         consolidatedSegments.push(currentConsolidated);
       }
+      // Start a new consolidation block with the current segment.
+      currentConsolidated = { ...segment }; // Duration is initially 1
+      console.log(`  Starting new consolidated: ID ${currentConsolidated.id}, Start ${currentConsolidated.start_day}, Dur ${currentConsolidated.duration_days}`);
+    }
   }
-   // Add the last consolidated segment
-   if (currentConsolidated) {
-       consolidatedSegments.push(currentConsolidated);
-   }
+  // Push the last remaining consolidated block.
+  if (currentConsolidated) {
+    console.log(`  Pushing final consolidated: ID ${currentConsolidated.id}, Start ${currentConsolidated.start_day}, Dur ${currentConsolidated.duration_days}`);
+    consolidatedSegments.push(currentConsolidated);
+  }
 
-
+  console.log("--- Scheduling Finished ---", consolidatedSegments.length, "consolidated segments.");
   return consolidatedSegments;
 };
