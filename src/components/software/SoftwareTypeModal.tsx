@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -11,15 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { SoftwareType } from "@/hooks/useSoftwareTypes";
-import { useImageUpload } from "@/hooks/use-image-upload";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { Loader2, Upload } from "lucide-react";
-import { useTrainingPlans } from "@/hooks/useTrainingPlans";
-import { useSoftwareTrainingRequirements } from "@/hooks/useSoftwareTrainingRequirements";
-import { useResources } from "@/hooks/useResources";
-import { useTrainingTopics } from "@/hooks/useTrainingTopics";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
+import { dataSyncService } from "@/services/dataSyncService";
 
 interface SoftwareTypeModalProps {
   open: boolean;
@@ -36,115 +32,24 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
   const [alwaysIncluded, setAlwaysIncluded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [photoURL, setPhotoURL] = useState<string | null>(null);
-  const { 
-    previewUrl, 
-    setPreviewUrl, 
-    uploadImage, 
-    isUploading 
-  } = useImageUpload();
-  
-  const { plans, loading: loadingPlans } = useTrainingPlans();
-  const { resources, loading: loadingResources } = useResources();
-  const { 
-    requirements, 
-    saveRequirement, 
-    removeRequirement,
-    getResourceForPlan 
-  } = useSoftwareTrainingRequirements(software?.software_type_id);
-  
-  const { deleteTopicsByItemId } = useTrainingTopics([]);
 
-  const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
-  
   useEffect(() => {
     if (software) {
       setName(software.name || "");
       setDescription(software.description || "");
-      setAlwaysIncluded(software.always_included);
-      setPhotoURL(software.photo_url);
-      setPreviewUrl(software.photo_url);
+      setPhotoUrl(software.photo_url || "");
+      setAlwaysIncluded(software.always_included || false);
     } else {
       setName("");
       setDescription("");
+      setPhotoUrl("");
       setAlwaysIncluded(false);
-      setPhotoURL(null);
-      setPreviewUrl(null);
     }
-  }, [software, setPreviewUrl]);
-
-  useEffect(() => {
-    if (plans && plans.length > 0) {
-      const initialSelectedResources: Record<number, number | undefined> = {};
-      
-      plans.forEach(plan => {
-        const resourceId = getResourceForPlan(plan.plan_id);
-        if (resourceId) {
-          initialSelectedResources[plan.plan_id] = resourceId;
-        }
-      });
-      
-      setSelectedResources(initialSelectedResources);
-    }
-  }, [plans, requirements, getResourceForPlan]);
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    
-    const file = e.target.files[0];
-    try {
-      const localUrl = URL.createObjectURL(file);
-      setPreviewUrl(localUrl);
-      
-      const url = await uploadImage(file);
-      setPhotoURL(url);
-      
-      toast.success("Image uploaded successfully");
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      toast.error("Failed to upload image");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!software) return;
-
-    try {
-      setIsDeleting(true);
-      
-      if (software.software_type_id) {
-        await deleteTopicsByItemId(software.software_type_id, "software");
-      }
-      
-      try {
-        await supabase
-          .from("software_training_requirements")
-          .delete()
-          .eq("software_type_id", software.software_type_id);
-      } catch (error) {
-        console.error("Error deleting software training requirements:", error);
-      }
-      
-      const { error } = await supabase
-        .from("software_types")
-        .delete()
-        .eq("software_type_id", software.software_type_id);
-
-      if (error) throw error;
-
-      toast.success("Software deleted successfully");
-      onSave();
-      onClose();
-    } catch (error: any) {
-      console.error("Error deleting software:", error);
-      toast.error(error.message || "Failed to delete software");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+  }, [software]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -161,166 +66,131 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
           .update({
             name,
             description,
+            photo_url: photoUrl,
             always_included: alwaysIncluded,
-            photo_url: photoURL,
           })
           .eq("software_type_id", software.software_type_id);
 
         if (error) {
-          console.error("Error updating software:", error);
+          console.error("Error updating software type:", error);
           throw error;
         }
-        toast.success("Software updated successfully");
+        
+        // Sync changes to planning details
+        await dataSyncService.syncSoftwareTypeChanges(software.software_type_id);
+        
+        toast.success("Software type updated successfully");
       } else {
         const { data, error } = await supabase.from("software_types").insert({
           name,
           description,
+          photo_url: photoUrl,
           always_included: alwaysIncluded,
-          photo_url: photoURL,
         }).select();
 
         if (error) {
-          console.error("Error creating software:", error);
+          console.error("Error creating software type:", error);
           throw error;
         }
-        toast.success("Software created successfully");
+        
+        // Sync changes to planning details if we have a new software
+        if (data && data.length > 0) {
+          await dataSyncService.syncSoftwareTypeChanges(data[0].software_type_id);
+        }
+        
+        toast.success("Software type created successfully");
       }
 
       onSave();
       onClose();
     } catch (error: any) {
-      console.error("Error saving software:", error);
-      toast.error(error.message || "Failed to save software");
+      console.error("Error saving software type:", error);
+      toast.error(error.message || "Failed to save software type");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleResourceChange = async (planId: number, resourceId: number | undefined) => {
-    setSelectedResources(prev => ({
-      ...prev,
-      [planId]: resourceId
-    }));
+  const handleDelete = async () => {
+    if (!software) return;
 
-    if (!software?.software_type_id) return;
+    try {
+      setIsDeleting(true);
+      
+      // Store software ID before deletion for syncing
+      const softwareTypeId = software.software_type_id;
 
-    if (resourceId) {
-      console.log(`Saving resource ${resourceId} for plan ${planId}`);
-      await saveRequirement(planId, resourceId);
-    } else {
-      console.log(`Removing resource for plan ${planId}`);
-      await removeRequirement(planId);
+      const { error } = await supabase
+        .from("software_types")
+        .delete()
+        .eq("software_type_id", softwareTypeId);
+
+      if (error) throw error;
+
+      // Sync changes after deletion
+      await dataSyncService.syncSoftwareTypeChanges(softwareTypeId);
+      
+      toast.success("Software type deleted successfully");
+      onSave();
+      onClose();
+    } catch (error: any) {
+      console.error("Error deleting software type:", error);
+      toast.error(error.message || "Failed to delete software type");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] bg-slate-900 border-slate-800 text-slate-100">
+      <DialogContent className="sm:max-w-[500px] bg-slate-900 border-slate-800 text-slate-100">
         <DialogHeader>
           <DialogTitle>
-            {software ? "Edit Software" : "Add New Software"}
+            {software ? "Edit Software Type" : "Add New Software Type"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-          <div className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name" className="text-white">Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="bg-slate-800 border-slate-700 text-slate-100 focus:ring-0 focus:ring-offset-0 focus:border-blue-500 focus-visible:ring-0 focus-visible:ring-offset-0"
-                placeholder="Enter software name"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="description" className="text-white">Description</Label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 focus:ring-0 focus:ring-offset-0 min-h-[100px]"
-                placeholder="Enter software description"
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Label htmlFor="alwaysIncluded" className="text-white cursor-pointer">Always Included</Label>
-              <Switch
-                id="alwaysIncluded"
-                checked={alwaysIncluded}
-                onCheckedChange={setAlwaysIncluded}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="photo" className="text-white">Photo</Label>
-              <div className="flex flex-col items-center gap-4">
-                {previewUrl && (
-                  <div className="relative w-40 h-40 mx-auto overflow-hidden rounded-lg border border-slate-700">
-                    <img
-                      src={previewUrl}
-                      alt={name}
-                      className="w-full h-full object-contain"
-                      onError={() => setPreviewUrl("/placeholder.svg")}
-                    />
-                  </div>
-                )}
-                <label
-                  htmlFor="photo-upload"
-                  className="cursor-pointer flex items-center justify-center gap-2 p-2 border border-dashed border-slate-600 rounded-lg w-full hover:bg-slate-800/50 transition-colors"
-                >
-                  <Upload className="h-4 w-4 text-slate-400" />
-                  <span className="text-slate-300 text-sm">
-                    {isUploading ? "Uploading..." : "Upload Image"}
-                  </span>
-                  <input
-                    id="photo-upload"
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    disabled={isUploading}
-                  />
-                </label>
-              </div>
-            </div>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name" className="text-white">Name</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="bg-slate-800 border-slate-700 text-slate-100"
+              placeholder="Enter software name"
+            />
           </div>
-          
-          <div className="space-y-4">
-            <div className="grid gap-3">
-              <h3 className="font-medium text-white border-b border-slate-700 pb-2">Training Requirements</h3>
-              
-              {loadingPlans || loadingResources ? (
-                <div className="text-slate-400 text-sm">Loading training plans...</div>
-              ) : (
-                <div className="space-y-4">
-                  {plans.map((plan) => (
-                    <div key={plan.plan_id} className="flex flex-col gap-1.5">
-                      <Label className="text-sm text-slate-300">{plan.name}</Label>
-                      <Select
-                        value={selectedResources[plan.plan_id]?.toString() || "none"}
-                        onValueChange={(value) => handleResourceChange(plan.plan_id, value === "none" ? undefined : Number(value))}
-                      >
-                        <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100 focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-blue-500">
-                          <SelectValue placeholder="No resource required" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
-                          <SelectItem value="none">No resource required</SelectItem>
-                          {resources.map((resource) => (
-                            <SelectItem key={resource.resource_id} value={resource.resource_id.toString()}>
-                              {resource.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="description" className="text-white">Description</Label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 min-h-[100px]"
+              placeholder="Enter software description"
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="photoUrl" className="text-white">Photo URL</Label>
+            <Input
+              id="photoUrl"
+              value={photoUrl}
+              onChange={(e) => setPhotoUrl(e.target.value)}
+              className="bg-slate-800 border-slate-700 text-slate-100"
+              placeholder="Enter photo URL"
+            />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="always-included"
+              checked={alwaysIncluded}
+              onCheckedChange={setAlwaysIncluded}
+            />
+            <Label htmlFor="always-included" className="text-white">Always Include in Quotes</Label>
           </div>
         </div>
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +16,7 @@ import { useUserProfile } from "@/hooks/use-user-profile";
 import { useTabOrder } from "@/hooks/useTabOrder";
 import { Button } from "@/components/ui/button";
 
-// Tab components
+// Tab components - Properly imported now
 import MachineTypesTab from "@/components/settings/MachineTypesTab";
 import SoftwareTypesTab from "@/components/settings/SoftwareTypesTab";
 import ResourcesTab from "@/components/settings/ResourcesTab";

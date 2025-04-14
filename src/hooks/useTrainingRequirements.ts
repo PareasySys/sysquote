@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchPlanningDetails } from '@/services/planningDetailsService';
 import { scheduleTrainingTasks } from '@/utils/scheduleTasks';
 import { ScheduledTaskSegment } from '@/utils/types';
+import { dataSyncService } from '@/services/dataSyncService';
 
 export interface TrainingRequirement {
   id?: string;
@@ -51,6 +52,12 @@ export function useTrainingRequirements(
       const machineCount = validRequirements.filter(d => d.resource_category === 'Machine').length;
       const softwareCount = validRequirements.filter(d => d.resource_category === 'Software').length;
       console.log(`useTrainingRequirements: Found ${machineCount} machine resources and ${softwareCount} software resources.`);
+
+      // Check if any machine resource is missing
+      if (machineCount === 0) {
+        console.log("useTrainingRequirements: No machine resources found, refreshing planning details");
+        await dataSyncService.refreshPlanningDetailsForQuote(quoteId);
+      }
 
       setRawRequirements(validRequirements);
     } catch (err: any) {

@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { dataSyncService } from "@/services/dataSyncService";
 
 interface TrainingPlanModalProps {
   open: boolean;
@@ -72,18 +73,28 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
           console.error("Error updating training plan:", error);
           throw error;
         }
+        
+        // Sync changes to planning details
+        await dataSyncService.syncTrainingPlanChanges(plan.plan_id);
+        
         toast.success("Training plan updated successfully");
       } else {
-        const { error } = await supabase.from("training_plans").insert({
+        const { data, error } = await supabase.from("training_plans").insert({
           name,
           description,
           icon_name: iconName,
-        });
+        }).select();
 
         if (error) {
           console.error("Error creating training plan:", error);
           throw error;
         }
+        
+        // Sync changes to planning details if we have a new plan
+        if (data && data.length > 0) {
+          await dataSyncService.syncTrainingPlanChanges(data[0].plan_id);
+        }
+        
         toast.success("Training plan created successfully");
       }
 
@@ -102,6 +113,9 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
 
     try {
       setIsDeleting(true);
+      
+      // Store plan ID before deletion for syncing
+      const planId = plan.plan_id;
 
       const { error } = await supabase
         .from("training_plans")
@@ -110,6 +124,9 @@ const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
 
       if (error) throw error;
 
+      // Sync changes after deletion
+      await dataSyncService.syncTrainingPlanChanges(planId);
+      
       toast.success("Training plan deleted successfully");
       onSave();
       onClose();

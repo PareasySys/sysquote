@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useMachineTypes } from '@/hooks/useMachineTypes';
 import { useSoftwareTypes } from '@/hooks/useSoftwareTypes';
 import { useTrainingPlans } from '@/hooks/useTrainingPlans';
+import { useTrainingTopics } from '@/hooks/useTrainingTopics';
 import { 
   PlusCircle, 
   Pencil, 
@@ -28,6 +29,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
+import { dataSyncService } from '@/services/dataSyncService';
 
 // Static items for the sidebar
 export default function TrainingTopicsTab() {
@@ -186,6 +188,13 @@ export default function TrainingTopicsTab() {
           [key]: newTopicsList
         }));
         
+        // Sync topic changes to planning details
+        if (selectedItemType === 'machine') {
+          await dataSyncService.syncMachineTypeChanges(selectedMachineId);
+        } else {
+          await dataSyncService.syncSoftwareTypeChanges(selectedMachineId);
+        }
+        
         setNewTopic('');
         toast.success("Topic added successfully");
       }
@@ -228,6 +237,13 @@ export default function TrainingTopicsTab() {
           );
           return { ...prev, [key]: updatedTopics };
         });
+        
+        // Sync topic changes to planning details
+        if (selectedItemType === 'machine') {
+          await dataSyncService.syncMachineTypeChanges(selectedMachineId);
+        } else {
+          await dataSyncService.syncSoftwareTypeChanges(selectedMachineId);
+        }
       }
       
       setEditingTopicId(null);
@@ -257,6 +273,13 @@ export default function TrainingTopicsTab() {
           const updatedTopics = prev[key].filter(topic => topic.topic_id !== topicId);
           return { ...prev, [key]: updatedTopics };
         });
+        
+        // Sync topic changes to planning details
+        if (selectedItemType === 'machine') {
+          await dataSyncService.syncMachineTypeChanges(selectedMachineId);
+        } else {
+          await dataSyncService.syncSoftwareTypeChanges(selectedMachineId);
+        }
       }
       
       toast.success("Topic deleted successfully");
