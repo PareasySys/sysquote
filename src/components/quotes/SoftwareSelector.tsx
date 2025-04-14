@@ -4,23 +4,15 @@ import { supabase } from "@/lib/supabaseClient";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
-import { Server, Check } from "lucide-react";
 import { syncSoftwarePlanningDetails } from "@/services/planningDetailsService";
 import SoftwareTypeCard from "@/components/software/SoftwareTypeCard";
+import { SoftwareType } from "@/hooks/useSoftwareTypes";
 
 interface SoftwareSelectorProps {
   selectedSoftwareIds: number[];
   alwaysIncludedIds: number[];
   onSave: (softwareIds: number[]) => void;
   quoteId?: string;
-}
-
-interface SoftwareType {
-  software_type_id: number;
-  name: string;
-  description: string | null;
-  photo_url: string | null;
-  always_included: boolean;
 }
 
 const SoftwareSelector: React.FC<SoftwareSelectorProps> = ({
