@@ -57,8 +57,11 @@ function getResourceColor(id: number): string {
     '#3B82F6', '#F97316', '#10B981', '#8B5CF6',
     '#EC4899', '#EF4444', '#F59E0B', '#06B6D4'
   ];
-  return colors[id % colors.length];
+  // Use modulo operator to safely cycle through colors
+  const index = Math.abs(id) % colors.length; // Ensure positive index
+  return colors[index];
 }
+
 
 // --- GanttChart Component ---
 const GanttChart: React.FC<GanttChartProps> = ({
@@ -83,6 +86,11 @@ const GanttChart: React.FC<GanttChartProps> = ({
   const resourceGroups = useMemo(() => {
     const groups = new Map<number, ResourceGroup>();
     requirements.forEach(seg => {
+      // Ensure resource_id is valid before grouping
+      if (seg.resource_id == null) {
+          console.warn("Segment missing resource_id:", seg);
+          return; // Skip segments without a resource_id
+      }
       if (!groups.has(seg.resource_id)) {
         groups.set(seg.resource_id, {
           resourceId: seg.resource_id,
@@ -99,11 +107,17 @@ const GanttChart: React.FC<GanttChartProps> = ({
       }
       machineGroup.requirements.push(seg);
     });
+
+    // Calculate display hours and sort machines
     groups.forEach(group => {
       group.machines.forEach(machine => {
         const uniqueTasks = new Map<string | number, number>();
-        machine.requirements.forEach(seg => { if (!uniqueTasks.has(seg.originalRequirementId)) uniqueTasks.set(seg.originalRequirementId, seg.total_training_hours); });
-        machine.displayHours = Array.from(uniqueTasks.values()).reduce((sum, h) => sum + h, 0);
+        machine.requirements.forEach(seg => {
+          if (seg.originalRequirementId != null && !uniqueTasks.has(seg.originalRequirementId)) {
+            uniqueTasks.set(seg.originalRequirementId, seg.total_training_hours);
+          }
+        });
+        machine.displayHours = Array.from(uniqueTasks.values()).reduce((sum, h) => sum + (h || 0), 0);
       });
       group.machines.sort((a, b) => a.machineName.localeCompare(b.machineName));
     });
@@ -118,15 +132,17 @@ const GanttChart: React.FC<GanttChartProps> = ({
   // --- Day/Month Calculation Helpers ---
   const months = useMemo(() => Array.from({ length: totalMonths }, (_, i) => i + 1), [totalMonths]);
   const days = useMemo(() => Array.from({ length: daysPerMonth }, (_, i) => i + 1), [daysPerMonth]);
+
   const getDayPosition = useCallback((startDay: number): { month: number; dayOfMonth: number } => {
     const validStartDay = Math.max(1, startDay);
     const month = Math.floor((validStartDay - 1) / daysPerMonth) + 1;
     const dayOfMonth = ((validStartDay - 1) % daysPerMonth) + 1;
     return { month, dayOfMonth };
   }, [daysPerMonth]);
+
   const isWeekend = useCallback((month: number, day: number): boolean => {
     const dayOfYear = (month - 1) * daysPerMonth + day;
-    const dayOfWeek = (dayOfYear - 1) % 7;
+    const dayOfWeek = (dayOfYear - 1) % 7; // 0=Mon, 1=Tue, ..., 5=Sat, 6=Sun
     return (dayOfWeek === 5 && !workOnSaturday) || (dayOfWeek === 6 && !workOnSunday);
   }, [workOnSaturday, workOnSunday, daysPerMonth]);
 
@@ -146,11 +162,13 @@ const GanttChart: React.FC<GanttChartProps> = ({
 
     // 1. Find min start and max end day for each resource
     requirements.forEach(seg => {
-      const resourceId = seg.resource_id;
-      const startDay = seg.start_day;
-      const endDay = seg.start_day + seg.duration_days - 1;
-      if (!resourceMinMax[resourceId]) { resourceMinMax[resourceId] = { min: startDay, max: endDay }; }
-      else { resourceMinMax[resourceId].min = Math.min(resourceMinMax[resourceId].min, startDay); resourceMinMax[resourceId].max = Math.max(resourceMinMax[resourceId].max, endDay); }
+        // Ensure resource_id is valid
+        if (seg.resource_id == null) return;
+        const resourceId = seg.resource_id;
+        const startDay = seg.start_day;
+        const endDay = seg.start_day + seg.duration_days - 1;
+        if (!resourceMinMax[resourceId]) { resourceMinMax[resourceId] = { min: startDay, max: endDay }; }
+        else { resourceMinMax[resourceId].min = Math.min(resourceMinMax[resourceId].min, startDay); resourceMinMax[resourceId].max = Math.max(resourceMinMax[resourceId].max, endDay); }
     });
 
     // 2. Calculate rendering info for bars and tasks
@@ -159,26 +177,33 @@ const GanttChart: React.FC<GanttChartProps> = ({
       const resourceId = group.resourceId;
       const resourceTop = currentTop; // Store top for engagement bar
 
-      // Calculate engagement bar data for this resource
+      // Calculate engagement bar data
       if (resourceMinMax[resourceId]) {
         const earliestTaskStart = resourceMinMax[resourceId].min;
         const latestTaskEnd = resourceMinMax[resourceId].max;
         const travelStartDay = earliestTaskStart - 1;
         const travelEndDay = latestTaskEnd + 1;
-        const totalDuration = Math.max(1, travelEndDay - Math.max(1, travelStartDay) + 1);
-        engagements.push({ resourceId, resourceName: group.resourceName, travelStartDay: Math.max(1, travelStartDay), travelEndDay, totalDuration, top: resourceTop });
+        const safeTravelStartDay = Math.max(1, travelStartDay); // Ensure start day is >= 1
+        const totalDuration = Math.max(1, travelEndDay - safeTravelStartDay + 1); // Ensure duration >= 1
+        engagements.push({ resourceId, resourceName: group.resourceName, travelStartDay: safeTravelStartDay, travelEndDay, totalDuration, top: resourceTop });
       }
 
       currentTop += RESOURCE_HEADER_HEIGHT; // Move currentTop past the resource header row
 
-      // Calculate individual task segment positions for machines under this resource
+      // Calculate individual task segment positions
       group.machines.forEach(machine => {
         machine.requirements.forEach(seg => {
+           // Ensure segment has valid start_day and resource_id
+           if (seg.start_day == null || seg.resource_id == null) {
+                console.warn("Skipping segment due to missing start_day or resource_id:", seg);
+                return;
+           }
           const { month, dayOfMonth } = getDayPosition(seg.start_day);
-          const left = (Math.max(1, seg.start_day) - 1) * DAY_WIDTH;
-          // Calculate width based on hours
+          const left = (Math.max(1, seg.start_day) - 1) * DAY_WIDTH; // Ensure left starts from day 1 or later
+
+          // Calculate width based on hours worked relative to a full day's work
           let width = (seg.segment_hours / DAILY_HOUR_LIMIT) * DAY_WIDTH;
-          width = Math.max(width, 4); // Minimum width
+          width = Math.max(width, 4); // Minimum width of 4px
 
           tasks.push({
             ...seg,
@@ -193,14 +218,18 @@ const GanttChart: React.FC<GanttChartProps> = ({
       });
     }); // End of resourceGroups.forEach
 
-    // IMPORTANT: Return statement should be *outside* the forEach loop
     return { tasksToRender: tasks, totalEngagementBars: engagements };
-  }, [resourceGroups, requirements, getDayPosition, daysPerMonth]); // Correct dependencies
+  }, [resourceGroups, requirements, getDayPosition, daysPerMonth]); // Dependencies
 
 
   // --- Loading/Error/Empty States ---
   if (loading) { return <div className="gantt-loading"><Loader2 className="h-6 w-6 animate-spin mr-2" /><span>Loading & Scheduling...</span></div>; }
   if (!loading && requirements.length === 0 && !error) { return <div className="gantt-empty"><p>No training assignments scheduled for the selected plan.</p></div>; }
+  if (error) {
+    // Optional: Display specific error passed down if needed, though ResourceTrainingGantt handles it primarily
+    return <div className="gantt-error"><p>Error: {error}</p></div>;
+   }
+
 
   // --- Render ---
   return (
@@ -248,7 +277,23 @@ const GanttChart: React.FC<GanttChartProps> = ({
             {/* Task Layer */}
             <div className="gantt-task-layer">
               {tasksToRender.map(seg => (
-                <div key={seg.id} className="gantt-task" style={{ top: `${seg.top + 3}px`, left: `${seg.left}px`, width: `${seg.width}px`, height: `${MACHINE_ROW_HEIGHT - 6}px`, backgroundColor: getResourceColor(seg.resource_id) }} title={`${seg.machine_name}: ${seg.segment_hours}h this block (Total ${seg.total_training_hours}h). Start: M${seg.month} D${seg.dayOfMonth}. Logical Duration: ${seg.duration_days} day(s).`}> <span className="gantt-task-label">{seg.machine_name}: {seg.segment_hours}h</span> </div>
+                <div
+                  key={seg.id} // Unique segment ID
+                  className="gantt-task"
+                  style={{
+                    top: `${seg.top + 3}px`,
+                    left: `${seg.left}px`,
+                    width: `${seg.width}px`, // Uses width calculated based on hours
+                    height: `${MACHINE_ROW_HEIGHT - 6}px`,
+                    backgroundColor: getResourceColor(seg.resource_id),
+                  }}
+                  title={`${seg.machine_name}: ${seg.segment_hours}h this block (Total ${seg.total_training_hours}h). Start: M${seg.month} D${seg.dayOfMonth}. Logical Duration: ${seg.duration_days} day(s).`}
+                >
+                  {/* Show only segment hours */}
+                  <span className="gantt-task-label">
+                    {seg.segment_hours}h
+                  </span>
+                </div>
               ))}
             </div>
           </div>
