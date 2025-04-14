@@ -1,3 +1,4 @@
+
 .gantt-container {
   display: flex;
   flex-direction: column;
@@ -61,6 +62,14 @@
   display: flex;
   height: 35px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gantt-month-days {
+  display: flex;
+}
+
+.gantt-month-cells {
+  display: flex;
 }
 
 .gantt-day {
