@@ -1,375 +1,195 @@
 
-import React, { useState, useEffect, useMemo } from "react";
-import { useTrainingTopics, TrainingTopic } from "@/hooks/useTrainingTopics";
-import { useMachineTypes } from "@/hooks/useMachineTypes";
-import { useSoftwareTypes } from "@/hooks/useSoftwareTypes";
-import { useTrainingPlans } from "@/hooks/useTrainingPlans";
-import { Card } from "@/components/ui/card";
-import { TreeView, TreeNode } from "@/components/ui/tree-view";
-import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
+import React, { useState } from "react";
 import { 
-  ListChecks, 
-  HardDrive, 
-  Database, 
-  FileText, 
-  Folder, 
-  FolderOpen,
-  Server,
-  Cpu,
-  Monitor,
-  Printer,
-  BookOpen,
-  Code,
-  FileCode,
-  Binary,
-  Blocks,
-  Forklift,
-  Truck,
-  Factory,
-  Laptop,
-  Car
-} from "lucide-react";
+  Accordion, 
+  AccordionItem, 
+  AccordionTrigger, 
+  AccordionContent 
+} from "@/components/ui/accordion";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
-import { supabase } from "@/lib/supabaseClient";
-
-interface ExpandedState {
-  [key: string]: boolean;
-}
+import { QuoteSoftware } from "@/hooks/useQuoteSoftware";
+import { TopicItem } from "@/hooks/useMachineTrainingRequirements";
 
 interface QuoteTrainingTopicsTreeProps {
-  selectedMachines: QuoteMachine[];
+  topicsByItem: Record<string, TopicItem[]>;
+  machines: QuoteMachine[];
+  software?: QuoteSoftware[];
 }
 
-const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ selectedMachines }) => {
-  const { machines, loading: machinesLoading } = useMachineTypes();
-  const { software, loading: softwareLoading } = useSoftwareTypes();
-  const { plans, loading: plansLoading } = useTrainingPlans();
-  
-  // Selected node states
-  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
-  const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
-  const [selectedNodeKey, setSelectedNodeKey] = useState<string | null>(null);
+const QuoteTrainingTopicsTree: React.FC<QuoteTrainingTopicsTreeProps> = ({ 
+  topicsByItem,
+  machines,
+  software = []
+}) => {
+  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
 
-  // Store all fetched topics by their item and plan
-  const [topicsByItemAndPlan, setTopicsByItemAndPlan] = useState<{
-    [key: string]: TrainingTopic[]
-  }>({});
-  const [loadingTopics, setLoadingTopics] = useState<{[key: string]: boolean}>({});
-  
-  // Separate expanded states for machines and software to prevent conflicts
-  const [expandedMachines, setExpandedMachines] = useState<{[key: string]: boolean}>({});
-  const [expandedSoftware, setExpandedSoftware] = useState<{[key: string]: boolean}>({});
-  const [expandedPlans, setExpandedPlans] = useState<ExpandedState>({});
-  
-  // Root section expansion state (machines and software sections)
-  const [expanded, setExpanded] = useState<ExpandedState>({
-    'machines': true,
-    'software': true,
-  });
-  
-  // Get machine icon by machine name
-  const getMachineIcon = (machineName: string) => {
-    const name = machineName.toLowerCase();
-    if (name.includes('server')) return <Server size={16} className="text-white" />;
-    if (name.includes('storage')) return <HardDrive size={16} className="text-white" />;
-    if (name.includes('processor') || name.includes('cpu')) return <Cpu size={16} className="text-white" />;
-    if (name.includes('monitor') || name.includes('display')) return <Monitor size={16} className="text-white" />;
-    if (name.includes('printer')) return <Printer size={16} className="text-white" />;
-    if (name.includes('lgv')) return <Car size={16} className="text-white" />;
-    if (name.includes('frs')) return <Truck size={16} className="text-white" />;
-    if (name.includes('traslo')) return <Forklift size={16} className="text-white" />;
-    return <Factory size={16} className="text-white" />;
+  // Toggle expand/collapse of a specific machine/software node
+  const toggleExpand = (key: string) => {
+    setExpandedKeys(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
   
-  // Get software icon by software name
-  const getSoftwareIcon = (softwareName: string) => {
-    const name = softwareName.toLowerCase();
-    if (name.includes('database')) return <Database size={16} className="text-white" />;
-    if (name.includes('code') || name.includes('programming')) return <Code size={16} className="text-white" />;
-    if (name.includes('file') || name.includes('document')) return <FileCode size={16} className="text-white" />;
-    if (name.includes('binary')) return <Binary size={16} className="text-white" />;
-    if (name.includes('book') || name.includes('manual')) return <BookOpen size={16} className="text-white" />;
-    return <Laptop size={16} className="text-white" />;
+  // Format a machine name with item type prefix
+  const formatItemName = (name: string, type: string, id: number) => {
+    return `${type}_${id}_${name}`;
   };
-  
-  // Filter machines to only show selected ones in the quote
-  const filteredMachines = useMemo(() => {
-    const selectedMachineIds = selectedMachines.map(m => m.machine_type_id);
-    return machines.filter(machine => selectedMachineIds.includes(machine.machine_type_id));
-  }, [machines, selectedMachines]);
 
-  // Fetch topics for a specific item and plan
-  const fetchTopicsForItemAndPlan = async (itemId: number, planId: number, itemType: string) => {
-    const key = `${itemType}-${itemId}-plan-${planId}`;
+  // Find machine/software details by ID 
+  const getMachineById = (id: number) => machines.find(m => m.machine_type_id === id);
+  const getSoftwareById = (id: number) => software.find(s => s.software_type_id === id);
+
+  // Build tree structure
+  const renderTree = () => {
+    // Get all item IDs that have topics (both machines and software)
+    const itemKeys = Object.keys(topicsByItem);
     
-    setLoadingTopics(prev => ({
-      ...prev,
-      [key]: true
-    }));
-    
-    try {
-      console.log(`Fetching topics for ${itemType} ${itemId}, plan ${planId}`);
-      
-      const columnName = itemType === "machine" ? 'machine_type_id' : 'software_type_id';
-      
-      const { data, error } = await supabase
-        .from('training_topics')
-        .select('*')
-        .eq(columnName, itemId)
-        .eq('plan_id', planId)
-        .order('display_order', { ascending: true, nullsFirst: true });
-        
-      if (error) throw error;
-      
-      console.log(`Topics for ${key}:`, data);
-      
-      setTopicsByItemAndPlan(prev => ({
-        ...prev,
-        [key]: data?.map((topic: any) => ({
-          ...topic,
-          software_type_id: topic.software_type_id || null,
-          machine_type_id: topic.machine_type_id || null,
-          item_type: topic.item_type || itemType
-        })) || []
-      }));
-    } catch (err) {
-      console.error(`Error fetching topics for ${key}:`, err);
-    } finally {
-      setLoadingTopics(prev => ({
-        ...prev,
-        [key]: false
-      }));
-    }
-  };
-  
-  // Toggle expanded state of a machine node
-  const toggleMachineExpanded = (machineKey: string) => {
-    setExpandedMachines(prev => ({
-      ...prev,
-      [machineKey]: !prev[machineKey]
-    }));
-  };
-  
-  // Toggle expanded state of a software node
-  const toggleSoftwareExpanded = (softwareKey: string) => {
-    setExpandedSoftware(prev => ({
-      ...prev,
-      [softwareKey]: !prev[softwareKey]
-    }));
-  };
-  
-  // Toggle expanded state for a root section (machines or software)
-  const toggleRootExpanded = (nodeKey: string) => {
-    setExpanded(prev => ({
-      ...prev,
-      [nodeKey]: !prev[nodeKey]
-    }));
-  };
-  
-  // Toggle expanded state for a plan under a machine or software
-  const togglePlanExpanded = (nodeKey: string, itemId?: number, planId?: number, itemType?: string) => {
-    // If this is a plan node and it's being expanded, fetch topics
-    if (itemId && planId && itemType && !expandedPlans[nodeKey]) {
-      // Only fetch if we haven't already
-      const key = `${itemType}-${itemId}-plan-${planId}`;
-      if (!topicsByItemAndPlan[key]) {
-        fetchTopicsForItemAndPlan(itemId, planId, itemType);
-      }
+    // No items with topics
+    if (itemKeys.length === 0) {
+      return <div className="text-gray-400 py-2">No training topics available</div>;
     }
     
-    setExpandedPlans(prev => ({
-      ...prev,
-      [nodeKey]: !prev[nodeKey]
-    }));
-  };
-  
-  // Render loading state
-  if (machinesLoading || softwareLoading || plansLoading) {
     return (
-      <Card className="bg-slate-800/80 border border-white/5 p-4">
-        <div className="p-4 text-center">
-          <TextShimmerWave
-            className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
-            duration={1}
-            spread={1}
-            zDistance={1}
-            scaleDistance={1.1}
-            rotateYDistance={10}
-          >
-            Loading Training Data
-          </TextShimmerWave>
-        </div>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="bg-slate-800/80 border border-white/5 p-4">
-      <h2 className="text-xl font-semibold mb-4 text-white flex items-center gap-2">
-        <ListChecks className="h-5 w-5 text-white" />
-        Training Topics
-      </h2>
-      
-      <div className="bg-slate-700/30 rounded-md p-2 border border-slate-600/30">
-        <TreeView className="max-h-[60vh] overflow-y-auto pr-2">
-          {/* Machine Topics Section */}
-          <TreeNode 
-            id="machines"
-            label="Machine Topics"
-            icon={expanded['machines'] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
-            expanded={expanded['machines']}
-            onToggle={() => toggleRootExpanded('machines')}
-          />
+      <div className="space-y-2">
+        {/* Machines with topics */}
+        {machines.map(machine => {
+          // Skip if this machine has no topics
+          const machineKey = `machine_${machine.machine_type_id}`;
+          const machineTopics = topicsByItem[machineKey] || [];
+          if (machineTopics.length === 0) return null;
           
-          {expanded['machines'] && filteredMachines.map(machine => {
-            const machineKey = `machine-${machine.machine_type_id}`;
-            return (
-              <React.Fragment key={machineKey}>
-                {/* Machine Type Node */}
-                <TreeNode 
-                  id={machineKey}
-                  label={machine.name}
-                  icon={getMachineIcon(machine.name)}
-                  expanded={expandedMachines[machineKey]}
-                  level={1}
-                  onToggle={() => toggleMachineExpanded(machineKey)}
-                />
-                
-                {/* Plans under this machine */}
-                {expandedMachines[machineKey] && plans.map(plan => {
-                  const planKey = `${machineKey}-plan-${plan.plan_id}`;
-                  const topicsKey = `machine-${machine.machine_type_id}-plan-${plan.plan_id}`;
-                  
-                  return (
-                    <React.Fragment key={planKey}>
-                      <TreeNode 
-                        id={planKey}
-                        label={plan.name}
-                        icon={expandedPlans[planKey] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
-                        expanded={expandedPlans[planKey]}
-                        level={2}
-                        onToggle={() => togglePlanExpanded(planKey, machine.machine_type_id, plan.plan_id, 'machine')}
+          return (
+            <div key={machineKey} className="border border-slate-700/50 rounded-lg overflow-hidden">
+              <div 
+                className="flex items-center justify-between px-4 py-3 bg-slate-800/50 cursor-pointer"
+                onClick={() => toggleExpand(machineKey)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-slate-700 rounded-md flex-shrink-0 overflow-hidden">
+                    {machine.photo_url ? (
+                      <img 
+                        src={machine.photo_url} 
+                        alt={machine.name} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "/placeholder.svg";
+                        }}
                       />
-                      
-                      {/* Display topics when a plan is expanded */}
-                      {expandedPlans[planKey] && (
-                        <>
-                          {loadingTopics[topicsKey] ? (
-                            <TreeNode
-                              id={`${planKey}-loading`}
-                              label="Loading topics..."
-                              isLeaf={true}
-                              level={3}
-                            />
-                          ) : topicsByItemAndPlan[topicsKey]?.length > 0 ? (
-                            topicsByItemAndPlan[topicsKey].map((topic) => (
-                              <TreeNode
-                                key={`topic-${topic.topic_id}`}
-                                id={`topic-${topic.topic_id}`}
-                                label={topic.topic_text}
-                                icon={<FileText size={16} className="text-white" />}
-                                isLeaf={true}
-                                level={3}
-                              />
-                            ))
-                          ) : (
-                            <TreeNode
-                              id={`${planKey}-no-topics`}
-                              label="No topics available"
-                              isLeaf={true}
-                              level={3}
-                            />
-                          )}
-                        </>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </React.Fragment>
-            );
-          })}
-          
-          {/* Software Topics Section */}
-          <TreeNode 
-            id="software"
-            label="Software Topics"
-            icon={expanded['software'] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
-            expanded={expanded['software']}
-            onToggle={() => toggleRootExpanded('software')}
-          />
-          
-          {expanded['software'] && software.map(softwareItem => {
-            const softwareKey = `software-${softwareItem.software_type_id}`;
-            return (
-              <React.Fragment key={softwareKey}>
-                {/* Software Type Node */}
-                <TreeNode 
-                  id={softwareKey}
-                  label={softwareItem.name}
-                  icon={getSoftwareIcon(softwareItem.name)}
-                  expanded={expandedSoftware[softwareKey]}
-                  level={1}
-                  onToggle={() => toggleSoftwareExpanded(softwareKey)}
-                />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-700 text-slate-500 text-xs">
+                        M
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-gray-200 font-semibold">{machine.name}</div>
+                </div>
                 
-                {/* Plans under this software */}
-                {expandedSoftware[softwareKey] && plans.map(plan => {
-                  const planKey = `${softwareKey}-plan-${plan.plan_id}`;
-                  const topicsKey = `software-${softwareItem.software_type_id}-plan-${plan.plan_id}`;
-                  
-                  return (
-                    <React.Fragment key={planKey}>
-                      <TreeNode 
-                        id={planKey}
-                        label={plan.name}
-                        icon={expandedPlans[planKey] ? <FolderOpen size={16} className="text-white" /> : <Folder size={16} className="text-white" />}
-                        expanded={expandedPlans[planKey]}
-                        level={2}
-                        onToggle={() => togglePlanExpanded(planKey, softwareItem.software_type_id, plan.plan_id, 'software')}
+                <div className="flex gap-2 items-center">
+                  <span className="text-gray-400 text-sm">{machineTopics.length} topics</span>
+                  {expandedKeys[machineKey] ? (
+                    <ChevronDown className="h-5 w-5 text-gray-500" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-gray-500" />
+                  )}
+                </div>
+              </div>
+              
+              {expandedKeys[machineKey] && (
+                <div className="border-t border-slate-700/50 bg-slate-800/30 p-3">
+                  <Accordion type="multiple" className="w-full">
+                    {machineTopics.map(topic => (
+                      <AccordionItem key={`${machineKey}-${topic.topic_id}`} value={`${machineKey}-${topic.topic_id}`} className="border-slate-700/50">
+                        <AccordionTrigger className="py-3 text-gray-200 hover:text-gray-100 hover:no-underline">
+                          {topic.topic_name}
+                        </AccordionTrigger>
+                        <AccordionContent className="text-gray-400 text-sm">
+                          {topic.description || "No description available."}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        
+        {/* Software with topics */}
+        {software.map(softwareItem => {
+          // Skip if this software has no topics
+          const softwareKey = `software_${softwareItem.software_type_id}`;
+          const softwareTopics = topicsByItem[softwareKey] || [];
+          if (softwareTopics.length === 0) return null;
+          
+          return (
+            <div key={softwareKey} className="border border-slate-700/50 rounded-lg overflow-hidden">
+              <div 
+                className="flex items-center justify-between px-4 py-3 bg-slate-800/50 cursor-pointer"
+                onClick={() => toggleExpand(softwareKey)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-slate-700 rounded-md flex-shrink-0 overflow-hidden">
+                    {softwareItem.photo_url ? (
+                      <img 
+                        src={softwareItem.photo_url} 
+                        alt={softwareItem.name} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "/placeholder.svg";
+                        }}
                       />
-                      
-                      {/* Display topics when a plan is expanded */}
-                      {expandedPlans[planKey] && (
-                        <>
-                          {loadingTopics[topicsKey] ? (
-                            <TreeNode
-                              id={`${planKey}-loading`}
-                              label="Loading topics..."
-                              isLeaf={true}
-                              level={3}
-                            />
-                          ) : topicsByItemAndPlan[topicsKey]?.length > 0 ? (
-                            topicsByItemAndPlan[topicsKey].map((topic) => (
-                              <TreeNode
-                                key={`topic-${topic.topic_id}`}
-                                id={`topic-${topic.topic_id}`}
-                                label={topic.topic_text}
-                                icon={<FileText size={16} className="text-white" />}
-                                isLeaf={true}
-                                level={3}
-                              />
-                            ))
-                          ) : (
-                            <TreeNode
-                              id={`${planKey}-no-topics`}
-                              label="No topics available"
-                              isLeaf={true}
-                              level={3}
-                            />
-                          )}
-                        </>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </React.Fragment>
-            );
-          })}
-        </TreeView>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-700 text-slate-500 text-xs">
+                        S
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-gray-200 font-semibold">{softwareItem.name}</div>
+                    {softwareItem.always_included && (
+                      <span className="px-1.5 py-0.5 bg-blue-900/70 rounded text-[10px] text-blue-300 inline-flex">
+                        Always
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 items-center">
+                  <span className="text-gray-400 text-sm">{softwareTopics.length} topics</span>
+                  {expandedKeys[softwareKey] ? (
+                    <ChevronDown className="h-5 w-5 text-gray-500" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-gray-500" />
+                  )}
+                </div>
+              </div>
+              
+              {expandedKeys[softwareKey] && (
+                <div className="border-t border-slate-700/50 bg-slate-800/30 p-3">
+                  <Accordion type="multiple" className="w-full">
+                    {softwareTopics.map(topic => (
+                      <AccordionItem key={`${softwareKey}-${topic.topic_id}`} value={`${softwareKey}-${topic.topic_id}`} className="border-slate-700/50">
+                        <AccordionTrigger className="py-3 text-gray-200 hover:text-gray-100 hover:no-underline">
+                          {topic.topic_name}
+                        </AccordionTrigger>
+                        <AccordionContent className="text-gray-400 text-sm">
+                          {topic.description || "No description available."}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
-    </Card>
-  );
+    );
+  };
+
+  return renderTree();
 };
 
 export default QuoteTrainingTopicsTree;
