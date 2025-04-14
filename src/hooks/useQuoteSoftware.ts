@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from "sonner";
+import { syncSoftwarePlanningDetails } from "@/services/planningDetailsService";
+import { useTrainingPlans } from "./useTrainingPlans";
 
 export interface QuoteSoftware {
   software_type_id: number;
@@ -17,6 +19,7 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
   const [alwaysIncludedIds, setAlwaysIncludedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const { plans } = useTrainingPlans();
 
   // Fetch software that is always included
   const fetchAlwaysIncludedSoftware = async () => {
@@ -89,6 +92,11 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
         if (detailsError) throw detailsError;
         
         setSelectedSoftware(softwareDetails || []);
+        
+        // Sync planning details with software types
+        if (plans && plans.length > 0) {
+          await syncSoftwarePlanningDetails(quoteId, updatedIds, plans);
+        }
       } else {
         setSelectedSoftware([]);
       }
@@ -119,6 +127,11 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       
       // Update local state
       setSoftwareTypeIds(combinedIds);
+      
+      // Sync planning details with software types
+      if (plans && plans.length > 0) {
+        await syncSoftwarePlanningDetails(quoteId, combinedIds, plans);
+      }
       
       // Refresh the software list
       await fetchQuoteSoftware();
@@ -157,6 +170,11 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       // Update local state
       setSoftwareTypeIds(updatedSoftwareIds);
       setSelectedSoftware(prev => prev.filter(software => software.software_type_id !== softwareTypeId));
+      
+      // Sync planning details with updated software types
+      if (plans && plans.length > 0) {
+        await syncSoftwarePlanningDetails(quoteId, updatedSoftwareIds, plans);
+      }
       
       toast.success("Software removed successfully");
     } catch (err: any) {

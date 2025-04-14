@@ -202,9 +202,13 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
       [planId]: resourceId
     }));
 
+    if (!software?.software_type_id) return;
+
     if (resourceId) {
+      console.log(`Saving resource ${resourceId} for plan ${planId}`);
       await saveRequirement(planId, resourceId);
     } else {
+      console.log(`Removing resource for plan ${planId}`);
       await removeRequirement(planId);
     }
   };

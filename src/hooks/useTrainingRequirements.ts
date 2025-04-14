@@ -45,11 +45,14 @@ export function useTrainingRequirements(
       const details = await fetchPlanningDetails(quoteId, planId);
       console.log(`useTrainingRequirements: Fetched ${details.length} raw planning details.`);
       
-      const machineCount = details.filter(d => d.resource_category === 'Machine').length;
-      const softwareCount = details.filter(d => d.resource_category === 'Software').length;
+      // Filter out requirements with no resource assigned
+      const validRequirements = details.filter(req => req.resource_id);
+      
+      const machineCount = validRequirements.filter(d => d.resource_category === 'Machine').length;
+      const softwareCount = validRequirements.filter(d => d.resource_category === 'Software').length;
       console.log(`useTrainingRequirements: Found ${machineCount} machine resources and ${softwareCount} software resources.`);
 
-      setRawRequirements(details);
+      setRawRequirements(validRequirements);
     } catch (err: any) {
       console.error("useTrainingRequirements: Error fetching planning details:", err);
       const errorMessage = err.message || "Failed to fetch training requirements.";

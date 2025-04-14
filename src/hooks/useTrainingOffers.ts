@@ -165,10 +165,7 @@ export const useTrainingOffers = () => {
           })
           .eq("id", existingOffer.id);
 
-        if (error) {
-          console.error("Error updating existing software training offer:", error);
-          throw error;
-        }
+        if (error) throw error;
       } else {
         // Create new record with explicit NULL for machine_type_id
         const { error } = await supabase
@@ -182,10 +179,7 @@ export const useTrainingOffers = () => {
             updated_at: new Date().toISOString()
           });
 
-        if (error) {
-          console.error("Error creating new software training offer:", error);
-          throw error;
-        }
+        if (error) throw error;
       }
       
       // Refetch to update state
@@ -233,6 +227,30 @@ export const useTrainingOffers = () => {
           // Get all planning details for this quote, type, and plan
           const typesIdColumn = isSoftware ? 'software_types_id' : 'machine_types_id';
           
+          // Also get the resource_id from software/machine training requirements
+          // This is to make sure we keep the resource assignment
+          let resourceId: number | null = null;
+          
+          if (isSoftware) {
+            const { data: requirement } = await supabase
+              .from("software_training_requirements")
+              .select("resource_id")
+              .eq("software_type_id", type_id)
+              .eq("plan_id", plan_id)
+              .single();
+              
+            resourceId = requirement?.resource_id || null;
+          } else {
+            const { data: requirement } = await supabase
+              .from("machine_training_requirements")
+              .select("resource_id")
+              .eq("machine_type_id", type_id)
+              .eq("plan_id", plan_id)
+              .single();
+              
+            resourceId = requirement?.resource_id || null;
+          }
+          
           const { data: planningDetails, error: detailsError } = await supabase
             .from("planning_details")
             .select("id")
@@ -254,7 +272,7 @@ export const useTrainingOffers = () => {
                 plan_id: plan_id,
                 machine_types_id: isSoftware ? null : type_id,
                 software_types_id: isSoftware ? type_id : null,
-                resource_id: null,
+                resource_id: resourceId,
                 allocated_hours: hours_required,
                 resource_category: isSoftware ? 'Software' : 'Machine',
                 work_on_saturday: false,
@@ -271,6 +289,7 @@ export const useTrainingOffers = () => {
                 .from("planning_details")
                 .update({ 
                   allocated_hours: hours_required,
+                  resource_id: resourceId, // Make sure we update the resource_id too
                   updated_at: new Date().toISOString()
                 })
                 .eq("id", detail.id);
