@@ -385,6 +385,7 @@ export type Database = {
           id: number
           machine_type_id: number
           plan_id: number
+          software_type_id: number | null
           updated_at: string
         }
         Insert: {
@@ -393,6 +394,7 @@ export type Database = {
           id?: number
           machine_type_id: number
           plan_id: number
+          software_type_id?: number | null
           updated_at?: string
         }
         Update: {
@@ -401,9 +403,17 @@ export type Database = {
           id?: number
           machine_type_id?: number
           plan_id?: number
+          software_type_id?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_software_type"
+            columns: ["software_type_id"]
+            isOneToOne: false
+            referencedRelation: "software_types"
+            referencedColumns: ["software_type_id"]
+          },
           {
             foreignKeyName: "training_offers_machine_type_id_fkey"
             columns: ["machine_type_id"]

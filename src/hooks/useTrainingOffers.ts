@@ -2,12 +2,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useMachineTypes } from "./useMachineTypes";
+import { useSoftwareTypes } from "./useSoftwareTypes";
 import { useTrainingPlans } from "./useTrainingPlans";
 import { toast } from "sonner";
 
 export interface TrainingOffer {
   id: number;
-  machine_type_id: number;
+  machine_type_id: number | null;
+  software_type_id: number | null;
   plan_id: number;
   hours_required: number;
   created_at: string;
@@ -19,18 +21,19 @@ export const useTrainingOffers = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { machines } = useMachineTypes();
+  const { software } = useSoftwareTypes();
   const { plans } = useTrainingPlans();
 
-  // Create a 2D matrix representation of hours for each machine-plan combination
-  // Inverted from previous version: machines are now rows, plans are columns
+  // Create a 2D matrix representation of hours for machine-plan combinations
   const offersMatrix = machines.map(machine => {
     const machineRow = {
-      machineId: machine.machine_type_id,
-      machineName: machine.name,
+      itemId: machine.machine_type_id,
+      itemName: machine.name,
       plans: plans.map(plan => {
         const offer = offers.find(o => 
           o.plan_id === plan.plan_id && 
-          o.machine_type_id === machine.machine_type_id
+          o.machine_type_id === machine.machine_type_id &&
+          o.software_type_id === null
         );
         
         return {
@@ -42,6 +45,29 @@ export const useTrainingOffers = () => {
       })
     };
     return machineRow;
+  });
+
+  // Create a separate matrix for software-plan combinations
+  const softwareOffersMatrix = software.map(softwareItem => {
+    const softwareRow = {
+      itemId: softwareItem.software_type_id,
+      itemName: softwareItem.name,
+      plans: plans.map(plan => {
+        const offer = offers.find(o => 
+          o.plan_id === plan.plan_id && 
+          o.software_type_id === softwareItem.software_type_id &&
+          o.machine_type_id === null
+        );
+        
+        return {
+          planId: plan.plan_id,
+          planName: plan.name,
+          hoursRequired: offer?.hours_required || 0,
+          offerId: offer?.id
+        };
+      })
+    };
+    return softwareRow;
   });
 
   const fetchOffers = async () => {
@@ -75,7 +101,9 @@ export const useTrainingOffers = () => {
   ) => {
     try {
       const existingOffer = offers.find(
-        o => o.machine_type_id === machine_type_id && o.plan_id === plan_id
+        o => o.machine_type_id === machine_type_id && 
+             o.plan_id === plan_id &&
+             o.software_type_id === null
       );
 
       if (existingOffer) {
@@ -96,6 +124,7 @@ export const useTrainingOffers = () => {
           .insert({
             machine_type_id,
             plan_id,
+            software_type_id: null,
             hours_required
           });
 
@@ -106,7 +135,7 @@ export const useTrainingOffers = () => {
       await fetchOffers();
       
       // Also update any planning_details that use this machine type and plan
-      await updatePlanningDetailsForAllQuotes(machine_type_id, plan_id, hours_required);
+      await updatePlanningDetailsForAllQuotes(machine_type_id, plan_id, hours_required, false);
       
       toast.success("Training hours updated");
       return true;
@@ -117,38 +146,96 @@ export const useTrainingOffers = () => {
     }
   };
   
-  // Update planning_details allocated_hours when training offers change for ALL quotes
-  const updatePlanningDetailsForAllQuotes = async (
-    machine_type_id: number,
+  // New function to update software training hours
+  const updateSoftwareTrainingHours = async (
+    software_type_id: number,
     plan_id: number,
     hours_required: number
   ) => {
     try {
-      // First, get all quotes that have this machine type in their machine_type_ids array
-      const { data: quotesWithMachine, error: quotesError } = await supabase
+      const existingOffer = offers.find(
+        o => o.software_type_id === software_type_id && 
+             o.plan_id === plan_id &&
+             o.machine_type_id === null
+      );
+
+      if (existingOffer) {
+        // Update existing record
+        const { error } = await supabase
+          .from("training_offers")
+          .update({ 
+            hours_required,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", existingOffer.id);
+
+        if (error) throw error;
+      } else {
+        // Create new record
+        const { error } = await supabase
+          .from("training_offers")
+          .insert({
+            software_type_id,
+            plan_id,
+            machine_type_id: null,
+            hours_required
+          });
+
+        if (error) throw error;
+      }
+      
+      // Refetch to update state
+      await fetchOffers();
+      
+      // Also update any planning_details that use this software type and plan
+      await updatePlanningDetailsForAllQuotes(software_type_id, plan_id, hours_required, true);
+      
+      toast.success("Software training hours updated");
+      return true;
+    } catch (err: any) {
+      console.error("Error updating software training hours:", err);
+      toast.error(err.message || "Failed to update software training hours");
+      return false;
+    }
+  };
+  
+  // Update planning_details allocated_hours when training offers change for ALL quotes
+  const updatePlanningDetailsForAllQuotes = async (
+    type_id: number,
+    plan_id: number,
+    hours_required: number,
+    isSoftware: boolean = false
+  ) => {
+    try {
+      const columnName = isSoftware ? 'software_type_ids' : 'machine_type_ids';
+      
+      // First, get all quotes that have this type in their types array
+      const { data: quotesWithType, error: quotesError } = await supabase
         .from("quotes")
         .select("quote_id")
-        .contains('machine_type_ids', [machine_type_id]);
+        .contains(columnName, [type_id]);
       
       if (quotesError) {
-        console.error("Error finding quotes with machine:", quotesError);
+        console.error(`Error finding quotes with ${isSoftware ? 'software' : 'machine'} type:`, quotesError);
         return;
       }
       
-      if (!quotesWithMachine || quotesWithMachine.length === 0) return;
+      if (!quotesWithType || quotesWithType.length === 0) return;
       
-      console.log(`Updating planning details for ${quotesWithMachine.length} quotes that use machine type ${machine_type_id}`);
+      console.log(`Updating planning details for ${quotesWithType.length} quotes that use ${isSoftware ? 'software' : 'machine'} type ${type_id}`);
       
-      // For each quote that has this machine, update its planning details
-      for (const quote of quotesWithMachine) {
+      // For each quote that has this type, update its planning details
+      for (const quote of quotesWithType) {
         try {
-          // Get all planning details for this quote, machine type, and plan
+          // Get all planning details for this quote, type, and plan
+          const typesIdColumn = isSoftware ? 'software_types_id' : 'machine_types_id';
+          
           const { data: planningDetails, error: detailsError } = await supabase
             .from("planning_details")
             .select("id")
             .eq("quote_id", quote.quote_id)
             .eq("plan_id", plan_id)
-            .eq("machine_types_id", machine_type_id);
+            .eq(typesIdColumn, type_id);
           
           if (detailsError) {
             console.error(`Error checking planning details for quote ${quote.quote_id}:`, detailsError);
@@ -162,10 +249,11 @@ export const useTrainingOffers = () => {
               .insert({
                 quote_id: quote.quote_id,
                 plan_id: plan_id,
-                machine_types_id: machine_type_id,
-                software_types_id: null,
+                machine_types_id: isSoftware ? null : type_id,
+                software_types_id: isSoftware ? type_id : null,
                 resource_id: null,
                 allocated_hours: hours_required,
+                resource_category: isSoftware ? 'Software' : 'Machine',
                 work_on_saturday: false,
                 work_on_sunday: false
               });
@@ -201,17 +289,19 @@ export const useTrainingOffers = () => {
   };
 
   useEffect(() => {
-    if (machines.length > 0 && plans.length > 0) {
+    if ((machines.length > 0 || software.length > 0) && plans.length > 0) {
       fetchOffers();
     }
-  }, [machines.length, plans.length]);
+  }, [machines.length, software.length, plans.length]);
 
   return {
     offers,
     offersMatrix,
+    softwareOffersMatrix,
     loading,
     error,
     fetchOffers,
-    updateTrainingHours
+    updateTrainingHours,
+    updateSoftwareTrainingHours
   };
 };
