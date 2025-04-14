@@ -1,164 +1,160 @@
+// src/hooks/useTrainingRequirements.ts
 
-import { useState, useEffect } from "react";
-import { cleanupRemovedMachines, fetchPlanningDetails } from "@/services/planningDetailsService";
+import { useState, useEffect, useCallback } from 'react';
+// --- Adjust these import paths based on your project structure ---
+import { fetchPlanningDetails } from '@/services/planningDetailsService';
+// Ensure scheduleTasks.ts is in the correct location (e.g., src/utils/)
+import { scheduleTrainingTasks } from '@/utils/scheduleTasks';
+// Ensure types.ts (or wherever ScheduledTaskSegment is defined) is in the correct location
+import { ScheduledTaskSegment } from '@/utils/types';
 
+// --- Define or Import Core Data Types ---
+
+// Interface for the raw data fetched from the backend
+// Ensure this matches the actual structure returned by fetchPlanningDetails
+// after the mapping in that service function.
 export interface TrainingRequirement {
-  requirement_id: number;
-  resource_id: number;
-  resource_name: string;
-  machine_name?: string;
-  training_hours: number;
-  start_day: number;
-  duration_days: number;
+  id?: string; // From planning_details ID
+  requirement_id?: number | string; // Add this if needed, maybe derived from id
+  quote_id: string;
+  plan_id: number;
+  resource_id: number; // Made non-nullable based on service logic? Check service
+  resource_name: string; // Ensured by service mapping
+  machine_name: string; // Derived as type_name in service
+  training_hours: number; // Mapped from allocated_hours
+  // Remove start_day and duration_days - these are calculated by the scheduler
 }
 
-// Add this interface, perhaps in a types file or within useTrainingRequirements.ts
+/* --- Ensure ScheduledTaskSegment is defined correctly ---
+// If not in utils/types.ts, define it here or import correctly.
+// Example definition:
 export interface ScheduledTaskSegment {
   id: string; // Unique ID for this specific segment (e.g., "req123-seg0")
-  originalRequirementId: number | string; // ID of the source requirement
+  originalRequirementId: number | string; // ID of the source requirement (planning_details.id)
   resource_id: number;
   resource_name: string;
   machine_name: string;
   total_training_hours: number; // Total hours for the original requirement
   segment_hours: number; // Hours allocated to this specific segment
   start_day: number; // Calculated start day for this segment
-  duration_days: number; // Calculated duration for this segment
-  // Add any other fields from TrainingRequirement needed for display/tooltips
+  duration_days: number; // Calculated duration for this segment (can be 1 or more after consolidation)
 }
+*/
 
-export const useTrainingRequirements = (
-  quoteId?: string, 
-  planId?: number | null,
-  workOnSaturday: boolean = false,
-  workOnSunday: boolean = false
-) => {
-  const [requirements, setRequirements] = useState<TrainingRequirement[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+/**
+ * Custom hook to fetch raw training requirements and schedule them
+ * based on daily hour limits and weekend settings.
+ */
+export function useTrainingRequirements(
+  quoteId: string | undefined,
+  planId: number | null,
+  workOnSaturday: boolean,
+  workOnSunday: boolean
+) {
+  // State for the raw, unscheduled requirements fetched from the API
+  const [rawRequirements, setRawRequirements] = useState<TrainingRequirement[]>([]);
+  // State for the tasks after processing by the scheduling logic
+  const [scheduledTasks, setScheduledTasks] = useState<ScheduledTaskSegment[]>([]);
+  // Combined loading state (covers both fetching and scheduling)
+  const [loading, setLoading] = useState<boolean>(false);
+  // State to hold any error messages during fetching or scheduling
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch training requirements for the selected quote and plan
-  const fetchRequirements = async () => {
+  /**
+   * Fetches the raw training requirements from the backend.
+   */
+  const fetchRequirements = useCallback(async () => {
     if (!quoteId || !planId) {
-      setRequirements([]);
+      console.log("useTrainingRequirements: quoteId or planId missing, clearing state.");
+      setRawRequirements([]);
+      setScheduledTasks([]);
+      setError(null);
       setLoading(false);
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Get planning details
-      const planningDetails = await fetchPlanningDetails(quoteId, planId);
-      
-      if (planningDetails.length === 0) {
-        setRequirements([]);
-        setLoading(false);
-        return;
-      }
-      
-      // Group planning details by resource_id to process sequentially
-      const resourceGroups = planningDetails.reduce((acc, detail) => {
-        const resourceId = detail.resource_id || 0;
-        if (!acc[resourceId]) {
-          acc[resourceId] = [];
-        }
-        acc[resourceId].push(detail);
-        return acc;
-      }, {} as Record<number, typeof planningDetails>);
-      
-      let allRequirements: TrainingRequirement[] = [];
-      let requirementId = 1;
-      
-      // Process each resource's training details sequentially
-      Object.entries(resourceGroups).forEach(([resourceId, details]) => {
-        const numericResourceId = parseInt(resourceId);
-        // Sort by machine/software type name for consistent ordering
-        const sortedDetails = details.sort((a, b) => {
-          const nameA = a.type_name || '';
-          const nameB = b.type_name || '';
-          return nameA.localeCompare(nameB);
-        });
-        
-        // Start day for this resource's first training
-        // Always start on day 1 for each resource to avoid initial gaps
-        let currentDay = 1;
-        
-        // Process each detail for this resource sequentially
-        sortedDetails.forEach((detail) => {
-          const resourceName = detail.resource_name || "Unassigned";
-          const hours = detail.allocated_hours || 0;
-          const machineName = detail.type_name || "Unknown Machine";
-          
-          // Calculate duration in days (assuming 8 hours per working day)
-          let durationDays = Math.ceil(hours / 8);
-          if (durationDays < 1) durationDays = 1;
-          
-          // Get weekend settings from the database record
-          const detailWorkOnSaturday = detail.work_on_saturday || false;
-          const detailWorkOnSunday = detail.work_on_sunday || false;
-          
-          // Create the requirement
-          const requirement: TrainingRequirement = {
-            requirement_id: requirementId++,
-            resource_id: numericResourceId,
-            resource_name: resourceName,
-            machine_name: machineName,
-            training_hours: hours,
-            start_day: currentDay,
-            duration_days: durationDays
-          };
-          
-          allRequirements.push(requirement);
-          
-          // Move to next available starting day - immediately after this training
-          currentDay += durationDays;
-          
-          // Skip weekends for the next training if needed
-          if (!detailWorkOnSaturday || !detailWorkOnSunday) {
-            let additionalDays = 0;
-            
-            // Check each day to see if it's a weekend that should be skipped
-            for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-              const dayToCheck = currentDay + dayOffset;
-              const dayOfWeek = dayToCheck % 7; // 0-6, where 0 is Sunday and 6 is Saturday
-              
-              if ((dayOfWeek === 0 && !detailWorkOnSunday) ||
-                  (dayOfWeek === 6 && !detailWorkOnSaturday)) {
-                // If it's a weekend day we're skipping, increment additional days
-                additionalDays++;
-              }
-            }
-            
-            currentDay += additionalDays;
-          }
-        });
-      });
-      
-      setRequirements(allRequirements);
-      
-    } catch (err: any) {
-      console.error("Error fetching training requirements:", err);
-      setError(err.message || "Failed to load training requirements");
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log(`useTrainingRequirements: Fetching requirements for quote: ${quoteId}, plan: ${planId}`);
+    setLoading(true);
+    setError(null);
 
+    try {
+      // fetchPlanningDetails now returns data closer to TrainingRequirement structure
+      const details = await fetchPlanningDetails(quoteId, planId);
+      console.log(`useTrainingRequirements: Fetched ${details.length} raw planning details.`);
+
+      // Map the fetched details slightly to match the expected input for scheduleTrainingTasks
+      // Ensure required fields (resource_id, resource_name, machine_name, training_hours) exist
+      const mappedRequirements: TrainingRequirement[] = details
+        .filter(detail => detail.resource_id != null) // Filter out items without a resource
+        .map(detail => ({
+          requirement_id: detail.id, // Use planning_details ID as the base requirement ID
+          quote_id: detail.quote_id,
+          plan_id: detail.plan_id,
+          resource_id: detail.resource_id!, // Assert non-null based on filter
+          resource_name: detail.resource_name!, // Assert non-null based on filter/service logic
+          machine_name: detail.type_name || 'Unknown Machine', // Use derived type_name
+          training_hours: detail.allocated_hours, // Use allocated_hours
+        }));
+
+      console.log('useTrainingRequirements: Mapped Requirements:', JSON.stringify(mappedRequirements, null, 2));
+      setRawRequirements(mappedRequirements);
+      // Don't set scheduledTasks here; let the scheduling effect handle it.
+    } catch (err: any) {
+      console.error("useTrainingRequirements: Error fetching planning details:", err);
+      const errorMessage = err.message || "Failed to fetch training requirements.";
+      setError(errorMessage);
+      setRawRequirements([]);
+      setScheduledTasks([]);
+    } finally {
+      // Loading is managed by the scheduling effect now
+      // setLoading(false); // Removed
+    }
+  }, [quoteId, planId]);
+
+  // --- Effect 1: Fetch Raw Data ---
   useEffect(() => {
     fetchRequirements();
-    
-    // When quote or plan changes, clean up any orphaned planning details
-    if (quoteId && planId) {
-      cleanupRemovedMachines(quoteId, planId);
-    }
-  }, [quoteId, planId, workOnSaturday, workOnSunday]);
+  }, [fetchRequirements]);
 
+  // --- Effect 2: Schedule Tasks ---
+  useEffect(() => {
+    if (rawRequirements.length > 0) {
+      console.log(`useTrainingRequirements: Scheduling ${rawRequirements.length} requirements... Sat: ${workOnSaturday}, Sun: ${workOnSunday}`);
+      setLoading(true); // Indicate scheduling is in progress
+      setError(null);
+
+      try {
+        // Call the actual scheduling function
+        const scheduled = scheduleTrainingTasks(
+          rawRequirements,
+          workOnSaturday,
+          workOnSunday
+        );
+        console.log(`useTrainingRequirements: Scheduling complete, generated ${scheduled.length} segments.`);
+        console.log('useTrainingRequirements: Final Scheduled Output:', JSON.stringify(scheduled, null, 2));
+        setScheduledTasks(scheduled);
+      } catch (err: any) {
+        console.error("useTrainingRequirements: Error during task scheduling:", err);
+        const scheduleErrorMessage = err.message || "An error occurred during task scheduling.";
+        setError(scheduleErrorMessage);
+        setScheduledTasks([]);
+      } finally {
+        setLoading(false); // Scheduling process finished (success or fail)
+      }
+    } else {
+      // If no raw requirements, clear scheduled tasks unless loading is already active
+      if (!loading) {
+        setScheduledTasks([]);
+      }
+    }
+    // Dependency array includes rawRequirements and weekend settings
+  }, [rawRequirements, workOnSaturday, workOnSunday, loading]); // Added `loading` here to prevent clearing scheduledTasks while fetch is running
+
+  // --- Return Values ---
   return {
-    requirements,
+    scheduledTasks, // Use this in ResourceTrainingGantt
     loading,
     error,
-    fetchRequirements,
-    cleanupRemovedMachines: () => cleanupRemovedMachines(quoteId, planId)
+    fetchRequirements // Expose retry function
   };
-};
+}
