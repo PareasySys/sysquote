@@ -15,6 +15,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  overflow: hidden; /* Prevent horizontal scrolling in the header */
 }
 
 .gantt-resource-column {
@@ -37,7 +38,7 @@
 .gantt-timeline {
   display: flex;
   flex: 1;
-  overflow-x: auto;
+  overflow: hidden; /* Hide scrollbar for header timeline */
 }
 
 .gantt-months {
@@ -76,10 +77,22 @@
   border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Weekend styling */
+.gantt-day.weekend {
+  background-color: rgba(35, 45, 65, 0.8);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Weekend cell styling */
+.gantt-cell.weekend {
+  background-color: rgba(35, 45, 65, 0.4);
+}
+
 .gantt-content {
   display: flex;
   flex: 1;
   overflow: auto;
+  scrollbar-width: thin;
 }
 
 .gantt-resources {
@@ -94,12 +107,22 @@
 }
 
 .gantt-resource {
-  height: 50px;
+  min-height: 50px;
   display: flex;
-  align-items: center;
-  padding-left: 1rem;
+  flex-direction: column;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
+}
+
+.gantt-resource-name {
+  padding: 10px 0 5px 10px;
+  font-weight: 500;
+}
+
+.gantt-resource-machine {
+  padding: 2px 0 2px 20px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .gantt-grid {
@@ -108,7 +131,7 @@
 }
 
 .gantt-row {
-  height: 50px;
+  min-height: 50px;
   display: flex;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   position: relative;

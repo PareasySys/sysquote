@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { fetchPlanningDetails, updateWeekendSettings } from "@/services/planningDetailsService";
 import { TrainingRequirement } from "@/hooks/useTrainingRequirements";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ResourceTrainingGanttProps {
   quoteId: string | undefined;
@@ -48,6 +49,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
         const resourceId = detail.resource_id || 0;
         const resourceName = detail.resource_name || "Unassigned";
         const hours = detail.allocated_hours || 0;
+        const machineName = detail.machine_name || "Unknown Machine";
         
         // Calculate duration in days (assuming 8 hours per working day)
         let durationDays = Math.ceil(hours / 8);
@@ -72,6 +74,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
           requirement_id: index + 1, // Use index for unique requirement_id
           resource_id: resourceId,
           resource_name: resourceName,
+          machine_name: machineName,
           training_hours: hours,
           start_day: startDay,
           duration_days: durationDays || 1
@@ -135,6 +138,8 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
           requirements={requirements}
           loading={loading}
           error={error}
+          workOnSaturday={workOnSaturday}
+          workOnSunday={workOnSunday}
           onRetry={fetchRequirements}
         />
       </div>

@@ -6,6 +6,7 @@ export interface TrainingRequirement {
   requirement_id: number;
   resource_id: number;
   resource_name: string;
+  machine_name?: string;
   training_hours: number;
   start_day: number;
   duration_days: number;
@@ -48,6 +49,7 @@ export const useTrainingRequirements = (
         const resourceId = detail.resource_id || 0;
         const resourceName = detail.resource_name || "Unassigned";
         const hours = detail.allocated_hours || 0;
+        const machineName = detail.machine_name || "Unknown Machine";
         
         // Calculate duration in days (assuming 8 hours per working day)
         let durationDays = Math.ceil(hours / 8);
@@ -63,12 +65,16 @@ export const useTrainingRequirements = (
         }
         
         // Use simple spacing algorithm for start days
-        const startDay = (index + 1) * 5; 
+        // Group by resource and stagger start days
+        const resourceDetails = planningDetails.filter(d => d.resource_id === detail.resource_id);
+        const resourceIndex = resourceDetails.findIndex(d => d.id === detail.id);
+        const startDay = resourceIndex * 5 + 1; 
         
         return {
           requirement_id: index + 1,  // Use index for unique requirement_id
           resource_id: resourceId,
           resource_name: resourceName,
+          machine_name: machineName,
           training_hours: hours,
           start_day: startDay,
           duration_days: durationDays || 1
