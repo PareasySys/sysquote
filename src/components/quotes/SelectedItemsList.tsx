@@ -56,10 +56,20 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
   const [totalsByPlan, setTotalsByPlan] = useState<Record<number, number>>({});
   const [calculatingHours, setCalculatingHours] = useState<boolean>(false);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
+  const [calculationKey, setCalculationKey] = useState<string>('');
 
   useEffect(() => {
     console.log("[SelectedItemsList] Plans State Update:", { plans, plansLoading });
-  }, [plans, plansLoading]);
+    
+    const machineIds = machines.map(m => m.machine_type_id).sort().join(',');
+    const softwareIds = software.map(s => s.software_type_id).sort().join(',');
+    const planIds = plans?.map(p => p.plan_id).sort().join(',') || '';
+    const newKey = `${machineIds}|${softwareIds}|${planIds}`;
+    
+    if (newKey !== calculationKey) {
+      setCalculationKey(newKey);
+    }
+  }, [machines, software, plans, plansLoading]);
 
   const fetchTrainingOffersAndCalculate = useCallback(async () => {
     console.log("[SelectedItemsList] fetchTrainingOffersAndCalculate triggered.");
@@ -195,25 +205,14 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
       setCalculatingHours(false);
       console.log("[SelectedItemsList] Setting calculatingHours = false (end of calculation)");
     }
-  }, [machines, software, plans, plansLoading, quoteId, calculatingHours]);
+  }, [machines, software, plans, plansLoading, calculatingHours]);
 
   useEffect(() => {
-    console.log("[SelectedItemsList] useEffect for calculation check triggered.");
-    if (!plansLoading && plans && plans.length > 0 && !calculatingHours) {
-      console.log("[SelectedItemsList] Conditions met, calling fetchTrainingOffersAndCalculate.");
+    console.log("[SelectedItemsList] Calculation key changed:", calculationKey);
+    if (calculationKey && !calculatingHours && !plansLoading && plans?.length > 0) {
       fetchTrainingOffersAndCalculate();
-    } else if (!plansLoading && plans && plans.length === 0 && !calculatingHours) {
-      console.log("[SelectedItemsList] Plans loaded but are empty. Resetting hours.");
-      setTrainingHours([]);
-      setTotalsByPlan({});
-    } else if (machines.length === 0 && software.length === 0 && !calculatingHours) {
-      console.log("[SelectedItemsList] Both machine and software selections are empty. Resetting hours.");
-      setTrainingHours([]);
-      setTotalsByPlan({});
-    } else {
-      console.log("[SelectedItemsList] Conditions NOT met for calculation:", { plansLoading, plansExists: !!plans, plansLength: plans?.length, calculatingHours });
     }
-  }, [machines, software, plans, plansLoading, calculatingHours, fetchTrainingOffersAndCalculate]);
+  }, [calculationKey, fetchTrainingOffersAndCalculate, calculatingHours, plansLoading, plans]);
 
   const calculatePlanTotals = (hours: TrainingHours[]) => {
     const totals: Record<number, number> = {};
