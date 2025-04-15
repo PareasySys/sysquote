@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { dataSyncService } from "@/services/planningDetailsSync";
+import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
 
 interface AreaCostModalProps {
   open: boolean;
@@ -170,7 +170,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         toast.success("Area cost created successfully");
       }
 
-      await dataSyncService.syncPlanningDetailsAfterChanges();
+      await syncPlanningDetailsAfterChanges();
 
       onSave();
       onClose();
@@ -210,7 +210,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         throw error;
       }
       
-      await dataSyncService.syncPlanningDetailsAfterChanges();
+      await syncPlanningDetailsAfterChanges();
       
       toast.success("Area cost deleted successfully");
       

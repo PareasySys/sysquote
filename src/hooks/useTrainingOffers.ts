@@ -1,10 +1,11 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useMachineTypes } from "./useMachineTypes";
 import { useSoftwareTypes } from "./useSoftwareTypes";
 import { useTrainingPlans } from "./useTrainingPlans";
 import { toast } from "sonner";
-import { dataSyncService } from "@/services/planningDetailsSync";
+import { syncPlanningDetailsAfterChanges, syncSoftwareTrainingHoursAndResources } from "@/services/planningDetailsSync";
 
 export interface TrainingOffer {
   id: number;
@@ -135,8 +136,8 @@ export const useTrainingOffers = () => {
       // Also update any planning_details that use this machine type and plan
       await updatePlanningDetailsForAllQuotes(machine_type_id, plan_id, hours_required, false);
       
-      // Sync planning details using dataSyncService
-      await dataSyncService.syncMachineTypeChanges(machine_type_id);
+      // Sync planning details to ensure everything is consistent
+      await syncPlanningDetailsAfterChanges();
       
       toast.success("Training hours updated");
       return true;
@@ -189,8 +190,11 @@ export const useTrainingOffers = () => {
       // Refetch to update state
       await fetchOffers();
       
-      // Sync software type changes
-      await dataSyncService.syncSoftwareTypeChanges(software_type_id);
+      // Sync software training hours across all quotes with this software type
+      await syncSoftwareTrainingHoursAndResources();
+      
+      // Also sync any other planning details that might be affected
+      await syncPlanningDetailsAfterChanges();
       
       toast.success("Software training hours updated");
       return true;
