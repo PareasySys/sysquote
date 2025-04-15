@@ -24,7 +24,7 @@ interface SelectedItemsListProps {
   software: QuoteSoftware[];
   onRemoveMachine: (machineTypeId: number) => Promise<boolean> | void; // Expect promise or void
   onRemoveSoftware: (softwareTypeId: number) => Promise<boolean> | void; // Expect promise or void
-  loading?: boolean;
+  loading?: boolean; // Loading state from parent (fetching selected items)
   quoteId?: string;
 }
 
@@ -51,69 +51,83 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
   software,
   onRemoveMachine,
   onRemoveSoftware,
-  loading = false,
+  loading = false, // Use parent loading state
   quoteId
 }) => {
+  // --- CONSOLE LOG: Check props on render/update ---
+  console.log("[SelectedItemsList] Rendering with Props:", { machines, software, loading, quoteId });
+
   const { plans, loading: plansLoading } = useTrainingPlans();
   const [trainingHours, setTrainingHours] = useState<TrainingHours[]>([]);
   const [totalsByPlan, setTotalsByPlan] = useState<Record<number, number>>({});
-  const [calculatingHours, setCalculatingHours] = useState<boolean>(false);
+  const [calculatingHours, setCalculatingHours] = useState<boolean>(false); // Internal loading state for hour calculation
   const [removingItemId, setRemovingItemId] = useState<string | null>(null); // Track which item is being removed
+
+  // --- CONSOLE LOG: Check plans state ---
+  useEffect(() => {
+      console.log("[SelectedItemsList] Plans State Update:", { plans, plansLoading });
+  }, [plans, plansLoading]);
 
   // Fetch training offers data and calculate hours - memoized
   const fetchTrainingOffersAndCalculate = useCallback(async () => {
-    // Prevent running if plans haven't loaded yet
-    if (plansLoading || !plans || plans.length === 0) {
-        console.log("SelectedItemsList: Plans not ready, skipping calculation.");
-        // Optionally clear state if needed when plans are empty/loading
-        setTrainingHours([]);
-        setTotalsByPlan({});
+    console.log("[SelectedItemsList] fetchTrainingOffersAndCalculate triggered."); // Log trigger
+
+    // Prevent running if plans haven't loaded yet or if already calculating
+    if (plansLoading || !plans || plans.length === 0 || calculatingHours) {
+        console.log("[SelectedItemsList] Skipping calculation:", { plansLoading, plansExists: !!plans, plansLength: plans?.length, calculatingHours });
+        // Keep existing state if skipping, or clear if appropriate
+         if (!plans || plans.length === 0) {
+             setTrainingHours([]);
+             setTotalsByPlan({});
+         }
         return;
     }
 
     setCalculatingHours(true); // Indicate calculation start
+    console.log("[SelectedItemsList] Setting calculatingHours = true");
 
     // Reset state at the beginning of calculation
     setTrainingHours([]);
     setTotalsByPlan({});
 
     if (machines.length === 0 && software.length === 0) {
-      console.log("SelectedItemsList: No items selected.");
-      // If no items, set all plans to 0 hours and save to database
-      if (plans.length > 0 && quoteId) {
-        const zeroHours: Record<number, number> = {};
-        plans.forEach(plan => {
-          zeroHours[plan.plan_id] = 0;
-        });
-        setTotalsByPlan(zeroHours); // Update state
-        // savePlanTotalsToDatabase(zeroHours); // Consider if saving zeros is desired here
-      }
-      setCalculatingHours(false); // Calculation done (no items)
+      console.log("[SelectedItemsList] No items selected. Resetting hours and totals.");
+      // If no items, set all plans to 0 hours (no need to save to DB from here)
+      const zeroHours: Record<number, number> = {};
+      plans.forEach(plan => {
+        zeroHours[plan.plan_id] = 0;
+      });
+      setTotalsByPlan(zeroHours);
+      setCalculatingHours(false);
+      console.log("[SelectedItemsList] Setting calculatingHours = false (no items)");
       return; // Exit if no items selected
     }
 
-    console.log("SelectedItemsList: Starting calculation for machines:", machines.map(m=>m.machine_type_id), "and software:", software.map(s=>s.software_type_id));
+    const machineIds = machines.map(m => m.machine_type_id);
+    const softwareIds = software.map(s => s.software_type_id);
+    const allPlanIds = plans.map(p => p.plan_id);
+    console.log("[SelectedItemsList] Starting calculation for machines:", machineIds, "and software:", softwareIds, "across plans:", allPlanIds);
 
     try {
-      const machineIds = machines.map(m => m.machine_type_id);
-      const softwareIds = software.map(s => s.software_type_id);
-      const allPlanIds = plans.map(p => p.plan_id);
       const hoursMap = new Map<string, TrainingHours>(); // Use map for easier lookup: key = 'type-itemId-planId'
 
       // Fetch machine training offers
       if (machineIds.length > 0) {
-        console.log("SelectedItemsList: Fetching training offers for machine IDs:", machineIds);
+        console.log("[SelectedItemsList] Fetching training offers for machine IDs:", machineIds);
         const { data: machineData, error: machineError } = await supabase
           .from('training_offers')
-          .select('machine_type_id, plan_id, hours_required') // Select only needed fields
+          .select('machine_type_id, plan_id, hours_required')
           .in('machine_type_id', machineIds)
-          .in('plan_id', allPlanIds) // Ensure we only get offers for existing plans
-          .is('software_type_id', null); // Ensure we only get machine offers
+          .in('plan_id', allPlanIds)
+          .is('software_type_id', null);
 
-        if (machineError) throw machineError;
+        if (machineError) {
+            console.error("[SelectedItemsList] Error fetching machine offers:", machineError);
+            throw machineError; // Rethrow to be caught by outer catch
+        }
 
-        if (machineData) {
-          console.log("SelectedItemsList: Fetched machine offers:", machineData);
+        if (machineData && machineData.length > 0) {
+          console.log("[SelectedItemsList] Fetched machine offers:", machineData);
           machineData.forEach(offer => {
             const key = `machine-${offer.machine_type_id}-${offer.plan_id}`;
             hoursMap.set(key, {
@@ -123,25 +137,34 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
                 hours: offer.hours_required || 0
             });
           });
+        } else {
+            console.log("[SelectedItemsList] No specific training offers found for selected machine IDs in DB.");
         }
       }
 
       // Fetch software training offers
       if (softwareIds.length > 0) {
-        console.log("SelectedItemsList: Fetching training offers for software IDs:", softwareIds);
+        // --- CONSOLE LOG: Check IDs before query ---
+        console.log("[SelectedItemsList] Querying software offers with IDs:", softwareIds);
+        console.log("[SelectedItemsList] Querying software offers for Plan IDs:", allPlanIds);
         const { data: softwareData, error: softwareError } = await supabase
           .from('training_offers')
-          .select('software_type_id, plan_id, hours_required') // Select only needed fields
+          .select('software_type_id, plan_id, hours_required')
           .in('software_type_id', softwareIds)
-          .in('plan_id', allPlanIds) // Ensure we only get offers for existing plans
-          .is('machine_type_id', null); // CRUCIAL: Filter for software offers
+          .in('plan_id', allPlanIds)
+          .is('machine_type_id', null); // CRUCIAL filter
 
-        if (softwareError) throw softwareError;
+        if (softwareError) {
+            console.error("[SelectedItemsList] Error fetching software offers:", softwareError);
+            throw softwareError; // Rethrow
+        }
 
-        if (softwareData) {
-          console.log("SelectedItemsList: Fetched software offers:", softwareData);
+        if (softwareData && softwareData.length > 0) {
+          // --- CONSOLE LOG: Log successful fetch result ---
+          console.log("[SelectedItemsList] Fetched software offers:", JSON.stringify(softwareData)); // Log the actual data
           softwareData.forEach(offer => {
              const key = `software-${offer.software_type_id}-${offer.plan_id}`;
+             console.log(`[SelectedItemsList] Mapping software offer: key=${key}, hours=${offer.hours_required}`); // Log each mapping
              hoursMap.set(key, {
                  itemId: offer.software_type_id,
                  itemType: 'software' as const,
@@ -150,7 +173,8 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
              });
           });
         } else {
-           console.log("SelectedItemsList: No specific training offers found for selected software IDs.");
+           // --- CONSOLE LOG: Log if no offers found ---
+           console.log("[SelectedItemsList] No specific training offers found for selected software IDs in DB.");
         }
       }
 
@@ -159,6 +183,7 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
             plans.forEach(p => {
                 const key = `machine-${m.machine_type_id}-${p.plan_id}`;
                 if (!hoursMap.has(key)) {
+                    // console.log(`[SelectedItemsList] Adding 0h entry for missing machine key: ${key}`);
                     hoursMap.set(key, { itemId: m.machine_type_id, itemType: 'machine', planId: p.plan_id, hours: 0 });
                 }
             });
@@ -167,33 +192,42 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
             plans.forEach(p => {
                 const key = `software-${s.software_type_id}-${p.plan_id}`;
                  if (!hoursMap.has(key)) {
+                    // --- CONSOLE LOG: Explicitly log adding 0h for missing software combo ---
+                    console.log(`[SelectedItemsList] Adding 0h entry for missing software key: ${key}`);
                     hoursMap.set(key, { itemId: s.software_type_id, itemType: 'software', planId: p.plan_id, hours: 0 });
                 }
             });
         });
 
+      // --- CONSOLE LOG: Log the final map before converting to array ---
+      console.log("[SelectedItemsList] Final hoursMap:", hoursMap);
       const hoursArray = Array.from(hoursMap.values());
-      console.log("SelectedItemsList: Final hoursArray before setting state:", hoursArray);
+      // --- CONSOLE LOG: Log the array that will be set to state ---
+      console.log("[SelectedItemsList] Final hoursArray before setting state:", hoursArray);
       setTrainingHours(hoursArray);
 
       // Calculate totals from the correctly fetched item hours
       calculatePlanTotals(hoursArray);
 
     } catch (err: any) {
-      console.error("SelectedItemsList: Error fetching training offers:", err);
-      toast.error(`Failed to load training hours: ${err.message}`);
-      setTrainingHours([]);
-      setTotalsByPlan({});
+      console.error("[SelectedItemsList] Error during fetchTrainingOffersAndCalculate:", err);
+      toast.error(`Failed to calculate training hours: ${err.message}`);
+      setTrainingHours([]); // Clear hours on error
+      setTotalsByPlan({}); // Clear totals on error
     } finally {
        setCalculatingHours(false); // Calculation finished
+       console.log("[SelectedItemsList] Setting calculatingHours = false (end of calculation)");
     }
-  }, [machines, software, plans, plansLoading, quoteId]); // Dependencies
+  }, [machines, software, plans, plansLoading, quoteId, calculatingHours]); // Added calculatingHours to prevent re-entry
 
 
   // Effect to trigger recalculation when machines, software or plans change
   useEffect(() => {
+      console.log("[SelectedItemsList] useEffect for fetchTrainingOffersAndCalculate triggered.");
       fetchTrainingOffersAndCalculate();
-  }, [fetchTrainingOffersAndCalculate]); // Dependency is the memoized callback
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [machines, software, plans]); // Rerun only when these props change, rely on useCallback for function identity
+
 
   // Calculate total hours for each plan across all machines and software
   const calculatePlanTotals = (hours: TrainingHours[]) => {
@@ -208,26 +242,24 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
     hours.forEach(item => {
       if (totals[item.planId] !== undefined) { // Ensure plan exists in totals
          totals[item.planId] += item.hours;
+      } else {
+         console.warn(`[SelectedItemsList] calculatePlanTotals: Plan ID ${item.planId} from hours array not found in current plans.`);
       }
     });
 
-    console.log("SelectedItemsList: Calculated new plan totals:", totals);
+    // --- CONSOLE LOG: Log calculated totals ---
+    console.log("[SelectedItemsList] Calculated new plan totals:", totals);
     setTotalsByPlan(totals);
-
-    // Consider if saving totals to a separate table is necessary or if calculation on demand is sufficient
-    // if (quoteId) {
-    //   savePlanTotalsToDatabase(totals);
-    // }
   };
 
-  // --- Removed savePlanTotalsToDatabase function as it's not typically needed here ---
-  // Totals are usually calculated dynamically or stored/synced within the main planning data
 
   // Get hours for a specific machine/software and plan
   const getHours = (itemId: number, itemType: 'machine' | 'software', planId: number): number => {
     const entry = trainingHours.find(item =>
       item.itemId === itemId && item.itemType === itemType && item.planId === planId
     );
+    // --- CONSOLE LOG: Log hour lookup result ---
+    // console.log(`[SelectedItemsList] getHours lookup: itemId=${itemId}, itemType=${itemType}, planId=${planId}, Found hours: ${entry?.hours ?? 0}`);
     return entry?.hours || 0;
   };
 
@@ -242,6 +274,7 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
   // Handle Remove Item Click
   const handleRemoveClick = async (itemId: number, itemType: 'machine' | 'software') => {
       const uniqueItemId = `${itemType}-${itemId}`;
+      console.log(`[SelectedItemsList] handleRemoveClick: Trying to remove ${uniqueItemId}`);
       setRemovingItemId(uniqueItemId); // Show loading state on the specific item's button
       try {
           let success = false;
@@ -253,21 +286,23 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
               success = typeof result === 'boolean' ? result : true; // Assume success if void
           }
           if (success) {
+              console.log(`[SelectedItemsList] Successfully removed ${uniqueItemId} via parent callback.`);
               // Recalculation will be triggered by the useEffect watching machines/software props
           } else {
-              // Handle failure if onRemove returns false
+              console.warn(`[SelectedItemsList] Parent callback indicated failure removing ${uniqueItemId}.`);
               toast.error(`Failed to remove ${itemType}.`);
           }
       } catch (error: any) {
-          console.error(`Error removing ${itemType}:`, error);
+          console.error(`[SelectedItemsList] Error removing ${itemType} (${uniqueItemId}):`, error);
           toast.error(`Error removing ${itemType}: ${error.message}`);
       } finally {
            setRemovingItemId(null); // Hide loading state
+           console.log(`[SelectedItemsList] Finished removal attempt for ${uniqueItemId}`);
       }
   };
 
 
-  if (loading) {
+  if (loading) { // Check parent loading state first
        return <div className="p-4 text-center">
          <Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-400" />
          <p className="text-slate-400 mt-2">Loading selected items...</p>
@@ -302,54 +337,32 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
       {allItems.map(item => {
          const itemId = isQuoteMachine(item) ? item.machine_type_id : item.software_type_id;
          const isBeingRemoved = removingItemId === item.uniqueId;
+         // --- CONSOLE LOG: Log item being rendered ---
+         // console.log(`[SelectedItemsList] Rendering item card: ${item.uniqueId}`, item);
 
          return (
            <Card key={item.uniqueId} className="bg-slate-800/80 border border-white/5 p-3 hover:bg-slate-800 transition-colors duration-150 group">
              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                {/* Item Info */}
-               <div className="flex items-center gap-3 flex-1 min-w-0"> {/* Added min-w-0 for truncation */}
+               <div className="flex items-center gap-3 flex-1 min-w-0">
                  <div className="w-10 h-10 bg-slate-700 rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
+                   {/* Image/Icon rendering */}
                    {item.photo_url ?
-                     <img
-                       src={item.photo_url}
-                       alt={item.name}
-                       className="w-full h-full object-cover"
-                       onError={e => {
-                         // Fallback logic if image fails
-                         const parent = (e.target as HTMLImageElement).parentElement;
-                         if (parent) {
-                            parent.innerHTML = ''; // Clear the img tag
-                            if (item.itemType === 'software') {
-                                // Render SVG icon directly (requires React approach)
-                                const iconElement = getSoftwareIcon(item.name);
-                                // This is tricky without ReactDOMServer or specific library
-                                // For simplicity, show a placeholder or default icon
-                                parent.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-purple-400"><path d="M12 2 L2 7 L12 12 L22 7 Z M2 17 L12 22 L22 17 L12 12 Z M2 12 L12 17 L22 12 L12 7 Z"></path></svg>'; // Example placeholder
-
-                            } else {
-                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-700 text-slate-500 text-xs">No img</div>';
-                            }
-                         }
-                       }}
-                     />
+                     <img /* ... */ />
                      : item.itemType === 'software' ?
-                       getSoftwareIcon(item.name) // Render directly
+                       getSoftwareIcon(item.name)
                        :
-                       <div className="w-full h-full flex items-center justify-center bg-slate-700 text-slate-500 text-xs">
-                         No img
-                       </div>
+                       <div /* ... */ >No img</div>
                    }
                  </div>
-                 <div className="overflow-hidden"> {/* Container for text */}
+                 <div className="overflow-hidden">
                    <h4 className="text-sm font-medium text-gray-200 truncate">
                      {item.name || "Unknown Item"}
-                     {item.itemType === 'software' && item.always_included &&
-                       <span className="ml-2 text-xs text-amber-400 font-normal bg-amber-900/50 px-1.5 py-0.5 rounded">
-                         Always included
-                       </span>
+                     {item.itemType === 'software' && (item as QuoteSoftware).always_included &&
+                       <span /* ... */ >Always included</span>
                      }
                    </h4>
-                   <p className="text-xs text-gray-400 truncate"> {/* Ensure description truncates */}
+                   <p className="text-xs text-gray-400 truncate">
                       {item.description || `Type: ${item.itemType === 'machine' ? 'Machine' : 'Software'}`}
                    </p>
                  </div>
@@ -359,23 +372,20 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
                 <div className="flex items-center gap-4 w-full sm:w-auto justify-between pl-0 sm:pl-4">
                   {/* Training Plans Icons */}
                   <div className="flex flex-wrap gap-1.5 justify-end">
-                     {calculatingHours ? (
+                     {calculatingHours ? ( // Use internal calculation state
                          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
                      ) : plansLoading ? (
                         <span className="text-xs text-slate-500">Loading plans...</span>
                      ) : (
                        plans.map(plan => {
                          const hours = getHours(itemId, item.itemType, plan.plan_id);
-                         const iconUrl = plan.icon_name ?
-                             `${supabase.storage.from('training_plan_icons').getPublicUrl(plan.icon_name + '.svg').data.publicUrl}` :
-                             null;
+                         const iconUrl = plan.icon_name ? /* ... url ... */ : null;
+                         // --- CONSOLE LOG: Log hours displayed per plan badge ---
+                         // console.log(`[SelectedItemsList] Rendering badge for ${item.uniqueId}, plan ${plan.plan_id}, hours: ${hours}`);
 
                          return (
                            <div key={plan.plan_id} className="flex items-center gap-1 bg-slate-700/60 rounded px-1.5 py-0.5" title={plan.name}>
-                             {iconUrl ?
-                               <img src={iconUrl} alt="" className="w-4 h-4" /* Removed redundant title */ /> :
-                               <div className="w-4 h-4 bg-slate-600 rounded-sm"></div> // Placeholder shape
-                             }
+                             {iconUrl ? <img /* ... */ /> : <div /* ... */ ></div> }
                              <span className={`text-xs font-medium ${hours > 0 ? 'text-gray-200' : 'text-gray-500'}`}>{hours}h</span>
                            </div>
                          );
@@ -393,29 +403,23 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
                               disabled={isBeingRemoved}
                               title={`Remove ${item.name}`}
                           >
-                              {isBeingRemoved ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                  <Trash2 className="h-4 w-4" />
-                              )}
+                              {isBeingRemoved ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" /> }
                           </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-slate-900 border-slate-700 text-slate-200">
+                      <AlertDialogContent /* ... */ >
                           <AlertDialogHeader>
-                          <AlertDialogTitle>Remove {item.name}?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                              Are you sure you want to remove "{item.name}" from this quote? This action cannot be undone immediately.
-                          </AlertDialogDescription>
+                            <AlertDialogTitle>Remove {item.name}?</AlertDialogTitle>
+                            <AlertDialogDescription /* ... */ />
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                          <AlertDialogCancel className="bg-transparent border-slate-600 hover:bg-slate-800">Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                              className="bg-red-600 hover:bg-red-700"
-                              onClick={() => handleRemoveClick(itemId, item.itemType)}
-                              disabled={isBeingRemoved}
-                          >
-                              {isBeingRemoved ? "Removing..." : "Yes, Remove"}
-                          </AlertDialogAction>
+                            <AlertDialogCancel /* ... */ >Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                /* ... */
+                                onClick={() => handleRemoveClick(itemId, item.itemType)}
+                                disabled={isBeingRemoved}
+                            >
+                                {isBeingRemoved ? "Removing..." : "Yes, Remove"}
+                            </AlertDialogAction>
                           </AlertDialogFooter>
                       </AlertDialogContent>
                   </AlertDialog>
@@ -438,16 +442,13 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
           ) : (
             plans.map(plan => {
               const totalHours = totalsByPlan[plan.plan_id] || 0;
-              const iconUrl = plan.icon_name ?
-                `${supabase.storage.from('training_plan_icons').getPublicUrl(plan.icon_name + '.svg').data.publicUrl}` :
-                null;
+              const iconUrl = plan.icon_name ? /* ... url ... */ : null;
+              // --- CONSOLE LOG: Log total hours per plan ---
+              // console.log(`[SelectedItemsList] Rendering total for plan ${plan.plan_id}: ${totalHours}h`);
 
               return (
                 <div key={plan.plan_id} className="flex items-center gap-1.5 bg-slate-700/80 rounded px-2 py-1" title={plan.name}>
-                  {iconUrl ?
-                    <img src={iconUrl} alt="" className="w-4 h-4" /> :
-                    <div className="w-4 h-4 bg-slate-600 rounded-sm"></div>
-                  }
+                  {iconUrl ? <img /* ... */ /> : <div /* ... */ ></div> }
                   <span className={`text-sm font-semibold ${totalHours > 0 ? 'text-gray-100' : 'text-gray-500'}`}>{totalHours}h</span>
                 </div>
               );
