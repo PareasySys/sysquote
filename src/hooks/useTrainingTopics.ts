@@ -1,13 +1,9 @@
-// src/hooks/useTrainingTopics.ts
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-// --- CORRECTED IMPORT ---
-// Import the entire service object
-import { dataSyncService } from "@/services/planningDetailsSync";
+import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
 
-// --- Interfaces ---
 export interface TrainingTopicBase {
   topic_id: number;
   topic_text: string;
@@ -33,12 +29,11 @@ export type NewTopicInsert = {
   item_type?: string | null;
   display_order?: number | null;
 };
-// --- End Interfaces ---
 
 export const useTrainingTopics = (
-  selectedMachineIds: number[] = [],
-  selectedPlanId?: number | null, // These params seem unused in the current fetch logic, consider removing if not needed
-  selectedItemType?: string | null // These params seem unused in the current fetch logic, consider removing if not needed
+  selectedMachineIds: number[] = [], 
+  selectedPlanId?: number | null, 
+  selectedItemType?: string | null
 ) => {
   const [topics, setTopics] = useState<TrainingTopic[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -46,8 +41,6 @@ export const useTrainingTopics = (
   const [newTopic, setNewTopic] = useState<string>("");
   const [isAddingTopic, setIsAddingTopic] = useState<boolean>(false);
 
-  // Fetch topics related ONLY to the selected machines
-  // If you need software topics too, this fetch logic needs adjustment
   const fetchTopics = useCallback(async () => {
     if (!selectedMachineIds || selectedMachineIds.length === 0) {
       setTopics([]);
@@ -59,12 +52,10 @@ export const useTrainingTopics = (
     setError(null);
 
     try {
-      // Fetch topics for the currently selected machines
       const { data, error } = await supabase
         .from("training_topics")
         .select("*")
-        .in("machine_type_id", selectedMachineIds) // Only fetch for selected machines
-        // Add filter for software_type_id if needed based on selectedItemType/selectedSoftwareIds
+        .in("machine_type_id", selectedMachineIds)
         .order("display_order", { ascending: true, nullsFirst: false });
 
       if (error) throw error;
@@ -77,7 +68,7 @@ export const useTrainingTopics = (
     } finally {
       setLoading(false);
     }
-  }, [selectedMachineIds]); // Dependency on selected machines
+  }, [selectedMachineIds]);
 
   useEffect(() => {
     fetchTopics();
@@ -88,23 +79,14 @@ export const useTrainingTopics = (
       toast.error("Topic text cannot be empty");
       return false;
     }
-    if (selectedMachineIds.length === 0) {
-        toast.error("No machines selected to add topic to.");
-        return false;
-    }
-
 
     setIsAddingTopic(true);
     try {
-      // Create topic for each selected machine
       const insertPromises = selectedMachineIds.map(async (machineTypeId) => {
         const newTopicData: NewTopicInsert = {
           topic_text: newTopicText,
-          machine_type_id: machineTypeId, // Link to machine
-          software_type_id: null, // Explicitly null if machine topic
-          plan_id: selectedPlanId, // Link to specific plan if selected, else null? Check requirement
-          item_type: 'machine', // Set item type
-          requirement_id: null // Usually null unless linked to a specific requirement
+          machine_type_id: machineTypeId,
+          requirement_id: null
         };
 
         const { data, error } = await supabase
@@ -118,21 +100,22 @@ export const useTrainingTopics = (
           toast.error(`Failed to add topic for machine ${machineTypeId}`);
           return null;
         }
+
         return data as TrainingTopic;
       });
 
       const results = await Promise.all(insertPromises);
+
       const successfulTopics = results.filter((topic): topic is TrainingTopic => topic !== null);
 
       if (successfulTopics.length > 0) {
-        setTopics((prevTopics) => [...prevTopics, ...successfulTopics].sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999))); // Add and re-sort
+        setTopics((prevTopics) => [...prevTopics, ...successfulTopics]);
         setNewTopic("");
-        // --- CORRECTED CALL ---
-        await dataSyncService.syncTrainingTopicChanges(); // Call the METHOD on the service object
-        toast.success("Training topic added successfully!");
+        await syncPlanningDetailsAfterChanges();
+        toast.success("Training topic added successfully for selected machines!");
         return true;
       } else {
-        toast.error("Failed to add training topics.");
+        toast.error("Failed to add training topics for any of the selected machines.");
         return false;
       }
     } catch (err: any) {
@@ -146,14 +129,10 @@ export const useTrainingTopics = (
   };
 
   const updateTopic = async (topicId: number, newText: string): Promise<boolean> => {
-    if (!newText.trim()) {
-      toast.error("Topic text cannot be empty");
-      return false;
-    }
     try {
       const { error } = await supabase
         .from("training_topics")
-        .update({ topic_text: newText, updated_at: new Date().toISOString() })
+        .update({ topic_text: newText })
         .eq("topic_id", topicId);
 
       if (error) throw error;
@@ -163,8 +142,7 @@ export const useTrainingTopics = (
           topic.topic_id === topicId ? { ...topic, topic_text: newText } : topic
         )
       );
-      // --- CORRECTED CALL ---
-      await dataSyncService.syncTrainingTopicChanges(); // Call the method
+      await syncPlanningDetailsAfterChanges();
       toast.success("Training topic updated successfully");
       return true;
     } catch (err: any) {
@@ -184,8 +162,7 @@ export const useTrainingTopics = (
       if (error) throw error;
 
       setTopics((prevTopics) => prevTopics.filter((topic) => topic.topic_id !== topicId));
-      // --- CORRECTED CALL ---
-      await dataSyncService.syncTrainingTopicChanges(); // Call the method
+      await syncPlanningDetailsAfterChanges();
       toast.success("Training topic deleted successfully");
       return true;
     } catch (err: any) {
@@ -195,10 +172,10 @@ export const useTrainingTopics = (
     }
   };
 
-  // This function might still be useful if called from elsewhere, like settings pages
   const deleteTopicsByItemId = async (itemId: number, itemType: "machine" | "software"): Promise<boolean> => {
     try {
       const fieldName = itemType === "machine" ? "machine_type_id" : "software_type_id";
+      
       const { error } = await supabase
         .from("training_topics")
         .delete()
@@ -206,13 +183,11 @@ export const useTrainingTopics = (
 
       if (error) throw error;
 
-      await fetchTopics(); // Refetch topics after deletion
-      // --- CORRECTED CALL ---
-      await dataSyncService.syncTrainingTopicChanges(); // Call the method
-      toast.success(`Training topics for ${itemType} ${itemId} deleted successfully`);
+      await syncPlanningDetailsAfterChanges();
+      toast.success(`Training topics for ${itemType} deleted successfully`);
       return true;
     } catch (err: any) {
-      console.error(`Error deleting training topics for ${itemType} ${itemId}:`, err);
+      console.error(`Error deleting training topics for ${itemType}:`, err);
       toast.error(`Failed to delete training topics for ${itemType}`);
       return false;
     }
@@ -228,6 +203,6 @@ export const useTrainingTopics = (
     updateTopic,
     deleteTopic,
     isAddingTopic,
-    deleteTopicsByItemId, // Keep exported if used elsewhere
+    deleteTopicsByItemId,
   };
 };
