@@ -1,11 +1,10 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
-// Helper type - Fix the id type to be number to match PlanningDetail interface
+// Helper type - Fix the id type to be string to match database return type
 type PlanningDetail = {
-  id: number;
+  id: string;
   quote_id: string;
   plan_id: number;
   machine_types_id: number | null;
@@ -44,14 +43,14 @@ export const syncMachineTypeChanges = async (machineTypeId?: number) => {
   return true;
 };
 
-export const syncSoftwareTypeChanges = async (softwareTypeId?: number) => {
-  console.log("[Sync Service] syncSoftwareTypeChanges called", { softwareTypeId });
+export const syncSoftwareTypeChanges = async () => {
+  console.log("[Sync Service] syncSoftwareTypeChanges called");
   toast.info("Software type changes synced");
   return true;
 };
 
-export const syncAreaCostChanges = async (areaId?: number) => {
-  console.log("[Sync Service] syncAreaCostChanges called", { areaId });
+export const syncAreaCostChanges = async () => {
+  console.log("[Sync Service] syncAreaCostChanges called");
   toast.info("Area cost changes synced");
   return true;
 };
@@ -106,11 +105,8 @@ export function usePlanningDetailsSync() {
         .eq('quote_id', quoteId);
 
       if (fetchDetailsError) throw new Error(`Failed to fetch existing planning details: ${fetchDetailsError.message}`);
-      // Convert id to number to match PlanningDetail type
-      const existingDetails: PlanningDetail[] = (existingDetailsData || []).map(detail => ({
-        ...detail,
-        id: Number(detail.id) // Convert id to number
-      }));
+      // Keep id as string as returned from the database
+      const existingDetails: PlanningDetail[] = (existingDetailsData || []);
       console.log(`[Sync Service] Found ${existingDetails.length} existing planning details.`);
 
       // 3. Fetch relevant Training Offers (Hours)
@@ -179,9 +175,9 @@ export function usePlanningDetailsSync() {
       console.log(`[Sync Service] Fetched ${machineReqs.length} machine & ${softwareReqs.length} software requirements.`);
 
       // 5. Determine operations: Deletes, Creates, Updates
-      const detailsToDelete: number[] = [];
+      const detailsToDelete: string[] = [];
       const detailsToCreate: Omit<PlanningDetail, 'id'>[] = [];
-      const detailsToUpdate: { id: number; updates: Partial<PlanningDetail> }[] = [];
+      const detailsToUpdate: { id: string; updates: Partial<PlanningDetail> }[] = [];
       const processedKeys = new Set<string>();
 
       // Check existing details: Should they be updated or deleted?
@@ -266,7 +262,7 @@ export function usePlanningDetailsSync() {
           const { error: deleteError } = await supabase
               .from('planning_details')
               .delete()
-              .in('id', detailsToDelete.map(id => id.toString())); // Convert numbers to strings
+              .in('id', detailsToDelete);
           if (deleteError) throw new Error(`Failed to delete planning details: ${deleteError.message}`);
           operationsCount += detailsToDelete.length;
       }
@@ -293,7 +289,7 @@ export function usePlanningDetailsSync() {
               const { error: updateError } = await supabase
                   .from('planning_details')
                   .update(updatedRecord)
-                  .eq('id', id.toString()); // Convert number to string for equality check
+                  .eq('id', id);
               if (updateError) {
                   console.error(`[Sync Service] Failed to update planning detail ID ${id}: ${updateError.message}`);
               }

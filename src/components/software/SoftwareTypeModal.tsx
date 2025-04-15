@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -41,6 +42,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [selectedResources, setSelectedResources] = useState<Record<number, string>>({});
   const {
     previewUrl,
     setPreviewUrl,
