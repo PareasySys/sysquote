@@ -1,20 +1,23 @@
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client'; // Ensure correct path
 import { TrainingRequirement } from '@/hooks/useTrainingRequirements';
-import { TrainingPlan } from '@/hooks/useTrainingPlans';
+// Removed TrainingPlan import as it's no longer used here
 
 /**
- * Fetch planning details for scheduling
+ * Fetch planning details for scheduling view (Gantt)
  */
 export async function fetchPlanningDetails(
   quoteId: string,
   planId: number
 ): Promise<TrainingRequirement[]> {
-  if (!quoteId || !planId) {
+  if (!quoteId || typeof planId !== 'number') { // Added type check for planId
+    console.warn("fetchPlanningDetails called with invalid quoteId or planId.");
     return [];
   }
-  
+
+  console.log(`[Planning Service] Fetching details for Quote ${quoteId}, Plan ${planId}`);
   try {
-    // Get planning details for this quote and plan
+    // Get planning details for this specific quote and plan
+    // Ensure necessary relations are fetched for mapping
     const { data, error } = await supabase
       .from('planning_details')
       .select(`
@@ -27,46 +30,53 @@ export async function fetchPlanningDetails(
         machine_types_id,
         machine_types:machine_types_id (name),
         software_types_id,
-        software_types:software_types_id (name)
+        software_types:software_types_id (name),
+        resource_category  /* Fetch category if stored */
       `)
       .eq('quote_id', quoteId)
       .eq('plan_id', planId)
-      .not('resource_id', 'is', null);
-    
+      .not('resource_id', 'is', null); // Only fetch details with assigned resources
+
     if (error) throw error;
-    
-    console.log("Raw planning details data:", data);
-    
-    // Map to TrainingRequirement format
+
+    console.log("[Planning Service] Raw planning details data:", data);
+
+    // Map to TrainingRequirement format for the Gantt chart hook
     const requirements: TrainingRequirement[] = data.map(detail => {
-      // Determine if this is a machine or software resource
-      const isSoftwareResource = detail.software_types_id !== null;
-      
+      // Determine item name based on whether it's machine or software
+      const itemName = detail.software_types_id
+        ? (detail.software_types?.name || 'Unknown Software')
+        : (detail.machine_types?.name || 'Unknown Machine');
+
+      // Determine category (use stored value if available, otherwise infer)
+      const category = detail.resource_category ?? (detail.software_types_id ? 'Software' : 'Machine');
+
       return {
-        id: detail.id,
+        id: detail.id.toString(), // Ensure ID is string if needed by Gantt
+        requirement_id: detail.id, // Or keep as number if preferred
         quote_id: detail.quote_id,
         plan_id: detail.plan_id,
-        resource_id: detail.resource_id,
-        resource_name: detail.resources?.name || 'Unnamed Resource',
-        machine_name: isSoftwareResource 
-          ? (detail.software_types?.name || 'Unknown Software') 
-          : (detail.machine_types?.name || 'Unknown Machine'),
-        training_hours: detail.allocated_hours,
-        resource_category: isSoftwareResource ? 'Software' : 'Machine'
+        resource_id: detail.resource_id, // Already filtered for non-null
+        resource_name: detail.resources?.name || `Resource ${detail.resource_id}`,
+        // Use a generic 'itemName' or keep separate machine/software names if needed downstream
+        machine_name: itemName, // Simplified mapping
+        training_hours: detail.allocated_hours || 0, // Default to 0 if null
+        resource_category: category as 'Machine' | 'Software' // Assert type
       };
     });
-    
-    console.log("Mapped training requirements:", requirements);
+
+    console.log("[Planning Service] Mapped training requirements for Gantt:", requirements);
     return requirements;
-    
-  } catch (err) {
-    console.error("Error fetching planning details:", err);
-    throw err;
+
+  } catch (err: any) {
+    console.error("[Planning Service] Error fetching planning details:", err);
+    // Re-throw the error so the calling hook can handle it
+    throw new Error(`Failed to fetch planning details: ${err.message}`);
   }
 }
 
 /**
- * Update weekend settings for a quote plan
+ * Update weekend work settings for all planning details of a specific quote and plan.
  */
 export async function updateWeekendSettings(
   quoteId: string,
@@ -74,190 +84,35 @@ export async function updateWeekendSettings(
   workOnSaturday: boolean,
   workOnSunday: boolean
 ): Promise<void> {
-  if (!quoteId || !planId) {
-    return;
-  }
-  
-  try {
-    // Update weekend settings across all resources for this plan
-    const { error } = await supabase
-      .from('planning_details')
-      .update({
-        work_on_saturday: workOnSaturday,
-        work_on_sunday: workOnSunday,
-        updated_at: new Date().toISOString()
-      })
-      .eq('quote_id', quoteId)
-      .eq('plan_id', planId);
-    
-    if (error) throw error;
-    
-  } catch (err) {
-    console.error("Error updating weekend settings:", err);
-    throw err;
-  }
+    if (!quoteId || typeof planId !== 'number') { // Added type check
+        console.warn("updateWeekendSettings called with invalid quoteId or planId.");
+        return;
+    }
+    console.log(`[Planning Service] Updating weekend settings for Quote ${quoteId}, Plan ${planId}: Sat=${workOnSaturday}, Sun=${workOnSunday}`);
+    try {
+        // Update weekend settings across all resources for this plan/quote combo
+        const { error } = await supabase
+        .from('planning_details')
+        .update({
+            work_on_saturday: workOnSaturday,
+            work_on_sunday: workOnSunday,
+            updated_at: new Date().toISOString()
+        })
+        .eq('quote_id', quoteId)
+        .eq('plan_id', planId);
+
+        if (error) throw error;
+        console.log(`[Planning Service] Weekend settings updated successfully.`);
+
+    } catch (err: any) {
+        console.error("[Planning Service] Error updating weekend settings:", err);
+        // Re-throw the error for handling in the component
+        throw new Error(`Failed to update weekend settings: ${err.message}`);
+    }
 }
 
-/**
- * Sync machine planning details with selected machines
- * This creates or updates planning detail records for selected machines
- */
-export async function syncMachinePlanningDetails(
-  quoteId: string,
-  machineTypeIds: number[],
-  plans: TrainingPlan[]
-): Promise<void> {
-  if (!quoteId || !machineTypeIds || !plans || plans.length === 0) {
-    return;
-  }
-  
-  try {
-    // Get existing planning details for this quote
-    const { data: existingDetails, error: fetchError } = await supabase
-      .from('planning_details')
-      .select('id, quote_id, plan_id, machine_types_id, software_types_id')
-      .eq('quote_id', quoteId)
-      .is('software_types_id', null); // Only get machine-related records
-    
-    if (fetchError) throw fetchError;
-    
-    // Create a map of existing details for quick lookup
-    const existingMap: Record<string, any> = {};
-    existingDetails?.forEach(detail => {
-      if (detail.machine_types_id) {
-        const key = `${detail.plan_id}_${detail.machine_types_id}`;
-        existingMap[key] = detail;
-      }
-    });
-    
-    // Process each plan and selected machine
-    const operations = [];
-    
-    for (const plan of plans) {
-      for (const machineTypeId of machineTypeIds) {
-        const key = `${plan.plan_id}_${machineTypeId}`;
-        
-        if (existingMap[key]) {
-          // Planning detail already exists, no need to create
-          continue;
-        }
-        
-        // Create new planning detail
-        operations.push(
-          supabase
-            .from('planning_details')
-            .insert({
-              quote_id: quoteId,
-              plan_id: plan.plan_id,
-              machine_types_id: machineTypeId,
-              allocated_hours: 0 // Default to 0 hours
-            })
-        );
-      }
-      
-      // Remove planning details for machines that are no longer selected
-      if (machineTypeIds.length > 0) {
-        const { error: deleteError } = await supabase
-          .from('planning_details')
-          .delete()
-          .eq('quote_id', quoteId)
-          .eq('plan_id', plan.plan_id)
-          .not('machine_types_id', 'in', `(${machineTypeIds.join(',')})`)
-          .is('software_types_id', null);
-          
-        if (deleteError) throw deleteError;
-      }
-    }
-    
-    // Execute all insert operations in parallel
-    if (operations.length > 0) {
-      await Promise.all(operations.map(op => op));
-    }
-    
-  } catch (err) {
-    console.error("Error syncing machine planning details:", err);
-    throw err;
-  }
-}
+// --- REMOVED syncMachinePlanningDetails ---
+// Logic merged into usePlanningDetailsSync hook
 
-/**
- * Sync software planning details with selected software
- * This creates or updates planning detail records for selected software
- */
-export async function syncSoftwarePlanningDetails(
-  quoteId: string,
-  softwareTypeIds: number[],
-  plans: TrainingPlan[]
-): Promise<void> {
-  if (!quoteId || !softwareTypeIds || !plans || plans.length === 0) {
-    return;
-  }
-  
-  try {
-    // Get existing planning details for this quote
-    const { data: existingDetails, error: fetchError } = await supabase
-      .from('planning_details')
-      .select('id, quote_id, plan_id, software_types_id, machine_types_id')
-      .eq('quote_id', quoteId)
-      .is('machine_types_id', null); // Only get software-related records
-    
-    if (fetchError) throw fetchError;
-    
-    // Create a map of existing details for quick lookup
-    const existingMap: Record<string, any> = {};
-    existingDetails?.forEach(detail => {
-      if (detail.software_types_id) {
-        const key = `${detail.plan_id}_${detail.software_types_id}`;
-        existingMap[key] = detail;
-      }
-    });
-    
-    // Process each plan and selected software
-    const operations = [];
-    
-    for (const plan of plans) {
-      for (const softwareTypeId of softwareTypeIds) {
-        const key = `${plan.plan_id}_${softwareTypeId}`;
-        
-        if (existingMap[key]) {
-          // Planning detail already exists, no need to create
-          continue;
-        }
-        
-        // Create new planning detail
-        operations.push(
-          supabase
-            .from('planning_details')
-            .insert({
-              quote_id: quoteId,
-              plan_id: plan.plan_id,
-              software_types_id: softwareTypeId,
-              allocated_hours: 4 // Default to 4 hours for software
-            })
-        );
-      }
-      
-      // Remove planning details for software that are no longer selected
-      if (softwareTypeIds.length > 0) {
-        const { error: deleteError } = await supabase
-          .from('planning_details')
-          .delete()
-          .eq('quote_id', quoteId)
-          .eq('plan_id', plan.plan_id)
-          .not('software_types_id', 'in', `(${softwareTypeIds.join(',')})`)
-          .is('machine_types_id', null);
-          
-        if (deleteError) throw deleteError;
-      }
-    }
-    
-    // Execute all insert operations in parallel
-    if (operations.length > 0) {
-      await Promise.all(operations.map(op => op));
-    }
-    
-  } catch (err) {
-    console.error("Error syncing software planning details:", err);
-    throw err;
-  }
-}
+// --- REMOVED syncSoftwarePlanningDetails ---
+// Logic merged into usePlanningDetailsSync hook
