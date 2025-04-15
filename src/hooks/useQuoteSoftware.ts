@@ -1,9 +1,9 @@
-
-import { useState, useEffect } from "react";
-import { supabase } from '@/lib/supabaseClient';
+import { useState, useEffect, useCallback } from "react"; // Added useCallback
+import { supabase } from '@/integrations/supabase/client'; // Corrected path
 import { toast } from "sonner";
-import { syncPlanningDetailsAfterChanges, syncSoftwareTrainingHoursAndResources } from "@/services/planningDetailsSync";
-import { useTrainingPlans } from "./useTrainingPlans";
+import { usePlanningDetailsSync } from "@/services/planningDetailsSync"; // Import the sync hook
+// Removed syncSoftwareTrainingHoursAndResources, syncPlanningDetailsAfterChanges direct imports
+// Removed useTrainingPlans import as it's not directly needed here
 
 export interface QuoteSoftware {
   software_type_id: number;
@@ -19,178 +19,219 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
   const [alwaysIncludedIds, setAlwaysIncludedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { plans } = useTrainingPlans();
+  const { syncAllPlanningDetails } = usePlanningDetailsSync(); // Get the sync function
 
-  // Fetch software that is always included
-  const fetchAlwaysIncludedSoftware = async () => {
+  // Fetch software that is always included - runs once on mount
+  const fetchAlwaysIncludedSoftware = useCallback(async () => {
+    console.log("useQuoteSoftware: Fetching always included software IDs.");
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('software_types')
         .select('software_type_id')
         .eq('always_included', true);
-      
-      if (error) throw error;
-      
+
+      if (fetchError) throw fetchError;
+
       const ids = data?.map(item => item.software_type_id) || [];
+      console.log("useQuoteSoftware: Always included IDs:", ids);
       setAlwaysIncludedIds(ids);
       return ids;
     } catch (err: any) {
-      console.error("Error fetching always included software:", err);
+      console.error("useQuoteSoftware: Error fetching always included software:", err);
+      setAlwaysIncludedIds([]); // Reset on error
       return [];
     }
-  };
+  }, []); // Empty dependency array - fetch once
 
-  const fetchQuoteSoftware = async () => {
-    if (!quoteId) return;
+  // Fetch the quote's software and details - memoized
+  const fetchQuoteSoftware = useCallback(async (fetchedAlwaysIncludedIds: number[]) => {
+    if (!quoteId) {
+        // Clear state if quoteId becomes invalid
+        setSoftwareTypeIds(fetchedAlwaysIncludedIds); // Keep always included
+        setSelectedSoftware([]); // Clear selected non-always-included
+        setError(null);
+        setLoading(false);
+        return;
+    }
+
+    console.log("useQuoteSoftware: Fetching software for quote:", quoteId);
+    setLoading(true);
+    setError(null);
 
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Get always included software IDs
-      const alwaysIncludedIds = await fetchAlwaysIncludedSoftware();
-      
-      // Use direct query to get quote data with software_type_ids
+      // Fetch quote data including software_type_ids
       const { data: quoteData, error: quoteError } = await supabase
         .from('quotes')
-        .select('*')  // Select all columns to ensure we get software_type_ids 
+        .select('software_type_ids') // Only need the IDs
         .eq('quote_id', quoteId)
         .single();
-      
+
       if (quoteError) throw quoteError;
-      
-      // Extract software_type_ids
-      let currentIds: number[] = [];
-      
-      if (quoteData && quoteData.software_type_ids) {
-        currentIds = quoteData.software_type_ids;
-      }
-      
-      // Ensure always included software is added
-      const updatedIds = [...new Set([...currentIds, ...alwaysIncludedIds])];
-      
-      // Update if there are changes
-      if (JSON.stringify(updatedIds) !== JSON.stringify(currentIds)) {
-        // Use raw update query to bypass type checking issues
-        const { error: updateError } = await supabase
-          .from('quotes')
-          .update({ software_type_ids: updatedIds })
-          .eq('quote_id', quoteId);
-        
-        if (updateError) throw updateError;
-      }
-      
-      setSoftwareTypeIds(updatedIds);
-      
-      // Now fetch the software details for the selected IDs
-      if (updatedIds.length > 0) {
+
+      const currentIds = quoteData?.software_type_ids || [];
+      console.log("useQuoteSoftware: Fetched software IDs from quote:", currentIds);
+
+      // Ensure always included software is part of the list displayed/tracked
+      const combinedIds = [...new Set([...currentIds, ...fetchedAlwaysIncludedIds])];
+
+      // Check if the list in the DB needs updating (if always_included wasn't there)
+      // Note: This automatic update might be better handled during save/creation
+      // if (JSON.stringify(combinedIds) !== JSON.stringify(currentIds)) {
+      //   console.log("useQuoteSoftware: Adding always_included IDs to quote's list.");
+      //   const { error: updateError } = await supabase
+      //     .from('quotes')
+      //     .update({ software_type_ids: combinedIds })
+      //     .eq('quote_id', quoteId);
+      //   if (updateError) console.warn("useQuoteSoftware: Failed to auto-add always_included IDs:", updateError);
+      // }
+
+      setSoftwareTypeIds(combinedIds); // Set combined list locally
+
+      // Now fetch the software details for the combined IDs
+      if (combinedIds.length > 0) {
         const { data: softwareDetails, error: detailsError } = await supabase
           .from('software_types')
-          .select('*')
-          .in('software_type_id', updatedIds);
-        
+          .select('*') // Select all details for display
+          .in('software_type_id', combinedIds);
+
         if (detailsError) throw detailsError;
-        
+
+        console.log("useQuoteSoftware: Fetched software details:", softwareDetails);
         setSelectedSoftware(softwareDetails || []);
-        
-        // Sync planning details with software types
-        if (plans && plans.length > 0) {
-          // First sync hours and resources for software
-          await syncSoftwareTrainingHoursAndResources();
-          // Then sync other planning details
-          await syncPlanningDetailsAfterChanges();
-        }
+
+        // --- REMOVED Sync calls from fetch function ---
+        // Syncing should happen after mutations (save/remove), not reads.
+        // ---------------------------------------------
+
       } else {
-        setSelectedSoftware([]);
+        setSelectedSoftware([]); // Clear details if no IDs
       }
     } catch (err: any) {
-      console.error("Error fetching quote software:", err);
-      setError(err.message || "Failed to load quote software");
+      console.error("useQuoteSoftware: Error fetching quote software:", err);
+      const message = err.message || "Failed to load quote software";
+      setError(message);
+      // Don't toast error on fetch, let component decide
+      setSoftwareTypeIds(fetchedAlwaysIncludedIds); // Reset to always included on error
+      setSelectedSoftware([]); // Clear details
     } finally {
       setLoading(false);
     }
-  };
+  }, [quoteId]); // Dependency: fetch when quoteId changes
 
-  const saveSoftware = async (softwareIds: number[]) => {
-    if (!quoteId) return false;
-    
+  // Main effect to orchestrate fetching
+  useEffect(() => {
+    let isMounted = true;
+    const runFetch = async () => {
+        const fetchedAlwaysIds = await fetchAlwaysIncludedSoftware();
+        if (isMounted) {
+            await fetchQuoteSoftware(fetchedAlwaysIds);
+        }
+    };
+    runFetch();
+    return () => { isMounted = false; }; // Cleanup
+  }, [fetchAlwaysIncludedSoftware, fetchQuoteSoftware]); // Rerun if quoteId changes (via fetchQuoteSoftware dependency)
+
+
+  // Save the user's selection (plus always included)
+  const saveSoftware = async (softwareIdsToSave: number[]) => {
+    if (!quoteId) {
+        toast.error("Cannot save software without a valid Quote ID.");
+        return false;
+    }
+
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      
-      // Make sure always included software is still included
-      const combinedIds = [...new Set([...softwareIds, ...alwaysIncludedIds])];
-      
-      // Update directly using the quotes table
+      // Ensure always included software is part of the final list
+      const combinedIds = [...new Set([...softwareIdsToSave, ...alwaysIncludedIds])];
+      console.log(`useQuoteSoftware: Saving software [${combinedIds.join(', ')}] for quote ${quoteId}`);
+
+      // Update the software_type_ids array directly in the quotes table
       const { error: updateError } = await supabase
         .from('quotes')
         .update({ software_type_ids: combinedIds })
         .eq('quote_id', quoteId);
-      
+
       if (updateError) throw updateError;
-      
+
+      console.log("useQuoteSoftware: Successfully updated quote's software_type_ids.");
+
+      // --- Trigger Sync AFTER successful save ---
+      console.log("useQuoteSoftware: Triggering planning details sync after saving software.");
+      await syncAllPlanningDetails(); // Call the centralized sync function
+      // -----------------------------------------
+
       // Update local state
       setSoftwareTypeIds(combinedIds);
-      
-      // First sync hours and resources for software
-      await syncSoftwareTrainingHoursAndResources();
-      // Then sync other planning details
-      await syncPlanningDetailsAfterChanges();
-      
-      // Refresh the software list
-      await fetchQuoteSoftware();
+      // Re-fetch details to ensure consistency
+      await fetchQuoteSoftware(alwaysIncludedIds);
+
+      toast.success("Software selection saved successfully.");
       return true;
+
     } catch (err: any) {
-      console.error("Error saving quote software:", err);
-      setError(err.message || "Failed to save software selection");
-      toast.error("Failed to save software selection");
+      console.error("useQuoteSoftware: Error saving quote software:", err);
+      const message = err.message || "Failed to save software selection";
+      setError(message);
+      toast.error(message);
       return false;
     } finally {
       setLoading(false);
     }
   };
 
-  const removeSoftware = async (softwareTypeId: number) => {
+  // Remove a piece of software (if not always included)
+  const removeSoftware = async (softwareTypeIdToRemove: number) => {
+    if (!quoteId) {
+        toast.error("Cannot remove software without a valid Quote ID.");
+        return false;
+    }
+    // Prevent removing always included software
+    if (alwaysIncludedIds.includes(softwareTypeIdToRemove)) {
+      toast.error("Cannot remove software that is marked as 'always included'.");
+      return false;
+    }
+
+    console.log(`useQuoteSoftware: Removing software ${softwareTypeIdToRemove} from quote ${quoteId}`);
+    setLoading(true);
+    setError(null);
+
     try {
-      // Don't allow removing always included software
-      if (alwaysIncludedIds.includes(softwareTypeId)) {
-        toast.error("Cannot remove always included software");
-        return;
-      }
-      
-      setLoading(true);
-      
       // Filter out the software type ID from the current list
-      const updatedSoftwareIds = softwareTypeIds.filter(id => id !== softwareTypeId);
-      
+      const updatedSoftwareIds = softwareTypeIds.filter(id => id !== softwareTypeIdToRemove);
+
       // Update the quote directly
       const { error: updateError } = await supabase
         .from('quotes')
         .update({ software_type_ids: updatedSoftwareIds })
         .eq('quote_id', quoteId);
-      
+
       if (updateError) throw updateError;
-      
-      // Update local state
+
+      console.log("useQuoteSoftware: Successfully updated quote after software removal.");
+
+      // --- Trigger Sync AFTER successful removal ---
+      console.log("useQuoteSoftware: Triggering planning details sync after removing software.");
+      await syncAllPlanningDetails(); // Call the centralized sync function
+      // ------------------------------------------
+
+      // Update local state immediately
       setSoftwareTypeIds(updatedSoftwareIds);
-      setSelectedSoftware(prev => prev.filter(software => software.software_type_id !== softwareTypeId));
-      
-      // First sync hours and resources for software after removal
-      await syncSoftwareTrainingHoursAndResources();
-      // Then sync other planning details
-      await syncPlanningDetailsAfterChanges();
-      
-      toast.success("Software removed successfully");
+      setSelectedSoftware(prev => prev.filter(software => software.software_type_id !== softwareTypeIdToRemove));
+
+      toast.success("Software removed successfully.");
+      return true;
     } catch (err: any) {
-      console.error("Error removing software:", err);
-      toast.error("Failed to remove software");
+      console.error("useQuoteSoftware: Error removing software:", err);
+      const message = err.message || "Failed to remove software";
+      setError(message);
+      toast.error(message);
+      return false;
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchQuoteSoftware();
-  }, [quoteId]);
 
   return {
     selectedSoftware,
@@ -198,7 +239,7 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
     alwaysIncludedIds,
     loading,
     error,
-    fetchQuoteSoftware,
+    fetchQuoteSoftware: () => fetchQuoteSoftware(alwaysIncludedIds), // Expose fetch for manual refresh
     saveSoftware,
     removeSoftware
   };
