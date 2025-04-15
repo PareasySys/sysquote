@@ -17,8 +17,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
-import MachineSelector from "@/components/quotes/MachineSelector";
-import SoftwareSelector from "@/components/quotes/SoftwareSelector";
+/* import MachineSelector from "@/components/quotes/MachineSelector";
+import SoftwareSelector from "@/components/quotes/SoftwareSelector"; */
 import SelectedItemsList from "@/components/quotes/SelectedItemsList";
 import QuoteTrainingTopics from "@/components/quotes/QuoteTrainingTopics";
 import { useQuoteMachines } from "@/hooks/useQuoteMachines";
