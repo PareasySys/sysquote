@@ -221,12 +221,30 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
   }, [machines, software, plans, plansLoading, quoteId, calculatingHours]); // Added calculatingHours to prevent re-entry
 
 
-  // Effect to trigger recalculation when machines, software or plans change
+    // Effect to trigger recalculation when necessary inputs are ready and change
   useEffect(() => {
-      console.log("[SelectedItemsList] useEffect for fetchTrainingOffersAndCalculate triggered.");
-      fetchTrainingOffersAndCalculate();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [machines, software, plans]); // Rerun only when these props change, rely on useCallback for function identity
+      console.log("[SelectedItemsList] useEffect for calculation check triggered.");
+      // Check if plans are loaded AND if either machines or software arrays have content (or if both are empty)
+      // Also check if we are NOT currently calculating
+      if (!plansLoading && plans && plans.length > 0 && !calculatingHours) {
+          console.log("[SelectedItemsList] Conditions met, calling fetchTrainingOffersAndCalculate.");
+          fetchTrainingOffersAndCalculate();
+      } else if (!plansLoading && plans && plans.length === 0 && !calculatingHours) {
+          // Handle case where plans are loaded but empty
+           console.log("[SelectedItemsList] Plans loaded but are empty. Resetting hours.");
+           setTrainingHours([]);
+           setTotalsByPlan({});
+      } else if (machines.length === 0 && software.length === 0 && !calculatingHours) {
+          // Handle explicit case where both selections are empty after loading
+          console.log("[SelectedItemsList] Both machine and software selections are empty. Resetting hours.");
+           setTrainingHours([]);
+           setTotalsByPlan({});
+      } else {
+          console.log("[SelectedItemsList] Conditions NOT met for calculation:", { plansLoading, plansExists: !!plans, plansLength: plans?.length, calculatingHours });
+      }
+      // Depend on the *identity* of the arrays and the plans loading state.
+      // fetchTrainingOffersAndCalculate is already memoized with its own dependencies.
+  }, [machines, software, plans, plansLoading, calculatingHours, fetchTrainingOffersAndCalculate]); // Add calculatingHours and the callback itself
 
 
   // Calculate total hours for each plan across all machines and software
