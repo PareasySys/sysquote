@@ -1,84 +1,38 @@
-
 import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { useMachineTypes } from "@/hooks/useMachineTypes";
 import MachineTypeCard from "@/components/machines/MachineTypeCard";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
-import { useTrainingPlans } from "@/hooks/useTrainingPlans";
-import { syncMachinePlanningDetails } from "@/services/planningDetailsService";
-import { toast } from "sonner";
+// Removed import for syncMachinePlanningDetails and useTrainingPlans / toast
 
 interface MachineSelectorProps {
   selectedMachineIds: number[];
-  onSave: (selectedMachines: number[]) => void;
-  quoteId?: string;
+  onSave: (selectedMachines: number[]) => void; // Keep onSave to report changes up
+  quoteId?: string; // Keep quoteId if needed for other purposes, but not for sync here
 }
 
-const MachineSelector: React.FC<MachineSelectorProps> = ({ 
+const MachineSelector: React.FC<MachineSelectorProps> = ({
   selectedMachineIds,
   onSave,
-  quoteId
+  quoteId // Keep quoteId prop if needed elsewhere
 }) => {
   const { machines, loading, error } = useMachineTypes();
-  const { plans } = useTrainingPlans();
-  const [isSyncing, setIsSyncing] = useState(false);
+  // Removed isSyncing state and useTrainingPlans
 
   // Function to handle machine selection changes
-  const toggleMachineSelection = async (machineTypeId: number) => {
-    if (isSyncing) {
-      toast.info("Please wait, syncing in progress...");
-      return;
-    }
+  const toggleMachineSelection = (machineTypeId: number) => {
+    // Create a new selection array
+    const updatedSelection = selectedMachineIds.includes(machineTypeId)
+      ? selectedMachineIds.filter(id => id !== machineTypeId)
+      : [...selectedMachineIds, machineTypeId];
 
-    try {
-      // Create a new selection array
-      const updatedSelection = selectedMachineIds.includes(machineTypeId)
-        ? selectedMachineIds.filter(id => id !== machineTypeId)
-        : [...selectedMachineIds, machineTypeId];
-      
-      // Auto-save machine selection
-      onSave(updatedSelection);
-      
-      // Sync planning details with our service if we have a quote ID
-      if (quoteId && plans.length > 0) {
-        setIsSyncing(true);
-        await syncMachinePlanningDetails(quoteId, updatedSelection, plans);
-        setIsSyncing(false);
-      }
-    } catch (err) {
-      console.error("Error toggling machine selection:", err);
-      toast.error("Failed to update machine selection");
-      setIsSyncing(false);
-    }
+    // Report the change up to the parent (QuoteConfigPage) via onSave
+    onSave(updatedSelection);
+
+    // DO NOT sync planning details here. Syncing will happen after the parent saves.
   };
 
-  // Initial setup of planning details when component mounts
-  useEffect(() => {
-    let mounted = true;
-    
-    const syncDetails = async () => {
-      if (quoteId && selectedMachineIds.length > 0 && plans.length > 0 && !isSyncing) {
-        try {
-          setIsSyncing(true);
-          await syncMachinePlanningDetails(quoteId, selectedMachineIds, plans);
-          if (mounted) setIsSyncing(false);
-        } catch (err) {
-          console.error("Error syncing planning details:", err);
-          if (mounted) setIsSyncing(false);
-        }
-      }
-    };
-    
-    // Only sync on initial mount, not on every render
-    if (plans.length > 0 && !isSyncing) {
-      syncDetails();
-    }
-    
-    return () => {
-      mounted = false;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quoteId, plans.length]); // Removed selectedMachineIds dependency
+  // Removed the useEffect that was triggering initial sync
 
   const isSelected = (machineTypeId: number) => selectedMachineIds.includes(machineTypeId);
 
@@ -86,16 +40,11 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
     <div className="w-full">
       <Card className="bg-slate-800/80 border border-white/5 p-4">
         <h2 className="text-xl font-semibold mb-4 text-gray-200">Machine Selection</h2>
-        
+
         {loading ? (
           <div className="p-4 text-center">
             <TextShimmerWave
               className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
-              duration={1}
-              spread={1}
-              zDistance={1}
-              scaleDistance={1.1}
-              rotateYDistance={10}
             >
               Loading Machine Types
             </TextShimmerWave>
@@ -104,16 +53,18 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
           <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
             <p className="text-red-300">{error}</p>
           </div>
+        ) : machines.length === 0 ? (
+            <div className="p-4 text-center text-slate-400">No machine types available.</div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {machines.map((machine) => (
-              <div 
+              <div
                 key={machine.machine_type_id}
-                className="relative"
+                className="relative cursor-pointer" // Added cursor-pointer
                 onClick={() => toggleMachineSelection(machine.machine_type_id)}
               >
-                <MachineTypeCard 
-                  machine={machine} 
+                <MachineTypeCard
+                  machine={machine}
                   isSelected={isSelected(machine.machine_type_id)}
                   showSelectionIndicator={true}
                 />
