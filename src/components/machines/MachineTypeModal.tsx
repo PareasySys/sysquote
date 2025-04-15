@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,15 +11,15 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { MachineType } from "@/hooks/useMachineTypes";
 import { useImageUpload } from "@/hooks/use-image-upload";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/integrations/supabase/client"; // Corrected path
 import { toast } from "sonner";
 import { Loader2, Upload } from "lucide-react";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { useMachineTrainingRequirements } from "@/hooks/useMachineTrainingRequirements";
 import { useResources } from "@/hooks/useResources";
-import { useTrainingTopics } from "@/hooks/useTrainingTopics";
+import { useTrainingTopics } from "@/hooks/useTrainingTopics"; // Keep if needed for topic deletion
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
+import { usePlanningDetailsSync } from "@/services/planningDetailsSync"; // Import the hook
 
 interface MachineTypeModalProps {
   open: boolean;
@@ -40,133 +39,83 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [photoURL, setPhotoURL] = useState<string | null>(null);
-  const { 
-    previewUrl, 
-    setPreviewUrl, 
-    uploadImage, 
-    isUploading 
+  const {
+    previewUrl,
+    setPreviewUrl,
+    uploadImage,
+    isUploading
   } = useImageUpload();
-  
-  const { 
-    plans, 
-    loading: loadingPlans 
-  } = useTrainingPlans();
-  const { 
-    resources, 
-    loading: loadingResources 
-  } = useResources();
-  
-  // Fix: Only fetch requirements if we have a machine ID to prevent unnecessary rerenders
-  const machineTypeId = machine?.machine_type_id;
-  const { 
-    requirements, 
-    saveRequirement, 
+
+  const { plans, loading: loadingPlans } = useTrainingPlans();
+  const { resources, loading: loadingResources } = useResources();
+  const { syncMachineTypeChanges } = usePlanningDetailsSync(); // Use the hook
+
+  // Ensure requirements hook gets a valid ID or null
+  const machineTypeId = machine?.machine_type_id ?? null;
+  const {
+    requirements, // This holds the current requirements for the machineTypeId
+    saveRequirement,
     deleteRequirement,
-    getResourceForPlan
+    getResourceForPlan, // Utility to get resource for a plan from 'requirements'
+    loading: loadingRequirements, // Add loading state from requirements hook
   } = useMachineTrainingRequirements(machineTypeId);
-  
+
+  // Keep if you need to delete associated topics
   const { deleteTopicsByItemId } = useTrainingTopics([]);
 
-  // Store selected resources in a local state
-  const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
+  // Local state to manage the resource selections in the UI *before* saving
+  const [selectedResources, setSelectedResources] = useState<Record<number, string>>({}); // Use string for Select value 'none'/'id'
 
-  // Reset form when the machine prop changes - FIX: Remove form from dependency array
-  useEffect(() => {
-    if (machine) {
-      setName(machine.name || "");
-      setDescription(machine.description || "");
-      setPhotoURL(machine.photo_url);
-      setPreviewUrl(machine.photo_url);
-    } else {
-      setName("");
-      setDescription("");
-      setPhotoURL(null);
-      setPreviewUrl(null);
-    }
-  }, [machine, setPreviewUrl]);
+  // --- Effects ---
 
-  // Initialize selectedResources from requirements - FIX: Add console.log for debugging and protect against invalid references
+  // Reset form state when modal opens or machine changes
   useEffect(() => {
-    // Only run this effect if we have both plans and requirements
-    if (requirements && requirements.length > 0 && plans && plans.length > 0) {
-      console.log("Initializing selectedResources from requirements", requirements);
-      const initialSelectedResources: Record<number, number | undefined> = {};
-      
-      plans.forEach((plan) => {
-        // Use the memoized getResourceForPlan function
-        const resourceId = plan && plan.plan_id ? getResourceForPlan(plan.plan_id) : undefined;
-        if (resourceId) {
-          initialSelectedResources[plan.plan_id] = resourceId;
-        }
-      });
-      
-      setSelectedResources(initialSelectedResources);
+    if (open) {
+      if (machine) {
+        setName(machine.name || "");
+        setDescription(machine.description || "");
+        setPhotoURL(machine.photo_url);
+        setPreviewUrl(machine.photo_url);
+        // Initialize selectedResources based on fetched requirements
+        const initialSelected: Record<number, string> = {};
+         if (plans && requirements) {
+             plans.forEach((plan) => {
+                const resourceId = getResourceForPlan(plan.plan_id);
+                initialSelected[plan.plan_id] = resourceId ? resourceId.toString() : "none";
+             });
+         }
+        setSelectedResources(initialSelected);
+
+      } else {
+        // Reset for new machine
+        setName("");
+        setDescription("");
+        setPhotoURL(null);
+        setPreviewUrl(null);
+        setSelectedResources({}); // Clear selections
+      }
     }
-  }, [requirements, plans, getResourceForPlan]);
+  }, [open, machine, plans, requirements, getResourceForPlan, setPreviewUrl]); // Add dependencies
+
+
+  // --- Handlers ---
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    
+
     const file = e.target.files[0];
+    // Show preview immediately
+    const localUrl = URL.createObjectURL(file);
+    setPreviewUrl(localUrl);
+
     try {
-      const localUrl = URL.createObjectURL(file);
-      setPreviewUrl(localUrl);
-      
-      const url = await uploadImage(file);
-      setPhotoURL(url);
-      
+      const uploadedUrl = await uploadImage(file); // Upload returns the final URL
+      setPhotoURL(uploadedUrl); // Set the final URL to be saved
       toast.success("Image uploaded successfully");
     } catch (error) {
       console.error("Error uploading image:", error);
       toast.error("Failed to upload image");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!machine) return;
-
-    try {
-      setIsDeleting(true);
-
-      if (machine.machine_type_id) {
-        await deleteTopicsByItemId(machine.machine_type_id, "machine");
-      }
-      
-      try {
-        await supabase
-          .from("machine_training_requirements")
-          .delete()
-          .eq("machine_type_id", machine.machine_type_id);
-      } catch (error) {
-        console.error("Error deleting training requirements:", error);
-      }
-      
-      try {
-        await supabase
-          .from("training_offers")
-          .delete()
-          .eq("machine_type_id", machine.machine_type_id);
-      } catch (error) {
-        console.error("Error deleting training offers:", error);
-      }
-      
-      const { error } = await supabase
-        .from("machine_types")
-        .delete()
-        .eq("machine_type_id", machine.machine_type_id);
-
-      if (error) throw error;
-
-      await syncPlanningDetailsAfterChanges();
-
-      toast.success("Machine deleted successfully");
-      onSave();
-      onClose();
-    } catch (error: any) {
-      console.error("Error deleting machine:", error);
-      toast.error(error.message || "Failed to delete machine");
-    } finally {
-      setIsDeleting(false);
+      setPreviewUrl(photoURL); // Revert preview if upload fails
     }
   };
 
@@ -175,43 +124,92 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
       toast.error("Machine name is required");
       return;
     }
+     if (!machineTypeId && !machine) { // Ensure we have context if editing
+         // This case shouldn't happen if logic is correct, but good safeguard
+         console.error("Save attempt without machine context for potential edit.");
+         return;
+     }
+
+    setIsSaving(true);
+    let savedMachineTypeId: number | undefined;
 
     try {
-      setIsSaving(true);
-
+      let machineData;
+      // --- Save Machine Type Info ---
       if (machine) {
-        const { error } = await supabase
+        // Update existing machine
+        const { data, error } = await supabase
           .from("machine_types")
           .update({
             name,
             description,
-            photo_url: photoURL,
+            photo_url: photoURL, // Use the potentially updated photoURL
           })
-          .eq("machine_type_id", machine.machine_type_id);
+          .eq("machine_type_id", machine.machine_type_id)
+          .select('machine_type_id') // Select ID for consistency
+          .single();
 
-        if (error) {
-          console.error("Error updating machine:", error);
-          throw error;
-        }
+        if (error) throw error;
+        machineData = data;
         toast.success("Machine updated successfully");
       } else {
-        const { data, error } = await supabase.from("machine_types").insert({
-          name,
-          description,
-          photo_url: photoURL,
-        }).select();
+        // Create new machine
+        const { data, error } = await supabase
+          .from("machine_types")
+          .insert({
+            name,
+            description,
+            photo_url: photoURL,
+          })
+          .select('machine_type_id') // Get the ID of the new machine
+          .single();
 
-        if (error) {
-          console.error("Error creating machine:", error);
-          throw error;
-        }
+        if (error) throw error;
+        machineData = data;
         toast.success("Machine created successfully");
       }
 
-      await syncPlanningDetailsAfterChanges();
+      savedMachineTypeId = machineData?.machine_type_id;
 
-      onSave();
-      onClose();
+      if (!savedMachineTypeId) {
+        throw new Error("Failed to get machine ID after save/update.");
+      }
+
+      // --- Save Training Requirements ---
+      const requirementPromises = [];
+      for (const planIdStr in selectedResources) {
+          const planId = parseInt(planIdStr, 10);
+          const resourceValue = selectedResources[planId]; // 'none' or resource_id as string
+          const resourceId = resourceValue === "none" ? undefined : parseInt(resourceValue, 10);
+
+          // Check if this requirement differs from the initial fetched state
+          const initialResourceId = getResourceForPlan(planId);
+          const initialResourceValue = initialResourceId ? initialResourceId.toString() : "none";
+
+          if (resourceValue !== initialResourceValue) {
+             console.log(`Requirement changed for plan ${planId}: ${initialResourceValue} -> ${resourceValue}`);
+             if (resourceId !== undefined) {
+                // Save or update requirement
+                requirementPromises.push(saveRequirement(planId, resourceId, savedMachineTypeId)); // Pass savedMachineTypeId
+             } else {
+                // Delete requirement if set back to 'none'
+                requirementPromises.push(deleteRequirement(planId, savedMachineTypeId)); // Pass savedMachineTypeId
+             }
+          }
+      }
+
+      if (requirementPromises.length > 0) {
+           console.log(`Saving ${requirementPromises.length} requirement changes...`);
+           await Promise.all(requirementPromises);
+           toast.success("Training requirements updated.");
+      }
+
+      // --- Sync & Close ---
+      await syncMachineTypeChanges(savedMachineTypeId); // Sync after all changes
+
+      onSave(); // Callback to refresh list in parent
+      onClose(); // Close modal
+
     } catch (error: any) {
       console.error("Error saving machine:", error);
       toast.error(error.message || "Failed to save machine");
@@ -220,20 +218,72 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     }
   };
 
-  const handleResourceChange = async (planId: number, resourceId: number | undefined) => {
-    // Update local state first for immediate UI feedback
-    setSelectedResources((prev) => ({
-      ...prev,
-      [planId]: resourceId,
-    }));
 
-    // Then perform the backend update
-    if (resourceId) {
-      await saveRequirement(planId, resourceId);
-    } else {
-      await deleteRequirement(planId);
+ const handleDelete = async () => {
+    if (!machine || !machine.machine_type_id) return; // Ensure we have a machine with ID
+
+    const idToDelete = machine.machine_type_id;
+
+    setIsDeleting(true);
+    try {
+      // 1. Delete related training topics (if using the hook)
+      await deleteTopicsByItemId(idToDelete, "machine");
+
+      // 2. Delete related training requirements (handle potential errors)
+      try {
+        await supabase
+          .from("machine_training_requirements")
+          .delete()
+          .eq("machine_type_id", idToDelete);
+      } catch (reqError: any) {
+        console.warn("Could not delete all training requirements:", reqError.message);
+        // Decide if this should prevent machine deletion
+      }
+
+      // 3. Delete related training offers (handle potential errors)
+      try {
+        await supabase
+          .from("training_offers")
+          .delete()
+          .eq("machine_type_id", idToDelete);
+      } catch (offerError: any) {
+        console.warn("Could not delete all training offers:", offerError.message);
+        // Decide if this should prevent machine deletion
+      }
+
+      // 4. Delete the machine type itself
+      const { error: deleteError } = await supabase
+        .from("machine_types")
+        .delete()
+        .eq("machine_type_id", idToDelete);
+
+      if (deleteError) throw deleteError; // This is likely critical
+
+      toast.success("Machine deleted successfully");
+
+      // 5. Sync changes
+      await syncMachineTypeChanges(idToDelete); // Sync after successful delete
+
+      onSave(); // Refresh parent list
+      onClose(); // Close modal
+
+    } catch (error: any) {
+      console.error("Error deleting machine:", error);
+      toast.error(error.message || "Failed to delete machine");
+    } finally {
+      setIsDeleting(false);
     }
   };
+
+  // Update local state for immediate UI feedback when select changes
+  const handleResourceSelectionChange = (planId: number, value: string) => {
+     setSelectedResources(prev => ({
+        ...prev,
+        [planId]: value,
+     }));
+  };
+
+  // --- Render ---
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -244,8 +294,12 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+        {/* Added overflow-y-auto to content area */}
+        <div className="grid md:grid-cols-2 gap-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+
+          {/* Left Column: Machine Details */}
           <div className="space-y-4">
+            {/* Name */}
             <div className="grid gap-2">
               <Label htmlFor="name" className="text-white">Name</Label>
               <Input
@@ -257,40 +311,49 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
               />
             </div>
 
+            {/* Description */}
             <div className="grid gap-2">
               <Label htmlFor="description" className="text-white">Description</Label>
               <textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 focus:ring-0 focus:ring-offset-0 min-h-[100px]"
+                className="p-2 rounded-md bg-slate-800 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 focus:ring-0 focus:ring-offset-0 min-h-[100px] resize-y" // Allow vertical resize
                 placeholder="Enter machine description"
               />
             </div>
 
+            {/* Photo Upload */}
             <div className="grid gap-2">
-              <Label htmlFor="photo" className="text-white">Photo</Label>
+              <Label htmlFor="photo-upload" className="text-white">Photo</Label>
               <div className="flex flex-col items-center gap-4">
-                {previewUrl && (
-                  <div className="relative w-40 h-40 mx-auto overflow-hidden rounded-lg border border-slate-700">
-                    <img
-                      src={previewUrl}
-                      alt={name}
-                      className="w-full h-full object-contain"
-                      onError={() => setPreviewUrl("/placeholder.svg")}
-                    />
-                  </div>
-                )}
+                {/* Preview Area */}
+                <div className="relative w-40 h-40 mx-auto overflow-hidden rounded-lg border border-slate-700 bg-slate-800 flex items-center justify-center">
+                    {previewUrl ? (
+                        <img
+                          src={previewUrl}
+                          alt={name || 'Machine preview'}
+                          className="w-full h-full object-contain" // Use contain to avoid distortion
+                          onError={(e) => {
+                             console.error("Error loading image preview:", previewUrl);
+                             (e.target as HTMLImageElement).src = "/placeholder.svg"; // Fallback
+                          }}
+                        />
+                     ) : (
+                        <span className="text-slate-500 text-sm">No image</span>
+                    )}
+                </div>
+                {/* Upload Button/Label */}
                 <label
-                  htmlFor="photo-upload"
-                  className="cursor-pointer flex items-center justify-center gap-2 p-2 border border-dashed border-slate-600 rounded-lg w-full hover:bg-slate-800/50 transition-colors"
+                  htmlFor="photo-upload-input" // Link label to input
+                  className={`cursor-pointer flex items-center justify-center gap-2 p-2 border border-dashed rounded-lg w-full transition-colors ${isUploading ? 'border-slate-500 bg-slate-800/30 text-slate-500' : 'border-slate-600 hover:bg-slate-800/50 hover:border-blue-600 text-slate-300'}`}
                 >
-                  <Upload className="h-4 w-4 text-slate-400" />
-                  <span className="text-slate-300 text-sm">
-                    {isUploading ? "Uploading..." : "Upload Image"}
+                  <Upload className="h-4 w-4" />
+                  <span className="text-sm">
+                    {isUploading ? "Uploading..." : (photoURL ? "Change Image" : "Upload Image")}
                   </span>
                   <input
-                    id="photo-upload"
+                    id="photo-upload-input" // Actual input element
                     type="file"
                     className="hidden"
                     accept="image/*"
@@ -301,24 +364,33 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
               </div>
             </div>
           </div>
-          
+
+          {/* Right Column: Training Requirements */}
           <div className="space-y-4">
             <div className="grid gap-3">
               <h3 className="font-medium text-white border-b border-slate-700 pb-2">Training Requirements</h3>
-              
-              {loadingPlans || loadingResources ? (
-                <div className="text-slate-400 text-sm">Loading training plans...</div>
+
+              {loadingPlans || loadingResources || loadingRequirements ? (
+                <div className="text-slate-400 text-sm flex items-center gap-2">
+                   <Loader2 className="h-4 w-4 animate-spin" /> Loading training data...
+                </div>
+              ) : plans.length === 0 ? (
+                 <div className="text-slate-400 text-sm p-4 bg-slate-800/50 rounded border border-slate-700">No training plans configured yet.</div>
               ) : (
                 <div className="space-y-4">
                   {plans.map((plan) => (
                     <div key={plan.plan_id} className="flex flex-col gap-1.5">
                       <Label className="text-sm text-slate-300">{plan.name}</Label>
                       <Select
-                        value={selectedResources[plan.plan_id]?.toString() || "none"}
-                        onValueChange={(value) => handleResourceChange(plan.plan_id, value === "none" ? undefined : Number(value))}
+                        // Use local state `selectedResources` for the value
+                        value={selectedResources[plan.plan_id] || "none"}
+                        // Update local state on change
+                        onValueChange={(value) => handleResourceSelectionChange(plan.plan_id, value)}
+                        // Disable select if saving/deleting or if it's a new machine (no ID yet)
+                        disabled={isSaving || isDeleting || (!machine && !machineTypeId)}
                       >
                         <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100 focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-blue-500">
-                          <SelectValue placeholder="No resource required" />
+                          <SelectValue placeholder="Select required resource..." />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
                           <SelectItem value="none">No resource required</SelectItem>
@@ -329,6 +401,9 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
                           ))}
                         </SelectContent>
                       </Select>
+                       {!machine && !machineTypeId && (
+                         <p className="text-xs text-slate-500 mt-1">Save the machine first to assign requirements.</p>
+                       )}
                     </div>
                   ))}
                 </div>
@@ -338,42 +413,40 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
         </div>
 
         <DialogFooter>
+          {/* Delete Button */}
           {machine && (
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting || isSaving}
-              className="mr-auto"
+              className="mr-auto" // Pushes delete button to the left
             >
               {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
+                <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting... </>
               ) : (
                 "Delete Machine"
               )}
             </Button>
           )}
-          <Button 
-            variant="outline" 
+          {/* Cancel Button */}
+          <Button
+            type="button" // Ensure it doesn't submit form
+            variant="outline"
             onClick={onClose}
-            className="text-blue-700 border-slate-700 hover:bg-slate-800 hover:text-white"
+            className="text-slate-300 border-slate-700 hover:bg-slate-800 hover:text-white"
           >
             Cancel
           </Button>
+          {/* Save Button */}
           <Button
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || isDeleting || isUploading} // Also disable while uploading image
             className="bg-blue-700 hover:bg-blue-800"
           >
             {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
+              <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving... </>
             ) : (
-              "Save Changes"
+              machine ? "Save Changes" : "Create Machine" // Dynamic button text
             )}
           </Button>
         </DialogFooter>
