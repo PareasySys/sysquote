@@ -1,11 +1,10 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useMachineTypes } from "./useMachineTypes";
 import { useSoftwareTypes } from "./useSoftwareTypes";
 import { useTrainingPlans } from "./useTrainingPlans";
 import { toast } from "sonner";
-import { syncPlanningDetailsAfterChanges, syncSoftwareTrainingHoursAndResources } from "@/services/planningDetailsSync";
+import { syncPlanningDetailsAfterChanges, syncSoftwareTrainingHours } from "@/services/planningDetailsSync";
 
 export interface TrainingOffer {
   id: number;
@@ -191,7 +190,7 @@ export const useTrainingOffers = () => {
       await fetchOffers();
       
       // Sync software training hours across all quotes with this software type
-      await syncSoftwareTrainingHoursAndResources();
+      await syncSoftwareTrainingHours();
       
       // Also sync any other planning details that might be affected
       await syncPlanningDetailsAfterChanges();

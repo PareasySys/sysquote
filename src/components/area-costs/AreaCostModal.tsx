@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AreaCost } from "@/hooks/useAreaCosts";
 import { useAreaIcons } from "@/hooks/useAreaIcons";
-import { supabase } from "@/integrations/supabase/client"; // Corrected path
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usePlanningDetailsSync } from "@/services/planningDetailsSync"; // Import the hook
+import { usePlanningDetailsSync } from "@/services/planningDetailsSync";
 
 interface AreaCostModalProps {
   open: boolean;
@@ -53,7 +53,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { icons, loading: loadingIcons } = useAreaIcons();
-  const { syncAreaCostChanges } = usePlanningDetailsSync(); // Use the hook
+  const { syncAreaCostChanges } = usePlanningDetailsSync();
 
   const form = useForm<AreaCostFormValues>({
     resolver: zodResolver(areaCostSchema),
@@ -90,7 +90,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
     try {
       let query = supabase
         .from("area_costs")
-        .select("area_id", { count: 'exact', head: true }) // More efficient check
+        .select("area_id", { count: 'exact', head: true })
         .eq("area_name", name);
 
       if (currentAreaId) {
@@ -107,7 +107,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
       return (count ?? 0) > 0;
     } catch (err) {
       console.error("Error in checkAreaNameExists:", err);
-      return false; // Default to false on error
+      return false;
     }
   };
 
@@ -123,7 +123,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
 
       if (nameExists) {
         toast.error(`An area with the name "${values.areaName}" already exists`);
-        setIsSaving(false); // Stop saving process here
+        setIsSaving(false);
         return;
       }
 
@@ -133,31 +133,27 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         daily_allowance: values.dailyAllowance,
         daily_pocket_money: values.dailyPocketMoney,
         icon_name: values.iconName || null,
-        // area_id is handled below based on insert/update
       };
 
       if (areaCost) {
-        // Update existing area cost
         const { error } = await supabase
           .from("area_costs")
           .update(costData)
-          .eq("area_cost_id", areaCost.area_cost_id); // Assuming area_cost_id is the primary key
+          .eq("area_cost_id", areaCost.area_cost_id);
 
         if (error) {
           console.error("Error updating area cost:", error);
           throw error;
         }
         toast.success("Area cost updated successfully");
-        savedAreaId = areaCost.area_id; // Store the ID for sync
+        savedAreaId = areaCost.area_id;
       } else {
-        // Create new area cost - Fetch next ID first
-        // Note: Relying on MAX(id) + 1 can have race conditions. Consider sequences or UUIDs.
         const { data: maxIdData, error: maxIdError } = await supabase
           .from('area_costs')
           .select('area_id')
           .order('area_id', { ascending: false })
           .limit(1)
-          .maybeSingle(); // Use maybeSingle
+          .maybeSingle();
 
         if (maxIdError) {
           console.error("Error getting max area_id:", maxIdError);
@@ -170,7 +166,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
         const { data: insertedData, error } = await supabase
           .from("area_costs")
           .insert(insertData)
-          .select('area_id') // Select the new area_id to pass to sync
+          .select('area_id')
           .single();
 
         if (error) {
@@ -178,12 +174,11 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
           throw error;
         }
         toast.success("Area cost created successfully");
-        savedAreaId = insertedData?.area_id; // Store the new ID for sync
+        savedAreaId = insertedData?.area_id;
       }
 
-      // Sync changes after successful save
       if (savedAreaId !== undefined) {
-        await syncAreaCostChanges(savedAreaId); // Call the specific sync function
+        await syncAreaCostChanges();
       }
 
       onSave();
@@ -200,13 +195,11 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
     if (!areaCost) return;
 
     const areaIdToDelete = areaCost.area_id;
-    const areaCostIdToDelete = areaCost.area_cost_id; // Use the primary key
+    const areaCostIdToDelete = areaCost.area_cost_id;
 
     try {
       setIsDeleting(true);
 
-      // Update related quotes first (optional: handle dependencies based on schema rules)
-      // Consider batching or using transactions if relations are complex
       const { error: updateError } = await supabase
         .from("quotes")
         .update({ area_id: null })
@@ -214,14 +207,12 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
 
       if (updateError) {
         console.warn("Warning: Could not nullify area_id in quotes:", updateError.message);
-        // Depending on DB constraints, you might not want to throw here
       }
 
-      // Then delete the area cost
       const { error } = await supabase
         .from("area_costs")
         .delete()
-        .eq("area_cost_id", areaCostIdToDelete); // Use primary key for delete
+        .eq("area_cost_id", areaCostIdToDelete);
 
       if (error) {
         console.error("Error deleting area cost:", error);
@@ -230,8 +221,7 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
 
       toast.success("Area cost deleted successfully");
 
-      // Sync changes after successful delete
-      await syncAreaCostChanges(areaIdToDelete); // Call the specific sync function
+      await syncAreaCostChanges();
 
       onSave();
       onClose();
@@ -242,7 +232,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
       setIsDeleting(false);
     }
   };
-
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -255,7 +244,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSave)} className="space-y-6">
-            {/* Area Name */}
             <FormField
               control={form.control}
               name="areaName"
@@ -274,7 +262,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
               )}
             />
 
-             {/* Daily Accommodation & Food */}
             <FormField
               control={form.control}
               name="dailyAccommodationFoodCost"
@@ -296,7 +283,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
               )}
             />
 
-            {/* Daily Allowance */}
             <FormField
               control={form.control}
               name="dailyAllowance"
@@ -318,7 +304,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
               )}
             />
 
-             {/* Daily Pocket Money */}
             <FormField
               control={form.control}
               name="dailyPocketMoney"
@@ -340,7 +325,6 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
               )}
             />
 
-            {/* Icon */}
             <FormField
               control={form.control}
               name="iconName"
@@ -370,11 +354,11 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
                             <img
                               src={icon.url}
                               alt={icon.name}
-                              className="max-h-full max-w-full object-contain" // Added object-contain
+                              className="max-h-full max-w-full object-contain"
                               onError={(e) => {
                                 console.error(`Error loading icon: ${icon.url}`);
                                 const target = e.target as HTMLImageElement;
-                                target.src = "/placeholder.svg"; // Provide a fallback placeholder
+                                target.src = "/placeholder.svg";
                               }}
                             />
                           </div>
@@ -414,13 +398,13 @@ const AreaCostModal: React.FC<AreaCostModalProps> = ({
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="text-slate-300 border-slate-700 hover:bg-slate-800 hover:text-white" // Adjusted colors
+                className="text-slate-300 border-slate-700 hover:bg-slate-800 hover:text-white"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={isSaving || form.formState.isSubmitting} // Disable during submission too
+                disabled={isSaving || form.formState.isSubmitting}
                 className="bg-blue-700 hover:bg-blue-800"
               >
                 {isSaving ? (

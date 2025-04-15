@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { syncPlanningDetailsAfterChanges, syncSoftwareTrainingHoursAndResources } from "@/services/planningDetailsSync";
+import { syncPlanningDetailsAfterChanges, syncSoftwareTrainingHours } from "@/services/planningDetailsSync";
 
 export interface SoftwareTrainingRequirement {
   id: number;
@@ -70,7 +69,7 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
           )
         );
         
-        await syncSoftwareTrainingHoursAndResources();
+        await syncSoftwareTrainingHours();
         await syncPlanningDetailsAfterChanges();
         
         toast.success("Training requirement saved");
@@ -92,7 +91,7 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
         if (data && data.length > 0) {
           setRequirements(prev => [...prev, data[0]]);
           
-          await syncSoftwareTrainingHoursAndResources();
+          await syncSoftwareTrainingHours();
           await syncPlanningDetailsAfterChanges();
         }
       }
@@ -201,7 +200,7 @@ export const useSoftwareTrainingRequirements = (softwareTypeId?: number) => {
       
       await removeResourceFromPlanningDetails(softwareTypeId, planId);
       
-      await syncSoftwareTrainingHoursAndResources();
+      await syncSoftwareTrainingHours();
       await syncPlanningDetailsAfterChanges();
       
       setRequirements(prev => prev.filter(req => req.id !== existingReq.id));

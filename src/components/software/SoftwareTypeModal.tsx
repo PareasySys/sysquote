@@ -12,15 +12,15 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { SoftwareType } from "@/hooks/useSoftwareTypes";
 import { useImageUpload } from "@/hooks/use-image-upload";
-import { supabase } from "@/integrations/supabase/client"; // Corrected path
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Upload } from "lucide-react";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { useSoftwareTrainingRequirements } from "@/hooks/useSoftwareTrainingRequirements";
 import { useResources } from "@/hooks/useResources";
-import { useTrainingTopics } from "@/hooks/useTrainingTopics"; // Keep if needed
+import { useTrainingTopics } from "@/hooks/useTrainingTopics";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { usePlanningDetailsSync } from "@/services/planningDetailsSync"; // Import the hook
+import { usePlanningDetailsSync } from "@/services/planningDetailsSync";
 
 interface SoftwareTypeModalProps {
   open: boolean;
@@ -50,25 +50,19 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
 
   const { plans, loading: loadingPlans } = useTrainingPlans();
   const { resources, loading: loadingResources } = useResources();
-  const { syncSoftwareTypeChanges } = usePlanningDetailsSync(); // Use the hook
+  const { syncSoftwareTypeChanges } = usePlanningDetailsSync();
 
   const softwareTypeId = software?.software_type_id ?? null;
   const {
     requirements,
     saveRequirement,
-    removeRequirement, // Renamed from deleteRequirement for clarity if needed
+    removeRequirement,
     getResourceForPlan,
     loading: loadingRequirements,
   } = useSoftwareTrainingRequirements(softwareTypeId);
 
   const { deleteTopicsByItemId } = useTrainingTopics([]);
 
-  // Local state for UI selections
-  const [selectedResources, setSelectedResources] = useState<Record<number, string>>({});
-
-  // --- Effects ---
-
-  // Reset form state
   useEffect(() => {
     if (open) {
         if (software) {
@@ -77,7 +71,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
             setAlwaysIncluded(software.always_included);
             setPhotoURL(software.photo_url);
             setPreviewUrl(software.photo_url);
-            // Initialize selections based on fetched requirements
             const initialSelected: Record<number, string> = {};
              if (plans && requirements) {
                  plans.forEach((plan) => {
@@ -95,9 +88,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
             setSelectedResources({});
         }
     }
-  }, [open, software, plans, requirements, getResourceForPlan, setPreviewUrl]); // Added dependencies
-
-  // --- Handlers ---
+  }, [open, software, plans, requirements, getResourceForPlan, setPreviewUrl]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -113,7 +104,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
     } catch (error) {
       console.error("Error uploading image:", error);
       toast.error("Failed to upload image");
-      setPreviewUrl(photoURL); // Revert preview
+      setPreviewUrl(photoURL);
     }
   };
 
@@ -128,9 +119,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
 
     try {
         let softwareData;
-        // --- Save Software Type Info ---
         if (software) {
-            // Update existing software
             const { data, error } = await supabase
               .from("software_types")
               .update({
@@ -146,7 +135,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
             softwareData = data;
             toast.success("Software updated successfully");
         } else {
-            // Create new software
             const { data, error } = await supabase
               .from("software_types")
               .insert({
@@ -168,7 +156,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
             throw new Error("Failed to get software ID after save/update.");
         }
 
-        // --- Save Training Requirements ---
         const requirementPromises = [];
          for (const planIdStr in selectedResources) {
             const planId = parseInt(planIdStr, 10);
@@ -181,10 +168,9 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
             if (resourceValue !== initialResourceValue) {
                 console.log(`Software requirement changed for plan ${planId}: ${initialResourceValue} -> ${resourceValue}`);
                 if (resourceId !== undefined) {
-                    requirementPromises.push(saveRequirement(planId, resourceId, savedSoftwareTypeId));
+                    requirementPromises.push(saveRequirement(planId, resourceId));
                 } else {
-                    // Use removeRequirement (or deleteRequirement)
-                    requirementPromises.push(removeRequirement(planId, savedSoftwareTypeId));
+                    requirementPromises.push(removeRequirement(planId));
                 }
             }
         }
@@ -195,9 +181,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
             toast.success("Software training requirements updated.");
         }
 
-
-        // --- Sync & Close ---
-        await syncSoftwareTypeChanges(savedSoftwareTypeId); // Sync changes
+        await syncSoftwareTypeChanges();
 
         onSave();
         onClose();
@@ -216,10 +200,8 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
 
     setIsDeleting(true);
     try {
-      // 1. Delete related topics
       await deleteTopicsByItemId(idToDelete, "software");
 
-      // 2. Delete related requirements
       try {
         await supabase
           .from("software_training_requirements")
@@ -229,8 +211,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
         console.warn("Could not delete all software training requirements:", reqError.message);
       }
       
-      // 3. Delete related offers
-       try {
+      try {
         await supabase
           .from("training_offers")
           .delete()
@@ -239,7 +220,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
         console.warn("Could not delete all training offers:", offerError.message);
       }
 
-      // 4. Delete software type
       const { error: deleteError } = await supabase
         .from("software_types")
         .delete()
@@ -249,8 +229,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
 
       toast.success("Software deleted successfully");
 
-      // 5. Sync changes
-      await syncSoftwareTypeChanges(idToDelete); // Sync after delete
+      await syncSoftwareTypeChanges();
 
       onSave();
       onClose();
@@ -262,7 +241,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
     }
   };
 
-  // Update local state for UI select
   const handleResourceSelectionChange = (planId: number, value: string) => {
      setSelectedResources(prev => ({
         ...prev,
@@ -270,7 +248,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
      }));
   };
 
-  // --- Render ---
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] bg-slate-900 border-slate-800 text-slate-100">
@@ -281,9 +258,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
         </DialogHeader>
 
         <div className="grid md:grid-cols-2 gap-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
-          {/* Left Column: Software Details */}
           <div className="space-y-4">
-            {/* Name */}
             <div className="grid gap-2">
               <Label htmlFor="name" className="text-white">Name</Label>
               <Input
@@ -295,7 +270,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
               />
             </div>
 
-            {/* Description */}
             <div className="grid gap-2">
               <Label htmlFor="description" className="text-white">Description</Label>
               <textarea
@@ -307,7 +281,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
               />
             </div>
 
-            {/* Always Included Switch */}
             <div className="flex items-center justify-between py-2">
               <Label htmlFor="alwaysIncluded" className="text-white cursor-pointer pr-4">
                 Always Included in New Quotes
@@ -316,15 +289,13 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
                 id="alwaysIncluded"
                 checked={alwaysIncluded}
                 onCheckedChange={setAlwaysIncluded}
-                 className="data-[state=checked]:bg-blue-600" // Style checked state
+                 className="data-[state=checked]:bg-blue-600"
               />
             </div>
 
-            {/* Photo Upload */}
             <div className="grid gap-2">
               <Label htmlFor="photo-upload" className="text-white">Photo</Label>
                <div className="flex flex-col items-center gap-4">
-                 {/* Preview Area */}
                  <div className="relative w-40 h-40 mx-auto overflow-hidden rounded-lg border border-slate-700 bg-slate-800 flex items-center justify-center">
                      {previewUrl ? (
                          <img
@@ -337,9 +308,8 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
                          <span className="text-slate-500 text-sm">No image</span>
                      )}
                  </div>
-                 {/* Upload Button/Label */}
                  <label
-                   htmlFor="photo-upload-input-sw" // Unique ID
+                   htmlFor="photo-upload-input-sw"
                    className={`cursor-pointer flex items-center justify-center gap-2 p-2 border border-dashed rounded-lg w-full transition-colors ${isUploading ? 'border-slate-500 bg-slate-800/30 text-slate-500' : 'border-slate-600 hover:bg-slate-800/50 hover:border-blue-600 text-slate-300'}`}
                  >
                    <Upload className="h-4 w-4" />
@@ -347,7 +317,7 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
                      {isUploading ? "Uploading..." : (photoURL ? "Change Image" : "Upload Image")}
                    </span>
                    <input
-                     id="photo-upload-input-sw" // Match label's htmlFor
+                     id="photo-upload-input-sw"
                      type="file"
                      className="hidden"
                      accept="image/*"
@@ -359,7 +329,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Training Requirements */}
           <div className="space-y-4">
             <div className="grid gap-3">
               <h3 className="font-medium text-white border-b border-slate-700 pb-2">Training Requirements</h3>
@@ -404,7 +373,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
         </div>
 
         <DialogFooter>
-          {/* Delete Button */}
           {software && (
             <Button
               variant="destructive"
@@ -419,7 +387,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
               )}
             </Button>
           )}
-          {/* Cancel Button */}
           <Button
             type="button"
             variant="outline"
@@ -428,7 +395,6 @@ const SoftwareTypeModal: React.FC<SoftwareTypeModalProps> = ({
           >
             Cancel
           </Button>
-          {/* Save Button */}
           <Button
             onClick={handleSave}
             disabled={isSaving || isDeleting || isUploading}

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { fetchPlanningDetails } from '@/services/planningDetailsService'; // Ensure this service handles its own supabase import
 import { scheduleTrainingTasks } from '@/utils/scheduleTasks';
@@ -51,18 +52,17 @@ export function useTrainingRequirements(
 
       // Map raw details to TrainingRequirement structure, filtering out invalid ones
       const validRequirements = details
-        .filter(detail => detail.resource_id && detail.allocated_hours > 0) // Ensure resource AND hours exist
+        .filter(detail => detail.resource_id && detail.training_hours > 0) // Ensure resource AND hours exist
         .map(detail => ({
           id: detail.id?.toString(), // Use planning_details primary key as unique ID for Gantt
-          requirement_id: detail.id, // Or use a specific requirement ID if available
+          requirement_id: detail.id || detail.requirement_id, // Or use a specific requirement ID if available
           quote_id: detail.quote_id,
           plan_id: detail.plan_id,
           resource_id: detail.resource_id,
-          // Safely access related names (assuming fetchPlanningDetails joins them)
-          resource_name: detail.resources?.name ?? `Resource ${detail.resource_id}`,
-          machine_name: detail.machine_types?.name ?? null,
-          software_name: detail.software_types?.name ?? null, // Add software name if available
-          training_hours: detail.allocated_hours,
+          resource_name: detail.resource_name ?? `Resource ${detail.resource_id}`,
+          machine_name: detail.machine_name ?? null,
+          software_name: detail.software_name ?? null, // Add software name if available
+          training_hours: detail.training_hours,
           resource_category: detail.resource_category ?? null, // Map category
         } as TrainingRequirement)); // Cast to type
 
@@ -113,7 +113,6 @@ export function useTrainingRequirements(
           workOnSunday
         );
         console.log(`useTrainingRequirements: Scheduling complete, generated ${scheduled.length} segments.`);
-        // console.log('useTrainingRequirements: Final Scheduled Output:', JSON.stringify(scheduled, null, 2)); // Keep for debugging if needed
         setScheduledTasks(scheduled);
       } catch (err: any) {
         console.error("useTrainingRequirements: Error during task scheduling:", err);
@@ -121,12 +120,10 @@ export function useTrainingRequirements(
         setError(scheduleErrorMessage);
         setScheduledTasks([]); // Clear schedule on error
       }
-      // No finally setLoading(false) here, as fetch handles the main loading state
     } else if (!loading && rawRequirements.length === 0) {
       // If not loading and no requirements, ensure schedule is empty
         setScheduledTasks([]);
     }
-    // Else: If loading, wait for fetch to complete. If error occurred during fetch, error state is set.
   }, [rawRequirements, workOnSaturday, workOnSunday, loading]); // Dependencies for scheduling
 
   return {

@@ -30,8 +30,7 @@ export async function fetchPlanningDetails(
         machine_types_id,
         machine_types:machine_types_id (name),
         software_types_id,
-        software_types:software_types_id (name),
-        resource_category
+        software_types:software_types_id (name)
       `)
       .eq('quote_id', quoteId)
       .eq('plan_id', planId)
@@ -42,14 +41,19 @@ export async function fetchPlanningDetails(
     console.log("[Planning Service] Raw planning details data:", data);
 
     // Map to TrainingRequirement format for the Gantt chart hook
+    if (!data) return [];
+    
     const requirements: TrainingRequirement[] = data.map(detail => {
+      // Extract resource name from the nested resources object
+      const resourceName = detail.resources?.name || `Resource ${detail.resource_id}`;
+      
       // Determine item name based on whether it's machine or software
       const itemName = detail.software_types_id
         ? (detail.software_types?.name || 'Unknown Software')
         : (detail.machine_types?.name || 'Unknown Machine');
 
-      // Determine category (use stored value if available, otherwise infer)
-      const category = detail.resource_category ?? (detail.software_types_id ? 'Software' : 'Machine');
+      // Determine category
+      const category = detail.software_types_id ? 'Software' : 'Machine';
 
       return {
         id: detail.id.toString(),
@@ -57,7 +61,7 @@ export async function fetchPlanningDetails(
         quote_id: detail.quote_id,
         plan_id: detail.plan_id,
         resource_id: detail.resource_id,
-        resource_name: detail.resources?.name || `Resource ${detail.resource_id}`,
+        resource_name: resourceName,
         machine_name: itemName,
         training_hours: detail.allocated_hours || 0,
         resource_category: category as 'Machine' | 'Software'
