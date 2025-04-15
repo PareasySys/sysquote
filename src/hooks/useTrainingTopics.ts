@@ -1,4 +1,3 @@
-
 // src/hooks/useTrainingTopics.ts
 
 import { useState, useEffect, useCallback } from "react";
