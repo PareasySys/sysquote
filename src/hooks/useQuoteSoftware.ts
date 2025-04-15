@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from "sonner";
-import { syncPlanningDetailsAfterChanges, syncSoftwareTrainingHoursAndResources } from "@/services/planningDetailsSync";
+import { dataSyncService } from "@/services/planningDetailsSync";
 import { useTrainingPlans } from "./useTrainingPlans";
 
 export interface QuoteSoftware {
@@ -93,12 +92,11 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
         
         setSelectedSoftware(softwareDetails || []);
         
-        // Sync planning details with software types
-        if (plans && plans.length > 0) {
-          // First sync hours and resources for software
-          await syncSoftwareTrainingHoursAndResources();
-          // Then sync other planning details
-          await syncPlanningDetailsAfterChanges();
+        // Sync software types one by one
+        if (plans && plans.length > 0 && updatedIds.length > 0) {
+          for (const softwareId of updatedIds) {
+            await dataSyncService.syncSoftwareTypeChanges(softwareId);
+          }
         }
       } else {
         setSelectedSoftware([]);
@@ -132,9 +130,10 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       setSoftwareTypeIds(combinedIds);
       
       // First sync hours and resources for software
-      await syncSoftwareTrainingHoursAndResources();
       // Then sync other planning details
-      await syncPlanningDetailsAfterChanges();
+      for (const softwareId of softwareIds) {
+        await dataSyncService.syncSoftwareTypeChanges(softwareId);
+      }
       
       // Refresh the software list
       await fetchQuoteSoftware();
@@ -175,9 +174,8 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       setSelectedSoftware(prev => prev.filter(software => software.software_type_id !== softwareTypeId));
       
       // First sync hours and resources for software after removal
-      await syncSoftwareTrainingHoursAndResources();
+      await dataSyncService.syncSoftwareTypeChanges(softwareTypeId);
       // Then sync other planning details
-      await syncPlanningDetailsAfterChanges();
       
       toast.success("Software removed successfully");
     } catch (err: any) {

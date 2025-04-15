@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -20,7 +19,7 @@ import { useMachineTrainingRequirements } from "@/hooks/useMachineTrainingRequir
 import { useResources } from "@/hooks/useResources";
 import { useTrainingTopics } from "@/hooks/useTrainingTopics";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { syncPlanningDetailsAfterChanges } from "@/services/planningDetailsSync";
+import { dataSyncService } from "@/services/planningDetailsSync";
 
 interface MachineTypeModalProps {
   open: boolean;
@@ -56,7 +55,6 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     loading: loadingResources 
   } = useResources();
   
-  // Fix: Only fetch requirements if we have a machine ID to prevent unnecessary rerenders
   const machineTypeId = machine?.machine_type_id;
   const { 
     requirements, 
@@ -67,10 +65,8 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
   
   const { deleteTopicsByItemId } = useTrainingTopics([]);
 
-  // Store selected resources in a local state
   const [selectedResources, setSelectedResources] = useState<Record<number, number | undefined>>({});
 
-  // Reset form when the machine prop changes - FIX: Remove form from dependency array
   useEffect(() => {
     if (machine) {
       setName(machine.name || "");
@@ -85,15 +81,12 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
     }
   }, [machine, setPreviewUrl]);
 
-  // Initialize selectedResources from requirements - FIX: Add console.log for debugging and protect against invalid references
   useEffect(() => {
-    // Only run this effect if we have both plans and requirements
     if (requirements && requirements.length > 0 && plans && plans.length > 0) {
       console.log("Initializing selectedResources from requirements", requirements);
       const initialSelectedResources: Record<number, number | undefined> = {};
       
       plans.forEach((plan) => {
-        // Use the memoized getResourceForPlan function
         const resourceId = plan && plan.plan_id ? getResourceForPlan(plan.plan_id) : undefined;
         if (resourceId) {
           initialSelectedResources[plan.plan_id] = resourceId;
@@ -157,7 +150,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
 
       if (error) throw error;
 
-      await syncPlanningDetailsAfterChanges();
+      await dataSyncService.syncPlanningDetailsAfterChanges();
 
       toast.success("Machine deleted successfully");
       onSave();
@@ -208,7 +201,7 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
         toast.success("Machine created successfully");
       }
 
-      await syncPlanningDetailsAfterChanges();
+      await dataSyncService.syncPlanningDetailsAfterChanges();
 
       onSave();
       onClose();
@@ -221,13 +214,11 @@ const MachineTypeModal: React.FC<MachineTypeModalProps> = ({
   };
 
   const handleResourceChange = async (planId: number, resourceId: number | undefined) => {
-    // Update local state first for immediate UI feedback
     setSelectedResources((prev) => ({
       ...prev,
       [planId]: resourceId,
     }));
 
-    // Then perform the backend update
     if (resourceId) {
       await saveRequirement(planId, resourceId);
     } else {

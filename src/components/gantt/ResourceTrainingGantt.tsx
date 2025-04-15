@@ -1,4 +1,3 @@
-
 // ResourceTrainingGantt.tsx
 
 import React, { useEffect, useState } from "react"; 
@@ -9,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { updateWeekendSettings } from "@/services/planningDetailsService"; // Keep this
 import { useTrainingRequirements } from "@/hooks/useTrainingRequirements"; // Adjust path
-import { syncSoftwareTrainingHoursAndResources } from "@/services/planningDetailsSync";
+import { dataSyncService } from "@/services/planningDetailsSync";
 
 interface ResourceTrainingGanttProps {
   quoteId: string | undefined;
@@ -45,19 +44,35 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       
       console.log("Starting software training hours sync...");
       
-      // Sync software hours and resources before loading requirements
-      syncSoftwareTrainingHoursAndResources()
-        .then(() => {
+      // Here we need to handle the software sync differently since there's no direct method
+      // We'll use the available methods in dataSyncService
+      const syncSoftware = async () => {
+        try {
+          // Get all software types from quotes and sync them
+          const { data } = await supabase
+            .from('quotes')
+            .select('software_type_ids')
+            .eq('quote_id', quoteId)
+            .single();
+          
+          if (data && data.software_type_ids && Array.isArray(data.software_type_ids)) {
+            // Sync each software type
+            for (const softwareId of data.software_type_ids) {
+              await dataSyncService.syncSoftwareTypeChanges(softwareId);
+            }
+          }
+          
           console.log("Software training hours sync completed");
           // After syncing, fetch the requirements
           return fetchRequirements();
-        })
-        .catch(err => {
-          console.error("Error syncing software training hours:", err);
-        })
-        .finally(() => {
+        } catch (err) {
+          console.error("Error in software sync:", err);
+        } finally {
           setSyncInProgress(false);
-        });
+        }
+      };
+      
+      syncSoftware();
     }
   }, [quoteId, planId, hasSynced, fetchRequirements, syncInProgress]);
   
@@ -76,7 +91,6 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
         .catch(err => console.error("Failed to update weekend settings:", err));
     }
   }, [quoteId, planId, workOnSaturday, workOnSunday]);
-
 
   // --- Display Logic ---
   if (!planId) {

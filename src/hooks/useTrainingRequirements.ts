@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchPlanningDetails } from '@/services/planningDetailsService';
 import { scheduleTrainingTasks } from '@/utils/scheduleTasks';
 import { ScheduledTaskSegment } from '@/utils/types';
-import { syncPlanningDetailsAfterChanges } from '@/services/planningDetailsSync';
+import { dataSyncService } from '@/services/planningDetailsSync';
 
 export interface TrainingRequirement {
   id?: string;
@@ -55,8 +55,28 @@ export function useTrainingRequirements(
 
       setRawRequirements(validRequirements);
       
-      // Sync planning details to ensure consistency
-      await syncPlanningDetailsAfterChanges();
+      // Sync changes for each software and machine type in this quote
+      const { data: quoteData } = await supabase
+        .from('quotes')
+        .select('machine_type_ids, software_type_ids')
+        .eq('quote_id', quoteId)
+        .single();
+      
+      if (quoteData) {
+        // Sync machine types
+        if (quoteData.machine_type_ids && Array.isArray(quoteData.machine_type_ids)) {
+          for (const machineId of quoteData.machine_type_ids) {
+            await dataSyncService.syncMachineTypeChanges(machineId);
+          }
+        }
+        
+        // Sync software types
+        if (quoteData.software_type_ids && Array.isArray(quoteData.software_type_ids)) {
+          for (const softwareId of quoteData.software_type_ids) {
+            await dataSyncService.syncSoftwareTypeChanges(softwareId);
+          }
+        }
+      }
     } catch (err: any) {
       console.error("useTrainingRequirements: Error fetching planning details:", err);
       const errorMessage = err.message || "Failed to fetch training requirements.";
