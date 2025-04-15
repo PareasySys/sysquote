@@ -7,6 +7,7 @@ import { AlertCircle, Loader2 } from "lucide-react"; // Added Loader2
 import { updateWeekendSettings } from "@/services/planningDetailsService"; // Keep this
 import { useTrainingRequirements } from "@/hooks/useTrainingRequirements"; // Adjust path if needed
 import { usePlanningDetailsSync } from "@/services/planningDetailsSync"; // Import the hook
+import { supabase } from "@/integrations/supabase/client"; // Fixed import
 
 interface ResourceTrainingGanttProps {
   quoteId: string | undefined;

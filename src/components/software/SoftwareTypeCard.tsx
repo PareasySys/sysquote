@@ -13,6 +13,7 @@ interface SoftwareTypeCardProps {
   onAddNew?: () => void;
   isSelected?: boolean;
   showSelectionIndicator?: boolean;
+  isAlwaysIncluded?: boolean;
 }
 
 const SoftwareTypeCard: React.FC<SoftwareTypeCardProps> = ({ 
@@ -21,7 +22,8 @@ const SoftwareTypeCard: React.FC<SoftwareTypeCardProps> = ({
   onEdit,
   onAddNew,
   isSelected = false,
-  showSelectionIndicator = false
+  showSelectionIndicator = false,
+  isAlwaysIncluded = false
 }) => {
   const handleClick = () => {
     if (isAddCard && onAddNew) {
@@ -86,33 +88,33 @@ const SoftwareTypeCard: React.FC<SoftwareTypeCardProps> = ({
             </div>
           )}
           
-          <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
-            <h3 className="text-sm font-semibold text-white mb-1">{software?.name}</h3>
+          <div className="absolute bottom-0 left-0 w-full p-3 z-20">
+            <h3 className="text-sm font-medium text-white line-clamp-2 mb-0.5">{software?.name}</h3>
             {software?.description && (
-              <p className="text-xs text-gray-300 line-clamp-2">{software.description}</p>
+              <p className="text-xs text-gray-300 line-clamp-2 opacity-80">{software.description}</p>
             )}
           </div>
-          
-          {/* Selection indicator - only shown when showSelectionIndicator is true */}
-          {showSelectionIndicator && (
-            <div className={`absolute top-2 right-2 h-6 w-6 rounded-full flex items-center justify-center transition-all z-20 ${
-              isSelected 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-slate-700/60 text-gray-400'
-            }`}>
+
+          {showSelectionIndicator && isSelected && (
+            <div className="absolute top-2 right-2 z-20 bg-blue-500 text-white rounded-full p-1">
               <Check className="h-4 w-4" />
             </div>
           )}
-          
-          {/* Edit button - only shown when onEdit is provided */}
-          {onEdit && !showSelectionIndicator && (
-            <Button 
+
+          {isAlwaysIncluded && (
+            <div className="absolute top-2 left-2 z-20 bg-amber-600/90 text-white text-xs px-1.5 py-0.5 rounded">
+              Required
+            </div>
+          )}
+
+          {onEdit && software && (
+            <Button
               onClick={handleEditClick}
-              className="absolute top-2 right-2 h-8 w-8 p-0 bg-slate-800/80 hover:bg-slate-700 z-20"
               size="icon"
               variant="ghost"
+              className="absolute top-2 right-2 z-20 text-white hover:bg-black/30 hover:text-white"
             >
-              <Edit className="h-4 w-4 text-white" />
+              <Edit className="h-4 w-4" />
             </Button>
           )}
         </Card>

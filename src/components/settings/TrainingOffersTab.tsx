@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useTrainingOffers } from "@/hooks/useTrainingOffers";
 import { useMachineTypes } from "@/hooks/useMachineTypes";
@@ -5,22 +6,20 @@ import { useSoftwareTypes } from "@/hooks/useSoftwareTypes";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { Button } from "@/components/ui/button";
-import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table"; // Using shadcn table
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { usePlanningDetailsSync } from "@/services/planningDetailsSync"; // Import the hook
-import { Loader2 } from "lucide-react"; // Import Loader
-
-// Removed incorrect MUI import: import { DataGrid } from '@mui/x-data-grid';
+import { usePlanningDetailsSync } from "@/services/planningDetailsSync";
+import { Loader2 } from "lucide-react";
 
 const TrainingOffersTab = () => {
   const {
     offersMatrix,
     softwareOffersMatrix,
-    loading: loadingOffers, // Renamed for clarity
+    loading: loadingOffers,
     error,
-    fetchOffers, // Keep fetchOffers for retry
+    fetchOffers,
     updateTrainingHours,
     updateSoftwareTrainingHours
   } = useTrainingOffers();
@@ -37,13 +36,13 @@ const TrainingOffersTab = () => {
     loading: loadingPlans
   } = useTrainingPlans();
 
-  const { syncTrainingOfferChanges } = usePlanningDetailsSync(); // Use the hook
+  const { syncTrainingOfferChanges } = usePlanningDetailsSync();
 
   // State to track which cell is being edited { 'type-itemId-planId': currentValue }
   const [editCells, setEditCells] = useState<Record<string, number | null>>({});
   // State to track which cell is currently saving
   const [savingCells, setSavingCells] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<string>("machines"); // Default tab
+  const [activeTab, setActiveTab] = useState<string>("machines");
 
   const isLoading = loadingOffers || loadingMachines || loadingSoftware || loadingPlans;
 
@@ -76,18 +75,13 @@ const TrainingOffersTab = () => {
 
   const handleCellDoubleClick = (itemId: number, planId: number, currentValue: number, isForSoftware: boolean = false) => {
     const key = getEditKey(itemId, planId, isForSoftware);
-    // Only allow editing one cell at a time (optional, good UX)
-    // if (Object.keys(editCells).length > 0) {
-    //   toast.info("Finish editing the current cell first.");
-    //   return;
-    // }
-    setEditCells({ [key]: currentValue }); // Set only the current cell for editing
+    setEditCells({ [key]: currentValue });
   };
 
   const handleInputChange = (key: string, value: string) => {
     // Allow empty input temporarily, treat as 0 on save
-    const numericValue = value === '' ? null : Number(value); // Store null for empty
-    if (!isNaN(numericValue ?? 0)) { // Check if it's a number or null
+    const numericValue = value === '' ? null : Number(value);
+    if (!isNaN(numericValue ?? 0)) {
       setEditCells(prev => ({
         ...prev,
         [key]: numericValue
@@ -100,7 +94,7 @@ const TrainingOffersTab = () => {
     const itemId = parseInt(itemIdStr, 10);
     const planId = parseInt(planIdStr, 10);
     const isForSoftware = type === 'software';
-    const hours = editCells[key] ?? 0; // Treat null/undefined as 0 on save
+    const hours = editCells[key] ?? 0;
 
     if (isNaN(itemId) || isNaN(planId)) {
         console.error("Invalid key for saving:", key);
@@ -108,7 +102,7 @@ const TrainingOffersTab = () => {
         return;
     }
 
-    setSavingCells(prev => ({ ...prev, [key]: true })); // Mark cell as saving
+    setSavingCells(prev => ({ ...prev, [key]: true }));
 
     try {
       let success = false;
@@ -120,7 +114,7 @@ const TrainingOffersTab = () => {
 
       if (success) {
         // After successful save, sync planning details
-        await syncTrainingOfferChanges(/* Pass IDs if needed by sync function */);
+        await syncTrainingOfferChanges();
 
         // Clear editing and saving state for this cell
         setEditCells(prev => {
@@ -130,14 +124,13 @@ const TrainingOffersTab = () => {
         });
         toast.success("Hours updated successfully.");
       } else {
-         // update function should ideally throw or return specific error info
          toast.error("Failed to save training hours.");
       }
     } catch (err: any) {
       console.error("Error saving cell:", err);
       toast.error(`Failed to save: ${err.message || "Unknown error"}`);
     } finally {
-      setSavingCells(prev => { // Always remove saving state
+      setSavingCells(prev => {
          const newState = { ...prev };
          delete newState[key];
          return newState;
@@ -156,7 +149,7 @@ const TrainingOffersTab = () => {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, key: string) => {
     if (e.key === 'Enter') {
-      e.preventDefault(); // Prevent form submission if applicable
+      e.preventDefault();
       handleSaveCell(key);
     } else if (e.key === 'Escape') {
       handleCancelEdit(key);
@@ -177,7 +170,7 @@ const TrainingOffersTab = () => {
         </div>
       );
     }
-     if (plans.length === 0) {
+    if (plans.length === 0) {
       return (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 text-center">
           <p className="text-slate-400">
@@ -213,7 +206,7 @@ const TrainingOffersTab = () => {
           {/* Table Body */}
           <TableBody>
             {items.map(item => {
-               const itemId = isForSoftware ? (item as typeof software[0]).software_type_id : (item as typeof machines[0]).machine_type_id;
+               const itemId = isForSoftware ? (item as any).software_type_id : (item as any).machine_type_id;
                const itemName = item.name;
                const matrixRow = findMatrixRow(itemId);
 
@@ -227,7 +220,7 @@ const TrainingOffersTab = () => {
                     {/* Plan Hour Cells */}
                     {plans.map(plan => {
                       const cellData = matrixRow?.plans.find(p => p.planId === plan.plan_id);
-                      const hoursRequired = cellData?.hoursRequired ?? 0; // Default to 0 if no data
+                      const hoursRequired = cellData?.hoursRequired ?? 0;
                       const key = getEditKey(itemId, plan.plan_id, isForSoftware);
                       const isEditing = editCells[key] !== undefined;
                       const isSaving = savingCells[key];
@@ -235,7 +228,7 @@ const TrainingOffersTab = () => {
                       return (
                         <TableCell
                           key={key}
-                          className="text-center relative border-l border-slate-700 px-2 py-1 h-14" // Fixed height for cells
+                          className="text-center relative border-l border-slate-700 px-2 py-1 h-14"
                           onDoubleClick={() => !isSaving && handleCellDoubleClick(itemId, plan.plan_id, hoursRequired, isForSoftware)}
                         >
                           {isEditing ? (
@@ -245,19 +238,17 @@ const TrainingOffersTab = () => {
                                 min="0"
                                 step="0.5"
                                 className="w-20 text-center p-1 bg-slate-700 border-blue-500 text-white focus:ring-blue-500 focus:ring-1"
-                                value={editCells[key] ?? ''} // Use '' for null/undefined in input value
+                                value={editCells[key] ?? ''}
                                 onChange={e => handleInputChange(key, e.target.value)}
                                 onKeyDown={e => handleKeyDown(e, key)}
                                 autoFocus
                                 onFocus={e => e.target.select()}
-                                onBlur={() => handleSaveCell(key)} // Save on blur
+                                onBlur={() => handleSaveCell(key)}
                                 disabled={isSaving}
                               />
-                               {/* Saving Indicator */}
                                {isSaving && <Loader2 className="absolute top-1/2 right-2 transform -translate-y-1/2 h-4 w-4 animate-spin text-blue-400" />}
                             </div>
                           ) : (
-                             // Display hours - allow double click
                             <div className="flex items-center justify-center h-full px-3 py-1 rounded-md cursor-pointer hover:bg-slate-700/50 transition-colors" title="Double-click to edit">
                                {isSaving ? (
                                     <Loader2 className="h-4 w-4 animate-spin text-blue-400" />

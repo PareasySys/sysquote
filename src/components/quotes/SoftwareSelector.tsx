@@ -1,30 +1,29 @@
+
 import React, { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client"; // Corrected path
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import SoftwareTypeCard from "@/components/software/SoftwareTypeCard";
 import { SoftwareType } from "@/hooks/useSoftwareTypes";
-import { Loader2 } from "lucide-react"; // Added Loader
-// Removed useTrainingPlans and syncSoftwarePlanningDetails imports
+import { Loader2 } from "lucide-react";
 
 interface SoftwareSelectorProps {
   selectedSoftwareIds: number[];
   alwaysIncludedIds: number[];
-  onSave: (softwareIds: number[]) => void; // Keep onSave to report changes up
-  quoteId?: string; // Keep quoteId if needed for other purposes
+  onSave: (softwareIds: number[]) => void;
+  quoteId?: string;
 }
 
 const SoftwareSelector: React.FC<SoftwareSelectorProps> = ({
   selectedSoftwareIds,
   alwaysIncludedIds,
   onSave,
-  quoteId // Keep quoteId prop if needed elsewhere
+  quoteId
 }) => {
   const [softwareTypes, setSoftwareTypes] = useState<SoftwareType[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  // Removed plans state
 
   // Effect to update local selection when prop changes
   useEffect(() => {
@@ -86,8 +85,6 @@ const SoftwareSelector: React.FC<SoftwareSelectorProps> = ({
     // The parent hook (useQuoteSoftware) will handle merging alwaysIncluded back in on save.
     const selectionToReport = updatedSelection.filter(id => !alwaysIncludedIds.includes(id));
     onSave(selectionToReport);
-
-    // DO NOT sync planning details here. Syncing will happen after the parent saves.
   };
 
   const isSoftwareSelected = (softwareTypeId: number) => {
@@ -117,20 +114,20 @@ const SoftwareSelector: React.FC<SoftwareSelectorProps> = ({
             <div
               key={software.software_type_id}
               onClick={() => handleSoftwareClick(software.software_type_id)}
-              className={`cursor-pointer rounded-lg ${software.always_included ? 'opacity-70 cursor-not-allowed group' : ''}`} // Style always included
+              className={`cursor-pointer rounded-lg relative ${software.always_included ? 'opacity-70 cursor-not-allowed group' : ''}`}
               title={software.always_included ? `${software.name} is always included` : `Select ${software.name}`}
             >
               <SoftwareTypeCard
                 software={software}
                 isSelected={isSoftwareSelected(software.software_type_id)}
                 showSelectionIndicator={true}
-                isAlwaysIncluded={software.always_included} // Pass down always_included status
+                isAlwaysIncluded={software.always_included}
               />
-               {software.always_included && (
-                 <div className="absolute top-1 right-1 text-xs bg-amber-500 text-black px-1 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    Auto
-                 </div>
-               )}
+              {software.always_included && (
+                <div className="absolute top-1 right-1 text-xs bg-amber-500 text-black px-1 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                   Auto
+                </div>
+              )}
             </div>
           ))}
         </div>

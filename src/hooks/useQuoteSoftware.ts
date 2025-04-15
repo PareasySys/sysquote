@@ -1,7 +1,8 @@
+
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from '@/integrations/supabase/client'; // Corrected path
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
-import { usePlanningDetailsSync } from "@/services/planningDetailsSync"; // Import the sync hook
+import { usePlanningDetailsSync } from "@/services/planningDetailsSync";
 
 export interface QuoteSoftware {
   software_type_id: number;
@@ -17,7 +18,7 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
   const [alwaysIncludedIds, setAlwaysIncludedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { syncQuotePlanningDetails } = usePlanningDetailsSync(); // Get the consolidated sync function
+  const { syncQuotePlanningDetails } = usePlanningDetailsSync();
 
   const fetchAlwaysIncludedSoftware = useCallback(async () => {
     console.log("useQuoteSoftware: Fetching always included software IDs.");
@@ -66,11 +67,6 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
 
       const combinedIds = [...new Set([...currentIds, ...fetchedAlwaysIncludedIds])];
 
-      // // Optional: Auto-update DB if always_included missing (consider if needed)
-      // if (JSON.stringify(combinedIds) !== JSON.stringify(currentIds)) {
-      //    // ... update logic ...
-      // }
-
       setSoftwareTypeIds(combinedIds);
 
       if (combinedIds.length > 0) {
@@ -115,8 +111,6 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
         return false;
     }
 
-    // Use temporary loading state if desired
-    // setLoading(true);
     setError(null);
     let success = false;
 
@@ -133,14 +127,13 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
 
       console.log("useQuoteSoftware: Successfully updated quote's software_type_ids.");
 
-      // --- Trigger Sync AFTER successful save ---
+      // Trigger Sync AFTER successful save
       console.log("useQuoteSoftware: Triggering planning details sync after saving software.");
-      await syncQuotePlanningDetails(quoteId); // Pass the current quote ID
-      // -----------------------------------------
+      await syncQuotePlanningDetails(quoteId);
 
       // Update local state
       setSoftwareTypeIds(combinedIds);
-      await fetchQuoteSoftware(alwaysIncludedIds); // Re-fetch details
+      await fetchQuoteSoftware(alwaysIncludedIds);
 
       toast.success("Software selection saved successfully.");
       success = true;
@@ -151,8 +144,6 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       setError(message);
       toast.error(message);
       success = false;
-    } finally {
-      // setLoading(false);
     }
     return success;
   };
@@ -168,7 +159,6 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
     }
 
     console.log(`useQuoteSoftware: Removing software ${softwareTypeIdToRemove} from quote ${quoteId}`);
-    // setLoading(true);
     setError(null);
     let success = false;
 
@@ -184,10 +174,9 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
 
       console.log("useQuoteSoftware: Successfully updated quote after software removal.");
 
-      // --- Trigger Sync AFTER successful removal ---
+      // Trigger Sync AFTER successful removal
       console.log("useQuoteSoftware: Triggering planning details sync after removing software.");
-      await syncQuotePlanningDetails(quoteId); // Pass the current quote ID
-      // ------------------------------------------
+      await syncQuotePlanningDetails(quoteId);
 
       // Update local state immediately
       setSoftwareTypeIds(updatedSoftwareIds);
@@ -201,8 +190,6 @@ export const useQuoteSoftware = (quoteId: string | undefined) => {
       setError(message);
       toast.error(message);
       success = false;
-    } finally {
-      // setLoading(false);
     }
     return success;
   };
