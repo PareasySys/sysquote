@@ -1,261 +1,284 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client"; // Ensure correct path
 import { useCallback } from "react";
 import { toast } from "sonner";
+import { TrainingPlan } from "@/hooks/useTrainingPlans"; // Assuming this type is needed/available
 
-// You might expand this hook with more specific sync functions as needed
+// Helper type
+type PlanningDetail = {
+  id: number;
+  quote_id: string;
+  plan_id: number;
+  machine_types_id: number | null;
+  software_types_id: number | null;
+  resource_id: number | null;
+  allocated_hours: number;
+  // Add other fields if needed by sync logic (e.g., work_on_saturday)
+};
+
 export function usePlanningDetailsSync() {
 
-  // Generic sync function (kept for potential broad use cases or internal calls)
-  // Consider if this is truly needed or if specific syncs are always better.
-  const syncAllPlanningDetails = useCallback(async () => {
-    try {
-      console.log("Starting full planning details sync...");
-      const { data: planningDetails, error: fetchError } = await supabase
-        .from("planning_details")
-        .select("*");
-
-      if (fetchError) throw fetchError;
-      if (!planningDetails || planningDetails.length === 0) return true;
-
-      console.log(`Synchronizing ${planningDetails.length} planning details records`);
-
-      for (const detail of planningDetails) {
-        let needsUpdate = false;
-        const updates: Record<string, any> = {};
-
-        // --- Check Referenced Entities Exist ---
-        // (Simplified checks - add more robust checks if needed)
-        if (detail.plan_id) {
-          const { data: plan } = await supabase.from("training_plans").select("plan_id").eq("plan_id", detail.plan_id).maybeSingle();
-          if (!plan) needsUpdate = true; // Mark for potential update/delete later if needed
-        }
-        if (detail.machine_types_id) {
-          const { data: machine } = await supabase.from("machine_types").select("machine_type_id").eq("machine_type_id", detail.machine_types_id).maybeSingle();
-          if (!machine) { updates.machine_types_id = null; needsUpdate = true; }
-        }
-         if (detail.software_types_id) {
-          const { data: software } = await supabase.from("software_types").select("software_type_id").eq("software_type_id", detail.software_types_id).maybeSingle();
-          if (!software) { updates.software_types_id = null; needsUpdate = true; }
-        }
-        if (detail.resource_id) {
-          const { data: resource } = await supabase.from("resources").select("resource_id").eq("resource_id", detail.resource_id).maybeSingle();
-          if (!resource) { updates.resource_id = null; needsUpdate = true; }
-        }
-
-        // --- Sync Resource/Hours based on Requirements/Offers ---
-        // Software
-        if (detail.software_types_id) {
-            const { data: softwareReq } = await supabase
-              .from("software_training_requirements")
-              .select("resource_id")
-              .eq("software_type_id", detail.software_types_id)
-              .eq("plan_id", detail.plan_id)
-              .maybeSingle(); // Use maybeSingle
-
-            const { data: offer } = await supabase
-              .from("training_offers")
-              .select("hours_required")
-              .eq("software_type_id", detail.software_types_id)
-              .eq("plan_id", detail.plan_id)
-              .is("machine_type_id", null)
-              .maybeSingle(); // Use maybeSingle
-
-            const requiredResourceId = softwareReq?.resource_id ?? null;
-            const requiredHours = offer?.hours_required ?? 0; // Default to 0 if no offer
-
-            if (requiredResourceId !== detail.resource_id) {
-                updates.resource_id = requiredResourceId;
-                needsUpdate = true;
-            }
-            if (requiredHours !== detail.allocated_hours) {
-                updates.allocated_hours = requiredHours;
-                needsUpdate = true;
-            }
-        }
-        // Machine (similar logic)
-        else if (detail.machine_types_id) {
-           const { data: machineReq } = await supabase
-              .from("machine_training_requirements")
-              .select("resource_id")
-              .eq("machine_type_id", detail.machine_types_id)
-              .eq("plan_id", detail.plan_id)
-              .maybeSingle();
-
-            const { data: offer } = await supabase
-              .from("training_offers")
-              .select("hours_required")
-              .eq("machine_type_id", detail.machine_types_id)
-              .eq("plan_id", detail.plan_id)
-              .is("software_type_id", null)
-              .maybeSingle();
-
-            const requiredResourceId = machineReq?.resource_id ?? null;
-            const requiredHours = offer?.hours_required ?? 0;
-
-            if (requiredResourceId !== detail.resource_id) {
-                updates.resource_id = requiredResourceId;
-                needsUpdate = true;
-            }
-             if (requiredHours !== detail.allocated_hours) {
-                updates.allocated_hours = requiredHours;
-                needsUpdate = true;
-            }
-        }
-
-        // Apply updates if needed
-        if (needsUpdate && Object.keys(updates).length > 0) {
-          console.log(`Updating planning detail ${detail.id} with:`, updates);
-          const { error: updateError } = await supabase
-            .from("planning_details")
-            .update(updates)
-            .eq("id", detail.id);
-          if (updateError) console.error(`Error updating planning detail ${detail.id}:`, updateError);
-        }
-      }
-      console.log("Full planning details sync completed.");
-      return true;
-    } catch (error) {
-      console.error("Error during full planning details sync:", error);
-      toast.error("Failed to synchronize planning details.");
+  /**
+   * Synchronizes the planning_details table for a specific quote.
+   * Ensures rows exist for selected machines/software per plan,
+   * removes rows for deselected items, and updates hours/resources
+   * based on training_offers and *_training_requirements.
+   */
+  const syncQuotePlanningDetails = useCallback(async (quoteId: string) => {
+    if (!quoteId) {
+      console.error("syncQuotePlanningDetails called without quoteId.");
       return false;
     }
-  }, []);
+    console.log(`[Sync Service] Starting sync for Quote ID: ${quoteId}`);
 
-  // --- Specific Sync Functions ---
-
-  const syncMachineTypeChanges = useCallback(async (machineTypeId: number) => {
-    console.log(`Syncing planning details for Machine Type ID: ${machineTypeId}`);
-    // Logic to find related planning_details and update/delete them
-    // This might involve checking if the machine type still exists,
-    // updating resource_id based on machine_training_requirements,
-    // updating allocated_hours based on training_offers.
-    // Example: Remove details if machine type was deleted, or update hours/resource if changed.
-    await syncAllPlanningDetails(); // Simplistic: Re-run full sync; ideally, make this more targeted.
-    toast.info(`Planning details synced for machine type ${machineTypeId}`);
-  }, [syncAllPlanningDetails]);
-
-  const syncSoftwareTypeChanges = useCallback(async (softwareTypeId: number) => {
-    console.log(`Syncing planning details for Software Type ID: ${softwareTypeId}`);
-    // Similar logic as syncMachineTypeChanges, but for software.
-    await syncAllPlanningDetails(); // Simplistic: Re-run full sync.
-    toast.info(`Planning details synced for software type ${softwareTypeId}`);
-  }, [syncAllPlanningDetails]);
-
-  const syncResourceChanges = useCallback(async (resourceId: number) => {
-    console.log(`Syncing planning details for Resource ID: ${resourceId}`);
-    // Find planning_details using this resource. Check if resource still exists.
-    // Update details if resource was deleted (e.g., set resource_id to null).
-    await syncAllPlanningDetails(); // Simplistic: Re-run full sync.
-    toast.info(`Planning details synced for resource ${resourceId}`);
-  }, [syncAllPlanningDetails]);
-
-   const syncTrainingPlanChanges = useCallback(async (planId: number) => {
-    console.log(`Syncing planning details for Training Plan ID: ${planId}`);
-    // Logic if a plan is deleted or significantly changed.
-    await syncAllPlanningDetails(); // Simplistic: Re-run full sync.
-    toast.info(`Planning details synced for training plan ${planId}`);
-  }, [syncAllPlanningDetails]);
-
-  const syncAreaCostChanges = useCallback(async (areaId: number) => {
-    console.log(`Syncing planning details related to Area ID: ${areaId}`);
-    // Area costs don't directly affect planning_details structure,
-    // but might affect quote calculations elsewhere.
-    // This sync might be simpler or handled differently.
-    // For now, we can just log it or perform related quote updates.
-    // Example: Re-fetch quotes using this area if costs changed.
-    // No direct planning_details update needed here based on schema.
-    toast.info(`Area cost change noted for area ${areaId}. Related quotes might need recalculation.`);
-  }, []);
-
-
-  const syncTrainingOfferChanges = useCallback(async (/* offerId?: number, itemId?: number, planId?: number */) => {
-    // Offer changes (hours) directly impact allocated_hours in planning_details.
-    console.log(`Syncing planning details due to Training Offer changes...`);
-    // Find relevant planning_details and update allocated_hours.
-    await syncAllPlanningDetails(); // Simplistic: Re-run full sync. Needs specific targeting ideally.
-    toast.info(`Planning details synced after training offer change.`);
-  }, [syncAllPlanningDetails]);
-
-  const syncSoftwareTrainingHours = useCallback(async () => {
-    // Specific function to sync hours/resources for *all* software items
-    // based on current offers and requirements.
     try {
-        console.log("Starting software training hours sync...");
-        const { data: softwareOffers, error: offersError } = await supabase
-            .from("training_offers")
-            .select("*")
-            .is("machine_type_id", null)
-            .not("software_type_id", "is", null);
+      // 1. Fetch current state of the quote (selected items) and plans
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('quotes')
+        .select('machine_type_ids, software_type_ids')
+        .eq('quote_id', quoteId)
+        .single();
 
-        if (offersError) throw offersError;
-        if (!softwareOffers || softwareOffers.length === 0) return true;
+      if (quoteError) throw new Error(`Failed to fetch quote data: ${quoteError.message}`);
+      if (!quoteData) throw new Error(`Quote not found: ${quoteId}`);
 
-        const { data: softwareReqs, error: reqsError } = await supabase
-            .from("software_training_requirements")
-            .select("*");
-        if (reqsError) throw reqsError;
+      const currentMachineIds = quoteData.machine_type_ids || [];
+      const currentSoftwareIds = quoteData.software_type_ids || [];
+      console.log(`[Sync Service] Current selections - Machines: [${currentMachineIds.join(', ')}], Software: [${currentSoftwareIds.join(', ')}]`);
 
-        // Efficiently update relevant planning_details
-        const updates = [];
-        for (const offer of softwareOffers) {
-            const softwareId = offer.software_type_id;
-            const planId = offer.plan_id;
-            const hoursRequired = offer.hours_required;
-            const softwareReq = softwareReqs?.find(
-                req => req.software_type_id === softwareId && req.plan_id === planId
-            );
-            const resourceId = softwareReq?.resource_id ?? null;
+      const { data: plansData, error: plansError } = await supabase
+        .from('training_plans')
+        .select('plan_id'); // Only need IDs
 
-            // Find planning details to update
-             const { data: detailsToUpdate, error: fetchDetailsError } = await supabase
-                .from("planning_details")
-                .select("id")
-                .eq("plan_id", planId)
-                .eq("software_types_id", softwareId)
-                .or(`allocated_hours.neq.${hoursRequired},resource_id.neq.${resourceId === null ? 'null' : resourceId }`); // Find where hours OR resource differs
+      if (plansError) throw new Error(`Failed to fetch training plans: ${plansError.message}`);
+      const plans = plansData || [];
+      if (plans.length === 0) {
+         console.log("[Sync Service] No training plans found. Skipping planning details sync.");
+         return true; // Nothing to sync if no plans
+      }
+      const allPlanIds = plans.map(p => p.plan_id);
+      console.log(`[Sync Service] Found ${plans.length} plans: [${allPlanIds.join(', ')}]`);
 
-            if (fetchDetailsError) {
-                console.error("Error fetching details to update:", fetchDetailsError);
-                continue; // Skip this offer on error
-            }
 
-            if (detailsToUpdate && detailsToUpdate.length > 0) {
-                 for (const detail of detailsToUpdate) {
-                    updates.push(supabase
-                        .from("planning_details")
-                        .update({ allocated_hours: hoursRequired, resource_id: resourceId })
-                        .eq("id", detail.id)
-                    );
-                 }
-            }
-        }
+      // 2. Fetch existing planning details for this quote
+      const { data: existingDetailsData, error: fetchDetailsError } = await supabase
+        .from('planning_details')
+        .select('*') // Select all for comparison/update/delete
+        .eq('quote_id', quoteId);
 
-        if (updates.length > 0) {
-            console.log(`Applying ${updates.length} software planning detail updates...`);
-            await Promise.all(updates);
-            toast.success(`${updates.length} software planning details updated.`);
-        } else {
-             console.log("No software planning details needed updates.");
-        }
+      if (fetchDetailsError) throw new Error(`Failed to fetch existing planning details: ${fetchDetailsError.message}`);
+      const existingDetails: PlanningDetail[] = existingDetailsData || [];
+      console.log(`[Sync Service] Found ${existingDetails.length} existing planning details.`);
 
-        return true;
-    } catch (error) {
-        console.error("Error synchronizing software training hours:", error);
-        toast.error("Failed to sync software training hours.");
-        return false;
+
+      // 3. Fetch relevant Training Offers (Hours)
+      const { data: offersData, error: offersError } = await supabase
+        .from('training_offers')
+        .select('machine_type_id, software_type_id, plan_id, hours_required')
+        .in('plan_id', allPlanIds)
+        .or(`machine_type_id.in.(${currentMachineIds.join(',')}),software_type_id.in.(${currentSoftwareIds.join(',')})`); // Fetch offers for selected items
+
+      if (offersError) throw new Error(`Failed to fetch training offers: ${offersError.message}`);
+      const offers = offersData || [];
+      // Create maps for quick lookup: 'type-itemId-planId' -> hours
+      const offerHoursMap = new Map<string, number>();
+      offers.forEach(o => {
+         const key = o.machine_type_id ? `machine-${o.machine_type_id}-${o.plan_id}` : `software-${o.software_type_id}-${o.plan_id}`;
+         offerHoursMap.set(key, o.hours_required ?? 0);
+      });
+      console.log(`[Sync Service] Fetched ${offers.length} relevant training offers.`);
+
+
+      // 4. Fetch relevant Training Requirements (Resources)
+      const { data: machineReqsData, error: machineReqsError } = await supabase
+         .from('machine_training_requirements')
+         .select('machine_type_id, plan_id, resource_id')
+         .in('machine_type_id', currentMachineIds)
+         .in('plan_id', allPlanIds);
+
+      if (machineReqsError) throw new Error(`Failed to fetch machine requirements: ${machineReqsError.message}`);
+      const machineReqs = machineReqsData || [];
+
+      const { data: softwareReqsData, error: softwareReqsError } = await supabase
+         .from('software_training_requirements')
+         .select('software_type_id, plan_id, resource_id')
+         .in('software_type_id', currentSoftwareIds)
+         .in('plan_id', allPlanIds);
+
+      if (softwareReqsError) throw new Error(`Failed to fetch software requirements: ${softwareReqsError.message}`);
+      const softwareReqs = softwareReqsData || [];
+
+       // Create maps for quick lookup: 'type-itemId-planId' -> resourceId
+      const requirementResourceMap = new Map<string, number | null>();
+      machineReqs.forEach(r => requirementResourceMap.set(`machine-${r.machine_type_id}-${r.plan_id}`, r.resource_id ?? null));
+      softwareReqs.forEach(r => requirementResourceMap.set(`software-${r.software_type_id}-${r.plan_id}`, r.resource_id ?? null));
+      console.log(`[Sync Service] Fetched ${machineReqs.length} machine & ${softwareReqs.length} software requirements.`);
+
+
+      // 5. Determine operations: Deletes, Creates, Updates
+      const detailsToDelete: number[] = [];
+      const detailsToCreate: Omit<PlanningDetail, 'id'>[] = [];
+      const detailsToUpdate: { id: number; updates: Partial<PlanningDetail> }[] = [];
+      const processedKeys = new Set<string>(); // Keep track of existing details processed
+
+      // Check existing details: Should they be updated or deleted?
+      for (const detail of existingDetails) {
+          const key = detail.machine_types_id
+              ? `machine-${detail.machine_types_id}-${detail.plan_id}`
+              : `software-${detail.software_types_id}-${detail.plan_id}`;
+          processedKeys.add(key); // Mark this existing detail as seen
+
+          const isStillSelected = detail.machine_types_id
+              ? currentMachineIds.includes(detail.machine_types_id)
+              : currentSoftwareIds.includes(detail.software_types_id ?? -1); // Handle potential null software_id
+
+          if (!isStillSelected) {
+              detailsToDelete.push(detail.id);
+              console.log(`[Sync Service] Marking detail ID ${detail.id} for DELETION (item deselected).`);
+              continue; // No need to check for updates if deleting
+          }
+
+          // Item is still selected, check for updates
+          const expectedHours = offerHoursMap.get(key) ?? 0;
+          const expectedResource = requirementResourceMap.get(key) ?? null;
+          const updates: Partial<PlanningDetail> = {};
+
+          if (detail.allocated_hours !== expectedHours) {
+              updates.allocated_hours = expectedHours;
+          }
+          if (detail.resource_id !== expectedResource) {
+              updates.resource_id = expectedResource;
+          }
+
+          if (Object.keys(updates).length > 0) {
+              detailsToUpdate.push({ id: detail.id, updates });
+              console.log(`[Sync Service] Marking detail ID ${detail.id} for UPDATE:`, updates);
+          }
+      }
+
+      // Check for missing details: Should they be created?
+      for (const plan of plans) {
+          // Machines
+          for (const machineId of currentMachineIds) {
+              const key = `machine-${machineId}-${plan.plan_id}`;
+              if (!processedKeys.has(key)) { // If this combo wasn't in existingDetails
+                  const hours = offerHoursMap.get(key) ?? 0;
+                  const resource = requirementResourceMap.get(key) ?? null;
+                  detailsToCreate.push({
+                      quote_id: quoteId,
+                      plan_id: plan.plan_id,
+                      machine_types_id: machineId,
+                      software_types_id: null,
+                      resource_id: resource,
+                      allocated_hours: hours
+                      // Add defaults for other fields if needed (e.g., work_on_saturday: false)
+                  });
+                  console.log(`[Sync Service] Marking detail for CREATION: Machine ${machineId}, Plan ${plan.plan_id}, Hours ${hours}, Resource ${resource}`);
+              }
+          }
+          // Software
+          for (const softwareId of currentSoftwareIds) {
+              const key = `software-${softwareId}-${plan.plan_id}`;
+               if (!processedKeys.has(key)) {
+                   const hours = offerHoursMap.get(key) ?? 0;
+                   const resource = requirementResourceMap.get(key) ?? null;
+                   detailsToCreate.push({
+                       quote_id: quoteId,
+                       plan_id: plan.plan_id,
+                       machine_types_id: null,
+                       software_types_id: softwareId,
+                       resource_id: resource,
+                       allocated_hours: hours
+                       // Add defaults for other fields
+                   });
+                    console.log(`[Sync Service] Marking detail for CREATION: Software ${softwareId}, Plan ${plan.plan_id}, Hours ${hours}, Resource ${resource}`);
+               }
+          }
+      }
+
+      // 6. Execute Batched DB Operations
+      let operationsCount = 0;
+
+      // Deletes
+      if (detailsToDelete.length > 0) {
+          console.log(`[Sync Service] Executing DELETE for ${detailsToDelete.length} details.`);
+          const { error: deleteError } = await supabase
+              .from('planning_details')
+              .delete()
+              .in('id', detailsToDelete);
+          if (deleteError) throw new Error(`Failed to delete planning details: ${deleteError.message}`);
+          operationsCount += detailsToDelete.length;
+      }
+
+      // Creates
+      if (detailsToCreate.length > 0) {
+         console.log(`[Sync Service] Executing INSERT for ${detailsToCreate.length} details.`);
+          const { error: insertError } = await supabase
+              .from('planning_details')
+              .insert(detailsToCreate);
+          if (insertError) throw new Error(`Failed to insert planning details: ${insertError.message}`);
+          operationsCount += detailsToCreate.length;
+      }
+
+      // Updates
+      if (detailsToUpdate.length > 0) {
+         console.log(`[Sync Service] Executing UPDATE for ${detailsToUpdate.length} details.`);
+          // Execute updates individually (batch update based on ID is complex)
+          for (const { id, updates } of detailsToUpdate) {
+              updates.updated_at = new Date().toISOString(); // Add timestamp
+              const { error: updateError } = await supabase
+                  .from('planning_details')
+                  .update(updates)
+                  .eq('id', id);
+              if (updateError) {
+                  // Log specific error but continue trying others
+                  console.error(`[Sync Service] Failed to update planning detail ID ${id}: ${updateError.message}`);
+                  // Optionally throw or collect errors
+              }
+          }
+           operationsCount += detailsToUpdate.length;
+      }
+
+      console.log(`[Sync Service] Sync completed for Quote ID: ${quoteId}. ${operationsCount} DB operations performed.`);
+      // Optionally toast success only if changes were made
+      // if (operationsCount > 0) {
+      //     toast.info("Planning details synchronized.");
+      // }
+      return true; // Indicate success
+
+    } catch (error: any) {
+      console.error(`[Sync Service] Error during sync for Quote ID ${quoteId}:`, error);
+      toast.error(`Planning sync failed: ${error.message}`);
+      return false; // Indicate failure
     }
+  }, []); // useCallback ensures the function identity is stable
+
+  // --- Keep other specific sync functions if they are used elsewhere ---
+  // --- OR remove them if syncQuotePlanningDetails covers all use cases ---
+
+  // Example: Keep syncTrainingOfferChanges if called directly from TrainingOffersTab
+  const syncTrainingOfferChanges = useCallback(async () => {
+    // This might need refinement - does changing *one* offer require syncing *all* quotes?
+    // Or should it sync only planning_details related to that specific offer?
+    // For now, a broad sync might be acceptable, but less efficient.
+    console.warn("[Sync Service] syncTrainingOfferChanges called - consider refining scope.");
+    // Maybe call syncQuotePlanningDetails for ALL relevant quotes? This could be heavy.
+    // A better approach might involve updating only the affected planning_details directly.
+    // For simplicity, let's assume for now it triggers a general resync (less ideal).
+    // await syncAllPlanningDetails(); // This was the old name
+    toast.info(`Planning details might need refresh due to offer change.`);
   }, []);
 
 
   return {
-    syncAllPlanningDetails, // Keep if needed
-    syncMachineTypeChanges,
-    syncSoftwareTypeChanges,
-    syncResourceChanges,
-    syncTrainingPlanChanges,
-    syncAreaCostChanges,
+    // Rename the main function for clarity
+    syncQuotePlanningDetails,
+    // Keep other specific syncs if needed by other parts of the app
     syncTrainingOfferChanges,
-    syncSoftwareTrainingHours, // Add this specific sync
-    // Add other specific sync functions here
+    // syncMachineTypeChanges, // Likely redundant now
+    // syncSoftwareTypeChanges, // Likely redundant now
+    // syncResourceChanges, // Keep if needed when a resource is deleted/updated globally
+    // syncTrainingPlanChanges, // Keep if needed when a plan is deleted/updated globally
+    // syncAreaCostChanges, // Keep if needed
+    // syncSoftwareTrainingHours, // Likely redundant now (logic merged into syncQuotePlanningDetails)
   };
 }
