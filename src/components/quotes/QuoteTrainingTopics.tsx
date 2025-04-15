@@ -3,7 +3,7 @@ import React, { useEffect } from "react";
 import QuoteTrainingTopicsTree from "./QuoteTrainingTopicsTree";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
 import { QuoteSoftware } from "@/hooks/useQuoteSoftware";
-import { syncSoftwareTrainingHoursAndResources } from "@/services/planningDetailsSync";
+import { dataSyncService } from "@/services/planningDetailsSync";
 
 interface QuoteTrainingTopicsProps {
   selectedMachines: QuoteMachine[];
@@ -18,11 +18,19 @@ const QuoteTrainingTopics: React.FC<QuoteTrainingTopicsProps> = ({
   // Ensure software training hours are synced when the component mounts or when selected software changes
   useEffect(() => {
     if (selectedSoftware.length > 0) {
-      syncSoftwareTrainingHoursAndResources().catch(err => {
-        console.error("Error syncing software training hours:", err);
+      // Get software type IDs from the selected software
+      const softwareTypeIds = selectedSoftware.map(item => item.software_type_id);
+      
+      // Call the appropriate method from dataSyncService
+      softwareTypeIds.forEach(id => {
+        if (id) {
+          dataSyncService.syncSoftwareTypeChanges(id).catch(err => {
+            console.error(`Error syncing software type ${id}:`, err);
+          });
+        }
       });
     }
-  }, [selectedSoftware.length]);
+  }, [selectedSoftware]);
   
   return (
     <QuoteTrainingTopicsTree 
