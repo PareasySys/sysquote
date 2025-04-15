@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"; // Added useCallback
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePlanningDetailsSync } from "@/services/planningDetailsSync"; // Import the sync hook
@@ -10,18 +10,15 @@ export interface QuoteMachine {
   photo_url?: string;
 }
 
-// Removed QuoteWithMachines interface as it wasn't directly used by the hook's return
-
 export const useQuoteMachines = (quoteId: string | undefined) => {
   const [selectedMachines, setSelectedMachines] = useState<QuoteMachine[]>([]);
   const [machineTypeIds, setMachineTypeIds] = useState<number[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { syncAllPlanningDetails } = usePlanningDetailsSync(); // Get the sync function
+  const { syncQuotePlanningDetails } = usePlanningDetailsSync(); // Get the consolidated sync function
 
   const fetchQuoteMachines = useCallback(async () => {
     if (!quoteId) {
-        // Clear state if quoteId becomes invalid
         setMachineTypeIds([]);
         setSelectedMachines([]);
         setError(null);
@@ -34,10 +31,9 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
     setError(null);
 
     try {
-      // Fetch quote data including machine_type_ids
       const { data: quoteData, error: fetchError } = await supabase
         .from('quotes')
-        .select('machine_type_ids') // Only need the IDs here
+        .select('machine_type_ids')
         .eq('quote_id', quoteId)
         .single();
 
@@ -47,7 +43,6 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
       console.log("useQuoteMachines: Fetched machine IDs:", currentMachineIds);
       setMachineTypeIds(currentMachineIds);
 
-      // If we have machine ids, fetch their details
       if (currentMachineIds.length > 0) {
         const { data: machinesData, error: machineError } = await supabase
           .from('machine_types')
@@ -59,34 +54,32 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
         console.log("useQuoteMachines: Fetched machine details:", machinesData);
         setSelectedMachines(machinesData || []);
       } else {
-        setSelectedMachines([]); // Clear machines if no IDs
+        setSelectedMachines([]);
       }
     } catch (err: any) {
       console.error("useQuoteMachines: Error fetching quote machines:", err);
       const message = err.message || "Failed to load quote machines";
       setError(message);
       toast.error(message);
-      // Clear state on error
       setMachineTypeIds([]);
       setSelectedMachines([]);
     } finally {
       setLoading(false);
     }
-  }, [quoteId]); // Dependency: fetch when quoteId changes
+  }, [quoteId]);
 
   const saveMachines = async (quoteIdParam: string, machineIdsToSave: number[]) => {
-    // Ensure quoteIdParam is valid (might differ from hook's quoteId if called manually)
     if (!quoteIdParam) {
         toast.error("Cannot save machines without a valid Quote ID.");
         return false;
     }
 
     console.log(`useQuoteMachines: Saving machines [${machineIdsToSave.join(', ')}] for quote ${quoteIdParam}`);
-    setLoading(true); // Indicate loading state for save operation
-    setError(null);
-
+    // Use a temporary loading state for the save operation itself if needed,
+    // separate from the main hook loading state which is for fetching.
+    // setLoading(true);
+    let success = false;
     try {
-      // Update the machine_type_ids array directly in the quotes table
       const { error: updateError } = await supabase
         .from('quotes')
         .update({ machine_type_ids: machineIdsToSave })
@@ -98,48 +91,44 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
 
       // --- Trigger Sync AFTER successful save ---
       console.log("useQuoteMachines: Triggering planning details sync after saving machines.");
-      await syncAllPlanningDetails(); // Call the centralized sync function
+      await syncQuotePlanningDetails(quoteIdParam); // Pass the relevant quote ID
       // -----------------------------------------
 
       // Update local state only if the save was for the hook's current quoteId
       if (quoteIdParam === quoteId) {
           setMachineTypeIds(machineIdsToSave);
-          // Re-fetch machine details to update the selectedMachines array
+          // Re-fetch machine details after sync might have changed things
           await fetchQuoteMachines();
-      } else {
-         // If saved for a different quoteId, just indicate success
-         // The component managing that quoteId would need its own hook instance
       }
 
       toast.success("Machine selection saved successfully.");
-      return true; // Indicate success
+      success = true; // Mark as success
 
     } catch (err: any) {
       console.error("useQuoteMachines: Error saving quote machines:", err);
       const message = err.message || "Failed to save machine selection";
-      setError(message);
+      setError(message); // Set error state
       toast.error(message);
-      return false; // Indicate failure
+      success = false; // Mark as failure
     } finally {
-      setLoading(false); // Clear loading state for save operation
+      // setLoading(false);
     }
+    return success; // Return success status
   };
 
   const removeMachine = async (machineTypeIdToRemove: number) => {
     if (!quoteId) {
          toast.error("Cannot remove machine without a valid Quote ID.");
-         return false; // Return false for failure
+         return false;
     }
 
     console.log(`useQuoteMachines: Removing machine ${machineTypeIdToRemove} from quote ${quoteId}`);
-    setLoading(true); // Indicate loading for removal
-    setError(null);
-
+    // Use a temporary loading state if needed
+    // setLoading(true);
+    let success = false;
     try {
-      // Filter out the machine type ID from the current list
       const updatedMachineIds = machineTypeIds.filter(id => id !== machineTypeIdToRemove);
 
-      // Update the quote with the new machine type IDs
       const { error: updateError } = await supabase
         .from('quotes')
         .update({ machine_type_ids: updatedMachineIds })
@@ -151,7 +140,7 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
 
       // --- Trigger Sync AFTER successful removal ---
       console.log("useQuoteMachines: Triggering planning details sync after removing machine.");
-      await syncAllPlanningDetails(); // Call the centralized sync function
+      await syncQuotePlanningDetails(quoteId); // Pass the current quote ID
       // ------------------------------------------
 
       // Update local state immediately
@@ -159,29 +148,29 @@ export const useQuoteMachines = (quoteId: string | undefined) => {
       setSelectedMachines(prev => prev.filter(machine => machine.machine_type_id !== machineTypeIdToRemove));
 
       toast.success("Machine removed successfully.");
-      return true; // Indicate success
+      success = true;
     } catch (err: any) {
       console.error("useQuoteMachines: Error removing machine:", err);
       const message = err.message || "Failed to remove machine";
       setError(message);
       toast.error(message);
-      return false; // Indicate failure
+      success = false;
     } finally {
-      setLoading(false); // Clear loading for removal
+      // setLoading(false);
     }
+    return success;
   };
 
-  // Initial fetch when quoteId is available or changes
   useEffect(() => {
     fetchQuoteMachines();
-  }, [fetchQuoteMachines]); // Use the memoized fetch function
+  }, [fetchQuoteMachines]);
 
   return {
     selectedMachines,
     machineTypeIds,
     loading,
     error,
-    fetchQuoteMachines, // Expose fetch for potential manual refresh
+    fetchQuoteMachines,
     saveMachines,
     removeMachine
   };
