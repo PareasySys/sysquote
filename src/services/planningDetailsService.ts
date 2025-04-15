@@ -1,6 +1,6 @@
-import { supabase } from '@/integrations/supabase/client'; // Ensure correct path
+
+import { supabase } from '@/integrations/supabase/client'; 
 import { TrainingRequirement } from '@/hooks/useTrainingRequirements';
-// Removed TrainingPlan import as it's no longer used here
 
 /**
  * Fetch planning details for scheduling view (Gantt)
@@ -9,7 +9,7 @@ export async function fetchPlanningDetails(
   quoteId: string,
   planId: number
 ): Promise<TrainingRequirement[]> {
-  if (!quoteId || typeof planId !== 'number') { // Added type check for planId
+  if (!quoteId || typeof planId !== 'number') {
     console.warn("fetchPlanningDetails called with invalid quoteId or planId.");
     return [];
   }
@@ -31,11 +31,11 @@ export async function fetchPlanningDetails(
         machine_types:machine_types_id (name),
         software_types_id,
         software_types:software_types_id (name),
-        resource_category  /* Fetch category if stored */
+        resource_category
       `)
       .eq('quote_id', quoteId)
       .eq('plan_id', planId)
-      .not('resource_id', 'is', null); // Only fetch details with assigned resources
+      .not('resource_id', 'is', null);
 
     if (error) throw error;
 
@@ -52,16 +52,15 @@ export async function fetchPlanningDetails(
       const category = detail.resource_category ?? (detail.software_types_id ? 'Software' : 'Machine');
 
       return {
-        id: detail.id.toString(), // Ensure ID is string if needed by Gantt
-        requirement_id: detail.id, // Or keep as number if preferred
+        id: detail.id.toString(),
+        requirement_id: detail.id,
         quote_id: detail.quote_id,
         plan_id: detail.plan_id,
-        resource_id: detail.resource_id, // Already filtered for non-null
+        resource_id: detail.resource_id,
         resource_name: detail.resources?.name || `Resource ${detail.resource_id}`,
-        // Use a generic 'itemName' or keep separate machine/software names if needed downstream
-        machine_name: itemName, // Simplified mapping
-        training_hours: detail.allocated_hours || 0, // Default to 0 if null
-        resource_category: category as 'Machine' | 'Software' // Assert type
+        machine_name: itemName,
+        training_hours: detail.allocated_hours || 0,
+        resource_category: category as 'Machine' | 'Software'
       };
     });
 
@@ -70,7 +69,6 @@ export async function fetchPlanningDetails(
 
   } catch (err: any) {
     console.error("[Planning Service] Error fetching planning details:", err);
-    // Re-throw the error so the calling hook can handle it
     throw new Error(`Failed to fetch planning details: ${err.message}`);
   }
 }
@@ -84,7 +82,7 @@ export async function updateWeekendSettings(
   workOnSaturday: boolean,
   workOnSunday: boolean
 ): Promise<void> {
-    if (!quoteId || typeof planId !== 'number') { // Added type check
+    if (!quoteId || typeof planId !== 'number') {
         console.warn("updateWeekendSettings called with invalid quoteId or planId.");
         return;
     }
@@ -106,13 +104,6 @@ export async function updateWeekendSettings(
 
     } catch (err: any) {
         console.error("[Planning Service] Error updating weekend settings:", err);
-        // Re-throw the error for handling in the component
         throw new Error(`Failed to update weekend settings: ${err.message}`);
     }
 }
-
-// --- REMOVED syncMachinePlanningDetails ---
-// Logic merged into usePlanningDetailsSync hook
-
-// --- REMOVED syncSoftwarePlanningDetails ---
-// Logic merged into usePlanningDetailsSync hook
