@@ -290,9 +290,9 @@ const CheckoutPage: React.FC = () => {
 
               <div className="flex items-center gap-3">
                 <Button 
-                  variant="ghost" 
+                  variant="default" 
                   onClick={handleSaveAndClose}
-                  className="text-gray-400 hover:text-gray-200 flex items-center gap-2"
+                  className="bg-blue-500 text-white flex items-center gap-2 hover:bg-blue-600"
                 >
                   <Save className="h-5 w-5" />
                   Save & Close
