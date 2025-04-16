@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +22,7 @@ import ResourceTrainingGantt from "@/components/gantt/ResourceTrainingGantt";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { RainbowButton } from "@/components/ui/rainbow-button";
 
 interface WeekendSettings {
   workOnSaturday: boolean;
@@ -65,12 +65,10 @@ const QuotePlanningPage: React.FC = () => {
     }
     
     if (plans && plans.length > 0) {
-      // Find the Standard plan and set it as the default selected plan
       const standardPlan = plans.find(plan => plan.name.toLowerCase() === 'standard');
       if (standardPlan) {
         setSelectedPlanId(standardPlan.plan_id);
       } else {
-        // Fallback to the first plan if no Standard plan is found
         setSelectedPlanId(plans[0].plan_id);
       }
     }
@@ -316,15 +314,11 @@ const QuotePlanningPage: React.FC = () => {
                 </Tabs>
               </Card>
               
-              {/* Checkout button */}
-              <div className="flex justify-end mb-6">
-                <Button 
-                  onClick={handleGoToCheckout}
-                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-                >
+              <div className="flex justify-center mb-6">
+                <RainbowButton onClick={handleGoToCheckout} className="flex items-center gap-2 text-white">
                   <CreditCard className="h-4 w-4" />
                   Checkout
-                </Button>
+                </RainbowButton>
               </div>
             </div>
           )}
