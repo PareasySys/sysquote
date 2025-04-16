@@ -52,6 +52,14 @@ export const generateQuotePDF = async (
     year: 'numeric'
   });
 
+  // Array of colors for the cards
+  const cardColors = [
+    { bg: '#F2FCE2', border: '#C9E29E', text: '#3F5713', accent: '#6B8E23' }, // Green
+    { bg: '#FEF7CD', border: '#F0D861', text: '#6B5D10', accent: '#D4AC16' }, // Yellow
+    { bg: '#E5DEFF', border: '#B9A5F0', text: '#42348C', accent: '#6C5CE7' }, // Purple
+    { bg: '#D3E4FD', border: '#92BBF3', text: '#2C4C7A', accent: '#3B82F6' }  // Blue
+  ];
+
   // Build the HTML content using the template
   container.innerHTML = `
     <!DOCTYPE html>
@@ -83,7 +91,7 @@ export const generateQuotePDF = async (
             }
 
             .content-padding {
-                 padding: 15mm; /* Add padding inside the container */
+                padding: 15mm; /* Add padding inside the container */
             }
 
 
@@ -93,8 +101,8 @@ export const generateQuotePDF = async (
                 justify-content: space-between;
                 align-items: flex-start;
                 margin-bottom: 30px; /* Reduced margin */
-                padding-bottom: 20px; /* Reduced padding */
-                border-bottom: 3px solid #007bff;
+                padding-bottom: 10px; /* Reduced padding */
+                border-bottom: 2px solid #007bff;
             }
 
             .logo-container img {
@@ -143,98 +151,74 @@ export const generateQuotePDF = async (
 
             /* Card Container */
             .plans-container {
-                display: flex;
-                flex-wrap: wrap;
+                display: grid;
+                grid-template-columns: 1fr 1fr; /* 2 columns */
+                grid-template-rows: auto auto;   /* 2 rows */
                 gap: 20px; /* Space between cards */
-                justify-content: flex-start; /* Align cards to the start */
             }
 
-            /* --- NEW CARD STYLES --- */
+            /* --- UPDATED CARD STYLES --- */
             .card {
-                /* width: 190px; */ /* Replaced with flex-basis */
-                /* height: 264px; */ /* Removed fixed height */
-                flex: 1 1 calc(50% - 10px - 42px); /* Aim for 2 cards per row: 50% - half gap - padding*2 - border*2 */
-                min-width: 250px; /* Minimum width before breaking flow */
-                min-height: 220px; /* Minimum height for some consistency */
-                background: rgb(240, 255, 180); /* Adjusted background for potentially better print contrast */
-                font-family: inherit;
+                height: 220px; /* Fixed height for consistency */
                 position: relative;
                 border-radius: 8px;
-                border: 1px solid rgb(183, 226, 25); /* Add border matching theme */
                 display: flex;
-                flex-direction: column; /* Stack content vertically */
-                overflow: hidden; /* Hide overflow from positioned quote SVG */
+                flex-direction: column;
+                overflow: hidden;
                 box-sizing: border-box;
-                padding: 0; /* Reset padding, apply to inner elements */
-                 box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow */
+                padding: 0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
 
             .quote {
                 /* Contains the SVG Icon */
                 position: absolute;
-                top: 15px;
-                right: 15px;
-                color: rgba(127, 155, 29, 0.5); /* Lighter color for decoration */
+                top: 10px;
+                right: 10px;
                 z-index: 0;
+                opacity: 0.5;
             }
+            
             .quote svg {
-                 height: 60px; /* Adjusted size */
-                 width: 60px;
+                height: 40px; /* Reduced size */
+                width: 40px;
             }
-            .quote svg path {
-                fill: currentColor; /* Inherit color from .quote */
-            }
-
+            
             .card-name {
                 text-transform: uppercase;
                 font-weight: 700;
-                color: rgb(127, 155, 29);
-                padding: 20px 20px 5px 20px; /* Adjusted padding */
-                line-height: 1.3; /* Adjusted line height */
+                padding: 20px 20px 5px 20px;
+                line-height: 1.3;
                 font-size: 1.1em;
-                z-index: 1; /* Above quote icon */
-                background-color: rgba(240, 255, 180, 0.8); /* Ensure text readability over icon */
+                z-index: 1;
             }
 
             .body-text {
-                font-size: 0.95em; /* Adjusted size */
-                font-weight: 500; /* Adjusted weight */
-                padding: 10px 20px 15px 20px; /* Adjusted padding */
-                color: #465512;
-                /* position: absolute; */ /* Removed absolute positioning */
-                /* top: 40px; */
-                /* left: 1px; */
-                line-height: 1.5; /* Adjusted line height */
-                flex-grow: 1; /* Allow description to take available space */
+                font-size: 0.95em;
+                font-weight: 500;
+                padding: 10px 20px 15px 20px;
+                line-height: 1.5;
+                flex-grow: 1;
                 z-index: 1;
             }
 
-            .author { /* Repurposed for Price */
-                /* opacity: 0; */ /* Removed: Price always visible */
-                /* transition: 0.5s; */ /* Removed hover transition */
+            .price {
                 font-weight: 700;
-                color: rgb(70, 85, 18); /* Darker for contrast */
-                padding: 15px 20px 15px 20px; /* Adjusted padding */
+                padding: 15px 20px 15px 20px;
                 text-align: right;
-                font-size: 1.2em; /* Make price prominent */
-                border-top: 2px solid rgba(127, 155, 29, 0.5); /* Separator line */
-                margin-top: auto; /* Push to bottom */
-                background-color: rgba(223, 248, 134, 0.6); /* Slight background tint */
+                font-size: 1.2em;
+                margin-top: auto;
+                border-top-width: 2px;
+                border-top-style: solid;
                 z-index: 1;
             }
-
-            /* Removed hover style for author opacity */
-            /* Removed pic, author-container styles as they are not used */
-            /* Removed heart SVG style */
-            /* --- END NEW CARD STYLES --- */
-
 
             /* Footer */
             .quote-footer {
-                margin-top: 40px; /* Adjusted margin */
+                margin-top: 40px;
                 padding-top: 15px;
                 border-top: 1px solid #eee;
-                font-size: 0.85em; /* Adjusted size */
+                font-size: 0.85em;
                 color: #888;
                 text-align: center;
             }
@@ -246,54 +230,52 @@ export const generateQuotePDF = async (
             /* Print-specific styles */
             @page {
                 size: A4;
-                margin: 15mm; /* Define page margins */
+                margin: 15mm;
             }
 
             @media print {
                 body {
                     margin: 0;
                     padding: 0;
-                    background-color: #fff; /* Ensure white background for print */
+                    background-color: #fff;
                     font-size: 10pt;
-                    -webkit-print-color-adjust: exact; /* Force colors in Chrome/Safari */
-                    print-color-adjust: exact; /* Standard */
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
                 }
+                
                 .container {
-                     /* Ensure container fills the printable area */
                     width: 100%;
                     margin: 0;
-                    padding: 0; /* Page margins handled by @page */
+                    padding: 0;
                     border: none;
                     box-shadow: none;
                     border-radius: 0;
                 }
-                 .content-padding {
-                     padding: 0; /* Use @page margins */
-                 }
+                
+                .content-padding {
+                    padding: 0;
+                }
+                
                 .plans-container {
-                    gap: 15px; /* Reduce gap slightly for print */
+                    gap: 15px;
                 }
+                
                 .card {
-                    box-shadow: none; /* Remove shadow for print */
-                    border: 1px solid #ccc; /* Use a standard border for print clarity */
-                    /* Adjust flex basis slightly if needed for print layout differences */
-                     flex: 1 1 calc(50% - 7.5px - 42px);
-                     page-break-inside: avoid; /* Try to keep cards from breaking */
-                     background: rgb(240, 255, 180) !important; /* Force background color */
-                }
-                .author {
-                     background-color: rgba(223, 248, 134, 0.6) !important; /* Force background color */
+                    box-shadow: none;
+                    border-width: 1px;
+                    border-style: solid;
+                    page-break-inside: avoid;
                 }
 
                 .quote-header {
                     page-break-after: avoid;
                 }
+                
                 .quote-footer {
-                     /* Footer positioning in print can be tricky, default flow is often safer */
-                     font-size: 8pt;
-                     color: #aaa;
-                     margin-top: 30px;
-                     padding-top: 10px;
+                    font-size: 8pt;
+                    color: #aaa;
+                    margin-top: 30px;
+                    padding-top: 10px;
                 }
             }
         </style>
@@ -316,20 +298,23 @@ export const generateQuotePDF = async (
                 <main>
                     <h3>Training Plan Options</h3>
                     <div class="plans-container">
-                        ${planCosts.map(plan => `
-                            <div class="card">
-                                <div class="quote">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 330 307" height="80" width="80">
+                        ${planCosts.map((plan, index) => {
+                          const colorScheme = cardColors[index % cardColors.length];
+                          return `
+                            <div class="card" style="background: ${colorScheme.bg}; border: 1px solid ${colorScheme.border};">
+                                <div class="quote" style="color: ${colorScheme.accent};">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 330 307">
                                         <path fill="currentColor" d="M302.258 176.221C320.678 176.221 329.889 185.432 329.889 203.853V278.764C329.889 297.185 320.678 306.395 302.258 306.395H231.031C212.61 306.395 203.399 297.185 203.399 278.764V203.853C203.399 160.871 207.902 123.415 216.908 91.4858C226.323 59.1472 244.539 30.902 271.556 6.75027C280.562 -1.02739 288.135 -2.05076 294.275 3.68014L321.906 29.4692C328.047 35.2001 326.614 42.1591 317.608 50.3461C303.69 62.6266 292.228 80.4334 283.223 103.766C274.626 126.69 270.328 150.842 270.328 176.221H302.258ZM99.629 176.221C118.05 176.221 127.26 185.432 127.26 203.853V278.764C127.26 297.185 118.05 306.395 99.629 306.395H28.402C9.98126 306.395 0.770874 297.185 0.770874 278.764V203.853C0.770874 160.871 5.27373 123.415 14.2794 91.4858C23.6945 59.1472 41.9106 30.902 68.9277 6.75027C77.9335 -1.02739 85.5064 -2.05076 91.6467 3.68014L119.278 29.4692C125.418 35.2001 123.985 42.1591 114.98 50.3461C101.062 62.6266 89.6 80.4334 80.5942 103.766C71.9979 126.69 67.6997 150.842 67.6997 176.221H99.629Z"></path>
                                     </svg>
                                 </div>
-                                <div class="card-name">${plan.planName}</div>
-                                <div class="body-text">A ${plan.trainingDays}-day intensive workshop covering the essential concepts and core techniques.</div>
-                                <div class="author"> 
+                                <div class="card-name" style="color: ${colorScheme.accent};">${plan.planName}</div>
+                                <div class="body-text" style="color: ${colorScheme.text};">A ${plan.trainingDays}-day intensive workshop covering the essential concepts and core techniques.</div>
+                                <div class="price" style="color: ${colorScheme.accent}; border-top-color: ${colorScheme.border};"> 
                                     €${plan.totalCost.toFixed(2)}
                                 </div>
                             </div>
-                        `).join('')}
+                          `;
+                        }).join('')}
                     </div>
                 </main>
 
