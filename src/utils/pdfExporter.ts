@@ -507,8 +507,13 @@ const generatePlanDetailsPageHtml = (
          /* Print-specific styles */
             @page {
                 size: A4;
-                
-            }
+                }
+
+                @media print {
+                      html, body {
+                        width: 210mm;
+                        height: 297mm;
+                        }
 
             
             /* Basic Reset & Body Styling */
@@ -826,7 +831,7 @@ const generatePlanDetailsPageHtml = (
                 padding-top: 15px;
             }
 
-            
+            }
         </style>
     </head>
     <body>
