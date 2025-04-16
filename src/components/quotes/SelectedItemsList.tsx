@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
 import { QuoteSoftware } from "@/hooks/useQuoteSoftware";
@@ -58,14 +57,12 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
   const [calculatingHours, setCalculatingHours] = useState<boolean>(false);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   
-  // Use a ref to store previous state for comparison without triggering re-renders
   const prevDataRef = useRef({
     machineIds: '',
     softwareIds: '',
     planIds: ''
   });
 
-  // First effect: track selection changes without causing re-renders
   useEffect(() => {
     if (plansLoading || !plans) return;
 
@@ -81,17 +78,14 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
     
     const prev = prevDataRef.current;
     
-    // Only fetch if data has actually changed
     if (prev.machineIds !== current.machineIds || 
         prev.softwareIds !== current.softwareIds ||
         prev.planIds !== current.planIds) {
       
       console.log("[SelectedItemsList] Data changed, triggering fetch");
       
-      // Update ref with current values
       prevDataRef.current = current;
       
-      // Only start a fetch if we're not already fetching
       if (!calculatingHours) {
         fetchTrainingOffersAndCalculate();
       }
@@ -267,6 +261,24 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
     return <Server className="w-6 h-6 text-purple-400" />;
   };
 
+  const getIconUrl = (iconName: string | null) => {
+    if (!iconName) return null;
+    
+    const fileName = iconName.endsWith('.svg') ? iconName : `${iconName}.svg`;
+    
+    try {
+      const { data } = supabase
+        .storage
+        .from('training_plan_icons')
+        .getPublicUrl(fileName);
+      
+      return data.publicUrl;
+    } catch (error) {
+      console.error("Error getting icon URL:", error);
+      return null;
+    }
+  };
+
   const handleRemoveClick = async (itemId: number, itemType: 'machine' | 'software') => {
     const uniqueItemId = `${itemType}-${itemId}`;
     console.log(`[SelectedItemsList] handleRemoveClick: Trying to remove ${uniqueItemId}`);
@@ -362,12 +374,21 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
                   ) : (
                     plans.map(plan => {
                       const hours = getHours(itemId, item.itemType, plan.plan_id);
-                      const iconUrl = plan.icon_name ? `/icons/${plan.icon_name}` : null;
+                      const iconUrl = getIconUrl(plan.icon_name);
 
                       return (
                         <div key={plan.plan_id} className="flex items-center gap-1 bg-slate-700/60 rounded px-1.5 py-0.5" title={plan.name}>
                           {iconUrl ? (
-                            <img src={iconUrl} alt={plan.name} className="w-3.5 h-3.5 object-contain" />
+                            <img 
+                              src={iconUrl} 
+                              alt={plan.name} 
+                              className="w-3.5 h-3.5 object-contain"
+                              onError={(e) => {
+                                console.error(`Failed to load icon: ${iconUrl}`);
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                            />
                           ) : (
                             <div className="w-3.5 h-3.5 bg-slate-600 rounded-sm"></div>
                           )}
@@ -427,16 +448,27 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
           ) : (
             plans.map(plan => {
               const totalHours = totalsByPlan[plan.plan_id] || 0;
-              const iconUrl = plan.icon_name ? `/icons/${plan.icon_name}` : null;
+              const iconUrl = getIconUrl(plan.icon_name);
 
               return (
                 <div key={plan.plan_id} className="flex items-center gap-1.5 bg-slate-700/80 rounded px-2 py-1" title={plan.name}>
                   {iconUrl ? (
-                    <img src={iconUrl} alt={plan.name} className="w-4 h-4 object-contain" />
+                    <img 
+                      src={iconUrl} 
+                      alt={plan.name} 
+                      className="w-4 h-4 object-contain"
+                      onError={(e) => {
+                        console.error(`Failed to load icon: ${iconUrl}`);
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
                   ) : (
                     <div className="w-4 h-4 bg-slate-600 rounded-sm"></div>
                   )}
-                  <span className={`text-sm font-semibold ${totalHours > 0 ? 'text-gray-100' : 'text-gray-500'}`}>{totalHours}h</span>
+                  <span className={`text-sm font-semibold ${totalHours > 0 ? 'text-gray-100' : 'text-gray-500'}`}>
+                    {totalHours}h
+                  </span>
                 </div>
               );
             })
