@@ -14,7 +14,6 @@ import { updateWeekendSettings } from "@/services/planningDetailsService";
 import { useTrainingRequirements } from "@/hooks/useTrainingRequirements";
 import { usePlanningDetailsSync } from "@/services/planningDetailsSync";
 import { supabase } from "@/integrations/supabase/client";
-
 interface ResourceTrainingGanttProps {
   quoteId: string | undefined;
   planId: number | null;
@@ -25,20 +24,24 @@ interface ResourceTrainingGanttProps {
   onPlanChange: (planId: number) => void; // Callback for plan selection
   onWeekendChange: (key: 'workOnSaturday' | 'workOnSunday', value: boolean) => void; // Callback for weekend changes
 }
-
 const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
   quoteId,
   planId,
   workOnSaturday,
   workOnSunday,
-  plans,          // Use received prop
-  plansLoading,   // Use received prop
-  onPlanChange,   // Use received prop
+  plans,
+  // Use received prop
+  plansLoading,
+  // Use received prop
+  onPlanChange,
+  // Use received prop
   onWeekendChange // Use received prop
 }) => {
   const [syncPerformedForPlan, setSyncPerformedForPlan] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
-  const { syncSoftwareTrainingHours } = usePlanningDetailsSync();
+  const {
+    syncSoftwareTrainingHours
+  } = usePlanningDetailsSync();
   const {
     scheduledTasks,
     loading: loadingRequirements,
@@ -66,10 +69,9 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
         setIsSyncing(false);
       }
     } else if (!quoteId || !planId) {
-        setSyncPerformedForPlan(null);
+      setSyncPerformedForPlan(null);
     }
   }, [quoteId, planId, syncSoftwareTrainingHours, fetchRequirements, syncPerformedForPlan, isSyncing]);
-
   useEffect(() => {
     performInitialSync();
   }, [performInitialSync]);
@@ -79,55 +81,38 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
   useEffect(() => {
     if (quoteId && typeof planId === 'number') {
       console.log(`Gantt: Updating weekend settings in backend for quote ${quoteId}, plan ${planId}: Sat=${workOnSaturday}, Sun=${workOnSunday}`);
-      updateWeekendSettings(quoteId, planId, workOnSaturday, workOnSunday)
-        .catch(err => console.error("Gantt: Failed to update weekend settings in backend:", err));
+      updateWeekendSettings(quoteId, planId, workOnSaturday, workOnSunday).catch(err => console.error("Gantt: Failed to update weekend settings in backend:", err));
     }
   }, [quoteId, planId, workOnSaturday, workOnSunday]);
 
-
   // --- Display Logic ---
-  if (!planId && !plansLoading && plans.length > 0) { // Show message only if plans loaded but none selected (shouldn't happen if default is set)
-     return (
-      <Card className="p-6 bg-slate-800/80 border border-white/5">
+  if (!planId && !plansLoading && plans.length > 0) {
+    // Show message only if plans loaded but none selected (shouldn't happen if default is set)
+    return <Card className="p-6 bg-slate-800/80 border border-white/5">
         <div className="text-center text-gray-400">
           Please select a training plan.
         </div>
-      </Card>
-    );
+      </Card>;
   }
-
   const isLoading = loadingRequirements || isSyncing || plansLoading; // Include plansLoading in overall loading state
   const displayError = requirementsError;
   const totalAssignments = scheduledTasks?.length ?? 0;
-
   return (
     // Main card - height will now be determined by content
     <Card className="bg-slate-800/80 border border-white/5 overflow-hidden"> {/* Added overflow-hidden */}
 
       {/* Tabs positioned above header */}
       <div className="flex justify-center bg-slate-800/80 pt-4"> {/* Centering container */}
-        <Tabs
-          value={planId ? planId.toString() : ""}
-          onValueChange={(value) => onPlanChange(parseInt(value))} // Use callback prop
+        <Tabs value={planId ? planId.toString() : ""} onValueChange={value => onPlanChange(parseInt(value))} // Use callback prop
         >
-          <TabsList className="bg-slate-700/80 rounded-b-none border-b-0"> {/* Removed bottom radius/border */}
-            {plansLoading ? (
-              <div className="px-4 py-2">
+          <TabsList className="rounded-b-none border-b-0 bg-slate-800"> {/* Removed bottom radius/border */}
+            {plansLoading ? <div className="px-4 py-2">
                 <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
                   Loading Plans...
                 </TextShimmerWave>
-              </div>
-            ) : (
-              plans.map((plan) => (
-                <TabsTrigger
-                  key={plan.plan_id}
-                  value={plan.plan_id.toString()}
-                  className="data-[state=active]:bg-blue-600"
-                >
+              </div> : plans.map(plan => <TabsTrigger key={plan.plan_id} value={plan.plan_id.toString()} className="data-[state=active]:bg-blue-600">
                   {plan.name}
-                </TabsTrigger>
-              ))
-            )}
+                </TabsTrigger>)}
           </TabsList>
           {/* No TabsContent needed here as Gantt displays selected plan */}
         </Tabs>
@@ -140,38 +125,28 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
           <div>
             <h3 className="text-lg font-semibold text-gray-200">Resource Training Schedule</h3>
             <div className="text-gray-400 text-sm h-5 flex items-center">
-              {isLoading ? (
-                 <div className="flex items-center gap-2">
+              {isLoading ? <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
                     <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
-                      {isSyncing ? "Syncing hours..." : (loadingRequirements || plansLoading ? "Loading schedule..." : "Loading...")}
+                      {isSyncing ? "Syncing hours..." : loadingRequirements || plansLoading ? "Loading schedule..." : "Loading..."}
                     </TextShimmerWave>
-                 </div>
-              ) : displayError ? (
-                 <span className="text-red-400">Error loading schedule</span>
-              ): (
-                 `Showing ${totalAssignments} scheduled training segments`
-              )}
+                 </div> : displayError ? <span className="text-red-400">Error loading schedule</span> : `Showing ${totalAssignments} scheduled training segments`}
             </div>
           </div>
 
           {/* Weekend Switches Moved Here */}
           <div className="flex gap-4">
             <div className="flex items-center gap-2">
-              <Switch
-                id="gantt-work-on-saturday" // Ensure unique ID if needed elsewhere
-                checked={workOnSaturday}
-                onCheckedChange={(checked) => onWeekendChange('workOnSaturday', checked)} // Use callback prop
-                disabled={isLoading} // Disable while loading/syncing
+              <Switch id="gantt-work-on-saturday" // Ensure unique ID if needed elsewhere
+              checked={workOnSaturday} onCheckedChange={checked => onWeekendChange('workOnSaturday', checked)} // Use callback prop
+              disabled={isLoading} // Disable while loading/syncing
               />
               <Label htmlFor="gantt-work-on-saturday" className="text-gray-300 text-sm">Work on Saturday</Label>
             </div>
             <div className="flex items-center gap-2">
-              <Switch
-                id="gantt-work-on-sunday" // Ensure unique ID
-                checked={workOnSunday}
-                onCheckedChange={(checked) => onWeekendChange('workOnSunday', checked)} // Use callback prop
-                disabled={isLoading} // Disable while loading/syncing
+              <Switch id="gantt-work-on-sunday" // Ensure unique ID
+              checked={workOnSunday} onCheckedChange={checked => onWeekendChange('workOnSunday', checked)} // Use callback prop
+              disabled={isLoading} // Disable while loading/syncing
               />
               <Label htmlFor="gantt-work-on-sunday" className="text-gray-300 text-sm">Work on Sunday</Label>
             </div>
@@ -179,27 +154,17 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
         </div>
 
         {/* Error Alert */}
-        {displayError && !isLoading && (
-          <Alert variant="destructive" className="mb-4 bg-red-900/30 border-red-800/30 text-red-200">
+        {displayError && !isLoading && <Alert variant="destructive" className="mb-4 bg-red-900/30 border-red-800/30 text-red-200">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{displayError}</AlertDescription>
-          </Alert>
-        )}
+          </Alert>}
 
         {/* Gantt Chart Area - REMOVED fixed height and overflow */}
         <div className="border border-slate-700 rounded-md bg-slate-900/50">
-          <GanttChart
-            requirements={isLoading ? [] : (scheduledTasks || [])}
-            loading={isLoading}
-            error={null}
-            workOnSaturday={workOnSaturday}
-            workOnSunday={workOnSunday}
-            onRetry={fetchRequirements}
-          />
+          <GanttChart requirements={isLoading ? [] : scheduledTasks || []} loading={isLoading} error={null} workOnSaturday={workOnSaturday} workOnSunday={workOnSunday} onRetry={fetchRequirements} />
         </div>
       </div>
     </Card>
   );
 };
-
 export default ResourceTrainingGantt;
