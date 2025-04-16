@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -267,7 +266,7 @@ const CheckoutPage: React.FC = () => {
         <div className="p-6 min-h-screen">
           <div className="mb-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -291,9 +290,9 @@ const CheckoutPage: React.FC = () => {
 
               <div className="flex items-center gap-3">
                 <Button 
-                  variant="outline"
+                  variant="ghost" 
                   onClick={handleSaveAndClose}
-                  className="flex items-center gap-2 border-gray-700 hover:bg-gray-800 text-gray-300"
+                  className="text-gray-400 hover:text-gray-200 flex items-center gap-2"
                 >
                   <Save className="h-5 w-5" />
                   Save & Close
@@ -581,4 +580,3 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
 };
 
 export default CheckoutPage;
-
