@@ -119,7 +119,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       </div>
 
       {/* Inner padding for content below tabs */}
-      <div className="p-4 pt-2"> {/* Reduced top padding */}
+      <div className="p-4 pt-2 bg-slate-900"> {/* Reduced top padding */}
         {/* Header */}
         <div className="mb-4 flex justify-between items-center"> {/* Flex container for title and switches */}
           <div>
