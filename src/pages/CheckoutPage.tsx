@@ -21,6 +21,7 @@ import { useResourceIcons } from "@/hooks/useResourceIcons";
 import { useTrainingIcons } from "@/hooks/useTrainingIcons";
 import { generateQuotePDF, PlanCostData } from "@/utils/pdfExporter";
 import { ScheduledTaskSegment } from "@/utils/types";
+import { ArrowLeft } from "lucide-react";
 
 const CheckoutPage: React.FC = () => {
   const {
@@ -194,6 +195,10 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
+  const handleBackToPlanning = () => {
+    navigate(`/quote/${quoteId}/planning`);
+  };
+
   const sidebarLinks = [{
     label: "Dashboard",
     href: "/home",
@@ -257,6 +262,15 @@ const CheckoutPage: React.FC = () => {
           <div className="mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleBackToPlanning}
+                  className="text-gray-400 hover:text-gray-200"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                
                 <h1 className="text-2xl font-bold text-gray-100">Checkout</h1>
               </div>
 
