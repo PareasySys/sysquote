@@ -45,6 +45,8 @@ import { LayoutDashboard, Settings, LogOut, UserCog, Plus, FileText } from "luci
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { APP_VERSION } from "@/utils/types";
 
 const formSchema = z.object({
   quote_name: z.string().min(1, { message: "Quote name is required" }),
@@ -67,6 +69,7 @@ const HomePage = () => {
   const { areas, loading: areasLoading } = useGeographicAreas();
   const [sidebarOpen, setSidebarOpen] = useState(getSidebarState());
   const { profileData } = useUserProfile(user);
+  const [logoPopoverOpen, setLogoPopoverOpen] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -181,9 +184,44 @@ const HomePage = () => {
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
         <SidebarBody className="flex flex-col h-full justify-between">
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="py-2">
-              {sidebarOpen ? <Logo /> : <LogoIcon />}
-            </div>
+            <Popover open={logoPopoverOpen} onOpenChange={setLogoPopoverOpen}>
+              <PopoverTrigger asChild>
+                <div className="py-2 cursor-pointer" onClick={() => setLogoPopoverOpen(true)}>
+                  {sidebarOpen ? <Logo /> : <LogoIcon />}
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 bg-slate-800 border border-slate-700 text-white p-4">
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="flex items-center justify-center w-full">
+                    <img 
+                      src="https://egbpjvbrqtvxtlpqkszr.supabase.co/storage/v1/object/public/identityimages//System_Logo.png" 
+                      alt="System Logo" 
+                      className="h-16 w-auto object-contain" 
+                    />
+                  </div>
+                  <div className="text-center">
+                    <h3 className="font-medium text-gray-200">SysQuote</h3>
+                    <p className="text-sm text-gray-400">Version: {APP_VERSION}</p>
+                  </div>
+                  <div className="border-t border-slate-700 w-full my-2"></div>
+                  <div className="flex flex-col items-center text-xs text-gray-400">
+                    <p>Powered by:</p>
+                    <p className="font-medium text-gray-300">Andrea Parisi</p>
+                    <div className="flex items-center mt-1 space-x-1">
+                      <span>and</span>
+                      <a href="https://lovable.ai" target="_blank" rel="noopener noreferrer" className="flex items-center">
+                        <span className="font-medium text-blue-400">Lovable</span>
+                        <img 
+                          src="https://lovable.ai/images/lovable-icon.svg" 
+                          alt="Lovable Logo" 
+                          className="h-4 w-4 ml-1" 
+                        />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             <div className="mt-8 flex flex-col gap-2">
               {sidebarLinks.map((link, idx) => (
                 <SidebarLink key={idx} link={link} />

@@ -1,22 +1,13 @@
-
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import React, { useState, createContext, useContext, useEffect } from "react";
 import { Menu, X } from "lucide-react";
-import { APP_VERSION } from "@/utils/types";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Links {
   label: string;
   href: string;
   icon: React.ReactNode;
   onClick?: () => void;
-}
-
-interface SidebarContextProps {
-  open: boolean;
-  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  animate: boolean;
 }
 
 const SidebarContext = createContext<SidebarContextProps | undefined>(
@@ -206,105 +197,35 @@ export const SidebarLink = ({
 
 export const Logo = () => {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Link
-          to="#"
-          className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20 cursor-pointer"
-          onClick={(e) => e.preventDefault()}
-        >
-          <img 
-            src="/lovable-uploads/4ae70efa-d7c2-4c56-b454-cee99d4017ad.png" 
-            alt="SysQuote Logo" 
-            className="h-7 w-7"
-          />
-          <span className="font-medium text-white whitespace-pre">
-            SysQuote
-          </span>
-        </Link>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 bg-slate-800 border border-slate-700 text-white p-4">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="flex items-center justify-center w-full">
-            <img 
-              src="https://egbpjvbrqtvxtlpqkszr.supabase.co/storage/v1/object/public/identityimages//System_Logo.png" 
-              alt="System Logo" 
-              className="h-16 w-auto object-contain" 
-            />
-          </div>
-          <div className="text-center">
-            <h3 className="font-medium text-gray-200">SysQuote</h3>
-            <p className="text-sm text-gray-400">Version: {APP_VERSION}</p>
-          </div>
-          <div className="border-t border-slate-700 w-full my-2"></div>
-          <div className="flex flex-col items-center text-xs text-gray-400">
-            <p>Powered by:</p>
-            <p className="font-medium text-gray-300">Andrea Parisi</p>
-            <div className="flex items-center mt-1 space-x-1">
-              <span>and</span>
-              <a href="https://lovable.ai" target="_blank" rel="noopener noreferrer" className="flex items-center">
-                <span className="font-medium text-blue-400">Lovable</span>
-                <img 
-                  src="https://lovable.ai/images/lovable-icon.svg" 
-                  alt="Lovable Logo" 
-                  className="h-4 w-4 ml-1" 
-                />
-              </a>
-            </div>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+    <Link
+      to="#"
+      className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20"
+      onClick={(e) => e.preventDefault()}
+    >
+      <img 
+        src="/lovable-uploads/4ae70efa-d7c2-4c56-b454-cee99d4017ad.png" 
+        alt="SysQuote Logo" 
+        className="h-7 w-7"
+      />
+      <span className="font-medium text-white whitespace-pre">
+        SysQuote
+      </span>
+    </Link>
   );
 };
 
 export const LogoIcon = () => {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Link
-          to="#"
-          className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20 cursor-pointer"
-          onClick={(e) => e.preventDefault()}
-        >
-          <img 
-            src="/lovable-uploads/4ae70efa-d7c2-4c56-b454-cee99d4017ad.png" 
-            alt="SysQuote Logo" 
-            className="h-7 w-7"
-          />
-        </Link>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 bg-slate-800 border border-slate-700 text-white p-4">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="flex items-center justify-center w-full">
-            <img 
-              src="https://egbpjvbrqtvxtlpqkszr.supabase.co/storage/v1/object/public/identityimages//System_Logo.png" 
-              alt="System Logo" 
-              className="h-16 w-auto object-contain" 
-            />
-          </div>
-          <div className="text-center">
-            <h3 className="font-medium text-gray-200">SysQuote</h3>
-            <p className="text-sm text-gray-400">Version: {APP_VERSION}</p>
-          </div>
-          <div className="border-t border-slate-700 w-full my-2"></div>
-          <div className="flex flex-col items-center text-xs text-gray-400">
-            <p>Powered by:</p>
-            <p className="font-medium text-gray-300">Andrea Parisi</p>
-            <div className="flex items-center mt-1 space-x-1">
-              <span>and</span>
-              <a href="https://lovable.ai" target="_blank" rel="noopener noreferrer" className="flex items-center">
-                <span className="font-medium text-blue-400">Lovable</span>
-                <img 
-                  src="https://lovable.ai/images/lovable-icon.svg" 
-                  alt="Lovable Logo" 
-                  className="h-4 w-4 ml-1" 
-                />
-              </a>
-            </div>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+    <Link
+      to="#"
+      className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20"
+      onClick={(e) => e.preventDefault()}
+    >
+      <img 
+        src="/lovable-uploads/4ae70efa-d7c2-4c56-b454-cee99d4017ad.png" 
+        alt="SysQuote Logo" 
+        className="h-7 w-7"
+      />
+    </Link>
   );
 };
