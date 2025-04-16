@@ -9,7 +9,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, MapPin, Euro, ChevronDown, ChevronUp } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, MapPin, Euro, ChevronDown, FileExport } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -115,6 +115,11 @@ const CheckoutPage: React.FC = () => {
     },
   ];
 
+  // Temporarily mock export function
+  const handleExport = () => {
+    toast.success("Export functionality coming soon");
+  };
+
   return (
     <div className="flex h-screen bg-slate-950 text-gray-200">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
@@ -203,18 +208,27 @@ const CheckoutPage: React.FC = () => {
               </TextShimmerWave>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {plans.map((plan) => (
-                <TrainingPlanCard 
-                  key={plan.plan_id} 
-                  plan={plan} 
-                  quoteId={quoteId || ''} 
-                  areaId={quoteData.area_id || null}
-                  resources={resources}
-                  areaCosts={areaCosts}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {plans.map((plan) => (
+                  <TrainingPlanCard 
+                    key={plan.plan_id} 
+                    plan={plan} 
+                    quoteId={quoteId || ''} 
+                    areaId={quoteData.area_id || null}
+                    resources={resources}
+                    areaCosts={areaCosts}
+                  />
+                ))}
+              </div>
+              
+              <div className="mt-10 flex justify-center">
+                <RainbowButton variant="light" onClick={handleExport}>
+                  <FileExport className="h-5 w-5 mr-2" />
+                  Export
+                </RainbowButton>
+              </div>
+            </>
           )}
         </div>
       </main>
@@ -417,6 +431,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2">
+                  {/* Training Days Container (Now First) */}
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Training Days</div>
                     <div className="text-gray-200 font-medium flex justify-between items-center">
@@ -428,6 +443,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                     </div>
                   </div>
                   
+                  {/* Business Trip Days Container (Now Second) with nested menu */}
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Business Trip Days</div>
                     <div className="text-gray-200 font-medium flex justify-between items-center">
@@ -437,37 +453,37 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                         {resource.tripCosts.total.toFixed(2)}
                       </span>
                     </div>
+                    
+                    {selectedArea && (
+                      <Collapsible className="mt-1">
+                        <CollapsibleTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="p-1 h-auto w-full text-xs text-gray-400 flex items-center justify-between"
+                          >
+                            <span>Trip details</span>
+                            <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="text-xs text-gray-400 space-y-1 px-1 pt-1 collapsible-content">
+                          <div className="flex justify-between">
+                            <span>Accommodation & Food:</span>
+                            <span>€{resource.tripCosts.accommodationFood.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Daily Allowance:</span>
+                            <span>€{resource.tripCosts.allowance.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Pocket Money:</span>
+                            <span>€{resource.tripCosts.pocketMoney.toFixed(2)}</span>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
                   </div>
                 </div>
-                
-                {selectedArea && (
-                  <Collapsible className="mt-2">
-                    <CollapsibleTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="p-1 h-auto w-full text-xs text-gray-400 flex items-center justify-between"
-                      >
-                        <span>Trip details</span>
-                        <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="text-xs text-gray-400 space-y-1 px-1 pt-1">
-                      <div className="flex justify-between">
-                        <span>Accommodation & Food:</span>
-                        <span>€{resource.tripCosts.accommodationFood.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Daily Allowance:</span>
-                        <span>€{resource.tripCosts.allowance.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Pocket Money:</span>
-                        <span>€{resource.tripCosts.pocketMoney.toFixed(2)}</span>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
               </div>
             ))}
           </div>
@@ -490,12 +506,6 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
             <div className="flex justify-between text-emerald-300 font-medium">
               <span>Total:</span>
               <span>€{totalCosts.grandTotal.toFixed(2)}</span>
-            </div>
-            
-            <div className="mt-4 flex justify-end">
-              <RainbowButton variant="small" className="w-full">
-                Complete Order
-              </RainbowButton>
             </div>
           </div>
         </CardFooter>

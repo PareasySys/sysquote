@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 interface RainbowButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "default" | "small" | "outline";
+  variant?: "default" | "small" | "outline" | "light";
 }
 
 export function RainbowButton({
@@ -25,12 +25,14 @@ export function RainbowButton({
         variant === "default" && "h-11",
         variant === "small" && "h-8 px-4 py-1 text-sm",
         variant === "outline" && "h-10 bg-transparent text-foreground border border-input hover:bg-accent hover:text-accent-foreground",
-
-        // light mode colors
+        
+        // Regular dark mode colors (default and small variants)
+        (variant === "default" || variant === "small") && 
         "bg-[linear-gradient(#121213,#121213),linear-gradient(#121213_50%,rgba(18,18,19,0.6)_80%,rgba(18,18,19,0)),linear-gradient(90deg,hsl(var(--color-1)),hsl(var(--color-5)),hsl(var(--color-3)),hsl(var(--color-4)),hsl(var(--color-2)))]",
 
-        // dark mode colors
-        "dark:bg-[linear-gradient(#fff,#fff),linear-gradient(#fff_50%,rgba(255,255,255,0.6)_80%,rgba(0,0,0,0)),linear-gradient(90deg,hsl(var(--color-1)),hsl(var(--color-5)),hsl(var(--color-3)),hsl(var(--color-4)),hsl(var(--color-2)))]",
+        // Light mode variant
+        variant === "light" && 
+        "bg-[linear-gradient(#fff,#fff),linear-gradient(#fff_50%,rgba(255,255,255,0.9)_80%,rgba(255,255,255,0.8)),linear-gradient(90deg,hsl(var(--color-1)),hsl(var(--color-5)),hsl(var(--color-3)),hsl(var(--color-4)),hsl(var(--color-2)))] text-gray-800",
 
         className,
       )}
