@@ -1,3 +1,4 @@
+
 // src/components/gantt/GanttChart.tsx
 // NO CHANGES NEEDED in this file based on the prompt.
 // It already adapts its height based on content via its parent.
@@ -6,7 +7,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import "./GanttChart.css";
 import { Loader2, PlaneTakeoff, PlaneLanding, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScheduledTaskSegment } from '@/utils/types';
+import { ScheduledTaskSegment, ResourceCategory } from '@/utils/types';
 
 // --- Constants ---
 const INITIAL_DAY_WIDTH = 80;
@@ -28,9 +29,34 @@ interface GanttChartProps {
   workOnSunday: boolean;
   onRetry?: () => void;
 }
-interface ResourceGroup { /* ... keep ... */ resourceId: number; resourceName: string; machines: { machineName: string; displayHours?: number; requirements: ScheduledTaskSegment[]; resourceCategory?: 'Machine' | 'Software'; }[]; }
-interface TotalEngagementBar { /* ... keep ... */ resourceId: number; resourceName: string; travelStartDay: number; travelEndDay: number; totalDuration: number; top: number; }
-interface TaskRenderInfo extends ScheduledTaskSegment { /* ... keep ... */ top: number; left: number; width: number; month: number; dayOfMonth: number; }
+
+interface ResourceGroup { 
+  resourceId: number; 
+  resourceName: string; 
+  machines: { 
+    machineName: string; 
+    displayHours?: number; 
+    requirements: ScheduledTaskSegment[]; 
+    resourceCategory?: ResourceCategory; 
+  }[]; 
+}
+
+interface TotalEngagementBar { 
+  resourceId: number; 
+  resourceName: string; 
+  travelStartDay: number; 
+  travelEndDay: number; 
+  totalDuration: number; 
+  top: number; 
+}
+
+interface TaskRenderInfo extends ScheduledTaskSegment { 
+  top: number; 
+  left: number; 
+  width: number; 
+  month: number; 
+  dayOfMonth: number; 
+}
 
 // --- Helper Function for Colors ---
 function getResourceColor(id: number): string {
@@ -83,9 +109,19 @@ const GanttChart: React.FC<GanttChartProps> = ({
       {/* --- Zoom Controls --- */}
       <div className="gantt-controls">
         <div className="gantt-controls-inner">
-            <ZoomOut className={`gantt-zoom-icon ${isZoomOutDisabled ? 'disabled' : ''}`} size={18} onClick={!isZoomOutDisabled ? handleZoomOut : undefined} aria-disabled={isZoomOutDisabled} title="Zoom Out" />
+            <ZoomOut 
+              className={`gantt-zoom-icon ${isZoomOutDisabled ? 'disabled' : ''}`} 
+              size={18} 
+              onClick={!isZoomOutDisabled ? handleZoomOut : undefined} 
+              aria-disabled={isZoomOutDisabled}
+            />
             <span className="gantt-zoom-level">{Math.round(dayWidth / INITIAL_DAY_WIDTH * 100)}%</span>
-            <ZoomIn className={`gantt-zoom-icon ${isZoomInDisabled ? 'disabled' : ''}`} size={18} onClick={!isZoomInDisabled ? handleZoomIn : undefined} aria-disabled={isZoomInDisabled} title="Zoom In" />
+            <ZoomIn 
+              className={`gantt-zoom-icon ${isZoomInDisabled ? 'disabled' : ''}`} 
+              size={18} 
+              onClick={!isZoomInDisabled ? handleZoomIn : undefined} 
+              aria-disabled={isZoomInDisabled}
+            />
         </div>
       </div>
 
