@@ -6,7 +6,6 @@
   --gantt-header-height: 70px;
   --gantt-resource-header-height: 40px;
   --gantt-machine-row-height: 30px;
-  --gantt-resource-group-padding: 10px; /* <-- ADDED CSS Variable for padding */
 
   --gantt-border-color: rgba(255, 255, 255, 0.1);
   --gantt-border-color-light: rgba(255, 255, 255, 0.05);
@@ -19,43 +18,73 @@
   --gantt-text-color-muted: rgba(255, 255, 255, 0.7);
   --gantt-text-color-faint: rgba(255, 255, 255, 0.5);
 
-  --gantt-total-bar-border: rgba(100, 116, 139, 0.6);
+  /* --gantt-total-bar-bg: rgba(100, 116, 139, 0.4); */ /* Background color removed, opacity handled inline */
+  --gantt-total-bar-border: rgba(100, 116, 139, 0.6); /* Keep border color */
   --gantt-travel-icon-color: rgba(203, 213, 225, 0.9);
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
-.gantt-container { display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; border: 1px solid var(--gantt-border-color); border-radius: 0.5rem; background-color: var(--gantt-container-bg); color: var(--gantt-text-color); }
+.gantt-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--gantt-border-color);
+  border-radius: 0.5rem;
+  background-color: var(--gantt-container-bg);
+  color: var(--gantt-text-color);
+}
 
 /* --- Zoom Controls --- */
-.gantt-controls { flex-shrink: 0; border-bottom: 1px solid var(--gantt-border-color); background-color: var(--gantt-header-bg); }
-.gantt-controls-inner { display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; padding: 0.5rem; }
-.gantt-zoom-icon { color: var(--gantt-text-color); cursor: pointer; transition: opacity 0.2s ease-in-out; }
+.gantt-controls {
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--gantt-border-color);
+    background-color: var(--gantt-header-bg);
+}
+.gantt-controls-inner {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+}
+.gantt-zoom-icon {
+    color: var(--gantt-text-color);
+    cursor: pointer;
+    transition: opacity 0.2s ease-in-out;
+}
 .gantt-zoom-icon:hover { opacity: 0.8; }
 .gantt-zoom-icon.disabled { color: var(--gantt-text-color-faint); opacity: 0.5; cursor: not-allowed; }
 .gantt-zoom-level { font-size: 0.75rem; color: var(--gantt-text-color-muted); min-width: 40px; text-align: center; user-select: none; }
 
 
 /* --- Header Row --- */
-.gantt-header-row { display: flex; flex-shrink: 0; height: var(--gantt-header-height); z-index: 30; position: relative; }
-.gantt-resource-header-cell { min-width: var(--gantt-resource-col-width); width: var(--gantt-resource-col-width); display: flex; align-items: center; justify-content: center; font-weight: 500; border-right: 1px solid var(--gantt-border-color); height: 100%; flex-shrink: 0; }
+.gantt-header-row {
+  display: flex;
+  flex-shrink: 0;
+  height: var(--gantt-header-height);
+  z-index: 30;
+  position: relative;
+}
+.gantt-resource-header-cell {
+  min-width: var(--gantt-resource-col-width);
+  width: var(--gantt-resource-col-width);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  border-right: 1px solid var(--gantt-border-color);
+  height: 100%;
+  flex-shrink: 0;
+}
 .gantt-timeline-header-wrapper { flex: 1; overflow: hidden; position: relative; }
 .gantt-timeline-header-content { display: flex; flex-direction: column; position: absolute; top: 0; left: 0; height: 100%; will-change: transform; /* Width set inline */ }
 .gantt-months { display: flex; height: 50%; border-bottom: 1px solid var(--gantt-border-color); }
-
-/* --- Month Header MODIFIED --- */
-.gantt-month {
-  border-right: 1px solid var(--gantt-border-color);
-  display: flex;
-  align-items: center;
-  justify-content: flex-start; /* Align text to the start (left) */
-  padding-left: 5px;          /* Add small left padding */
-  font-weight: 500;
-  font-size: 0.85rem;
-  flex-shrink: 0;
-  /* Width/minWidth set inline */
-}
-
+.gantt-month { border-right: 1px solid var(--gantt-border-color); display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 0.85rem; flex-shrink: 0; /* Width/minWidth set inline */ }
 .gantt-days { display: flex; height: 50%; }
 .gantt-day { display: flex; align-items: center; justify-content: center; color: var(--gantt-text-color-muted); font-size: 0.75rem; border-right: 1px solid var(--gantt-border-color-light); flex-shrink: 0; /* Width/minWidth set inline */ }
 .gantt-day.weekend { color: var(--gantt-text-color-faint); }
@@ -68,19 +97,7 @@
 /* --- Resource List --- */
 .gantt-resource-list-wrapper { min-width: var(--gantt-resource-col-width); width: var(--gantt-resource-col-width); height: 100%; overflow: hidden; position: relative; background-color: var(--gantt-resource-bg); border-right: 1px solid var(--gantt-border-color); z-index: 20; flex-shrink: 0; }
 .gantt-resource-list-content { position: absolute; width: 100%; top: 0; left: 0; will-change: transform; /* Height set inline */ }
-
-/* --- Resource Group MODIFIED --- */
-.gantt-resource-group {
-  /* Add padding to the bottom to create space AFTER the group's content */
-  padding-bottom: var(--gantt-resource-group-padding);
-  /* Remove bottom border as separation is handled by grid lines and padding */
-  /* border-bottom: none; */
-}
-/* Ensure the last group doesn't have extra padding visually affecting scroll height */
-.gantt-resource-group:last-child {
-    padding-bottom: 0;
-}
-
+.gantt-resource-group { /* Group borders handled by hlines */ }
 .gantt-resource-name { height: var(--gantt-resource-header-height); display: flex; align-items: center; padding: 0 10px; font-weight: 500; background-color: rgba(0, 0, 0, 0.1); }
 .gantt-resource-machine { height: var(--gantt-machine-row-height); display: flex; align-items: center; padding: 0 10px 0 20px; font-size: 0.8rem; color: var(--gantt-text-color-muted); }
 
@@ -98,19 +115,26 @@
 .gantt-grid-background { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: hidden; }
 .gantt-grid-vline { position: absolute; top: 0; bottom: 0; width: 1px; background-color: var(--gantt-border-color-light); /* Left set inline */ }
 .gantt-grid-hline { position: absolute; left: 0; right: 0; height: 1px; background-color: var(--gantt-border-color-light); /* Top set inline */ }
-
-/* --- Group Separator Line MODIFIED --- */
-.gantt-grid-hline.group-separator {
-   background-color: var(--gantt-border-color); /* Slightly darker/more prominent */
-   height: 2px; /* Make the line thicker */
-}
-
+.gantt-grid-hline.group-separator { background-color: var(--gantt-border-color); }
 .gantt-grid-weekend-bg { position: absolute; top: 0; bottom: 0; background-color: var(--gantt-weekend-bg); z-index: 0; /* Left/Width set inline */ }
 
 
 /* --- Total Engagement Layer --- */
 .gantt-total-engagement-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
-.gantt-total-engagement-bar { position: absolute; /* background-color set inline */ border: 1px solid var(--gantt-total-bar-border); border-radius: 4px; overflow: visible; display: flex; align-items: center; justify-content: space-between; /* top, left, width, height, backgroundColor set inline */ }
+
+/* --- Total Engagement Bar --- MODIFIED */
+.gantt-total-engagement-bar {
+  position: absolute;
+  /* background-color: var(--gantt-total-bar-bg); */ /* REMOVED - Set inline now */
+  border: 1px solid var(--gantt-total-bar-border); /* Keep border */
+  border-radius: 4px;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* top, left, width, height, backgroundColor set inline */
+}
+
 .gantt-travel-icon { position: absolute; top: 50%; transform: translateY(-50%); color: var(--gantt-travel-icon-color); display: flex; align-items: center; justify-content: center; pointer-events: auto; }
 .gantt-travel-icon.start { left: 4px; }
 .gantt-travel-icon.end { right: 4px; }
