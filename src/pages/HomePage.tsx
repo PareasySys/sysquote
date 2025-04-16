@@ -98,6 +98,12 @@ const HomePage = () => {
     localStorage.setItem('sidebar-state', sidebarOpen.toString());
   }, [sidebarOpen]);
 
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLogoPopoverOpen((prev) => !prev);
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
@@ -186,7 +192,7 @@ const HomePage = () => {
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
             <Popover open={logoPopoverOpen} onOpenChange={setLogoPopoverOpen}>
               <PopoverTrigger asChild>
-                <div className="py-2 cursor-pointer" onClick={() => setLogoPopoverOpen(true)}>
+                <div className="py-2 cursor-pointer" onClick={handleLogoClick}>
                   {sidebarOpen ? <Logo /> : <LogoIcon />}
                 </div>
               </PopoverTrigger>
