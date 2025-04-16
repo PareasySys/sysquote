@@ -422,34 +422,6 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                     <div className="text-gray-400 text-xs">Training Days</div>
                     <div className="text-gray-200 font-medium flex justify-between items-center">
                       <span>{resource.trainingDaysCount}</span>
-                      {selectedArea && (
-                        <Collapsible className="mr-auto ml-2">
-                          <CollapsibleTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="p-1 h-auto text-xs text-gray-400 flex items-center"
-                            >
-                              <span>Trip details</span>
-                              <ChevronDown className="h-3 w-3 ml-1 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                            </Button>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="text-xs text-gray-400 space-y-1 px-1 pt-1 collapsible-content">
-                            <div className="flex justify-between">
-                              <span>Accommodation & Food:</span>
-                              <span>€{resource.tripCosts.accommodationFood.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Daily Allowance:</span>
-                              <span>€{resource.tripCosts.allowance.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Pocket Money:</span>
-                              <span>€{resource.tripCosts.pocketMoney.toFixed(2)}</span>
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      )}
                       <span className="text-emerald-300 text-xs flex items-center">
                         <Euro className="h-3 w-3 mr-1" />
                         {resource.trainingCost.toFixed(2)}
@@ -466,6 +438,23 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                         {resource.tripCosts.total.toFixed(2)}
                       </span>
                     </div>
+                    
+                    {selectedArea && (
+                      <div className="mt-2 text-xs text-gray-400 space-y-1 border-t border-white/5 pt-2">
+                        <div className="flex justify-between">
+                          <span>Accommodation & Food:</span>
+                          <span>€{resource.tripCosts.accommodationFood.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Daily Allowance:</span>
+                          <span>€{resource.tripCosts.allowance.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Pocket Money:</span>
+                          <span>€{resource.tripCosts.pocketMoney.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
