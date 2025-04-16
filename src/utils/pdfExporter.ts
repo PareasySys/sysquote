@@ -503,334 +503,420 @@ const generatePlanDetailsPageHtml = (
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Training Plan Details - A4</title>
         <style>
+/* Print-specific styles */
 
-         /* Print-specific styles */
-         
-          /* Basic Reset & Body Styling */
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                margin: 0;
-                padding: 0;
-                background-color: #ffffff;
-                
-            }
-            
-           @page {
-                size: A4;
-                margin: 0;
-                    }
-            
-           
+/* Basic Reset & Body Styling */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+    /* Ensure background colors are printed/exported */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
 
-            /* Page Container */
-            .container {
-                margin: 0 auto;
-                padding: 1mm;
-                background-color: #ffffff;
-                
-            }
+/* Apply box-sizing globally for easier width calculations */
+* {
+    box-sizing: border-box;
+}
 
-            /* Header Section */
-            .details-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 30px;
-            }
+@page {
+    size: A4;
+    margin: 0; /* Remove printer margins */
+}
 
-            .logo-container img {
-                height: 60px;
-                width: auto;
-            }
+/* Page Container */
+.container {
+    /* margin: 0 auto; */ /* REMOVED: No longer needed for centering if we want full width */
+    width: 100%; /* ADDED: Make container use full page width */
+    padding: 5mm; /* ADJUSTED: Slightly larger padding for better margins inside the page */
+    background-color: #ffffff;
+    overflow: hidden; /* ADDED: Helps contain floated/complex elements, though might interfere with breaks if misused */
+}
 
-            .plan-title {
-                display: flex;
-                align-items: center;
-                gap: 15px;
-            }
+/* Header Section */
+.details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    page-break-after: avoid; /* Avoid breaking page right after header */
+}
 
-            .plan-title h2 {
-                margin: 0;
-                font-size: 1.8em;
-                font-weight: 600;
-                color: #2d3748;
-            }
-            
-            .plan-icon {
-                background: #E5E7EB;
-                width: 40px;
-                height: 40px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border-radius: 8px;
-            }
+.logo-container img {
+    height: 50px; /* Slightly reduced for potentially less vertical space */
+    width: auto;
+    /* ADDED: Ensure image doesn't cause overflow issues */
+    max-width: 100%;
+}
 
-            /* Resource Cards */
-            .resources-container {
-                display: flex;
-                flex-direction: column;
-                gap: 20px;
-                margin-bottom: 30px;
-                
-            }
+.plan-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
 
-            .resources-title {
-                font-size: 1.4em;
-                font-weight: 600;
-                color: #2d3748;
-                margin-bottom: 15px;
-            }
+.plan-title h2 {
+    margin: 0;
+    font-size: 1.8em;
+    font-weight: 600;
+    color: #2d3748;
+}
 
-            .resource-card {
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                overflow: hidden;
-                background-color: #f8fafc;
-                
-            }
+.plan-icon {
+    background: #E5E7EB;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    /* ADDED: Ensure icon content fits */
+    font-size: 1.2em;
+    flex-shrink: 0;
+}
 
-            .resource-header {
-                background-color: #f1f5f9;
-                padding: 12px 16px;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                border-bottom: 1px solid #e2e8f0;
-            }
+/* Resource Cards */
+.resources-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Reduced gap slightly */
+    margin-bottom: 25px;
+}
 
-            .resource-name {
-                font-weight: 600;
-                font-size: 1.1em;
-                color: #334155;
-            }
+.resources-title {
+    font-size: 1.4em;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 15px;
+    page-break-after: avoid; /* Avoid breaking page right after this title */
+}
 
-            .resource-icon {
-                width: 20px;
-                height: 20px;
-                background: #cbd5e1;
-                border-radius: 4px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
+.resource-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #f8fafc;
+    page-break-inside: avoid; /* *** IMPORTANT: Try not to break a card across pages *** */
+    break-inside: avoid-page; /* Modern equivalent */
+}
 
-            .resource-details {
-                padding: 16px;
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                grid-gap: 15px;
-            }
+.resource-header {
+    background-color: #f1f5f9;
+    padding: 10px 14px; /* Slightly adjusted padding */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    /* page-break-after: avoid; */ /* Might be too strict, avoid inside card is better */
+}
 
-            .detail-box {
-                background-color: #ffffff;
-                border: 1px solid #e2e8f0;
-                border-radius: 6px;
-                padding: 12px;
-            }
+.resource-name {
+    font-weight: 600;
+    font-size: 1.1em;
+    color: #334155;
+}
 
-            .detail-box-header {
-                font-size: 0.8em;
-                color: #64748b;
-                margin-bottom: 5px;
-            }
+.resource-icon {
+    width: 20px;
+    height: 20px;
+    background: #cbd5e1;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
 
-            .detail-box-content {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
+.resource-details {
+    padding: 14px; /* Slightly adjusted padding */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 12px; /* Slightly adjusted gap */
+}
 
-            .detail-box-value {
-                font-weight: 600;
-                color: #334155;
-            }
+.detail-box {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px; /* Slightly adjusted padding */
+    page-break-inside: avoid; /* Avoid breaking inside a detail box */
+    break-inside: avoid-page;
+}
 
-            .detail-box-price {
-                color: #10b981;
-                font-weight: 600;
-            }
+.detail-box-header {
+    font-size: 0.8em;
+    color: #64748b;
+    margin-bottom: 5px;
+}
 
-            .subdetails {
-                margin-top: 8px;
-                border-top: 1px solid #e2e8f0;
-                padding-top: 8px;
-                font-size: 0.85em;
-            }
+.detail-box-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap; /* Allow wrapping if space is tight */
+    gap: 5px;
+}
 
-            .subdetail-row {
-                display: flex;
-                justify-content: space-between;
-                color: #64748b;
-                margin-bottom: 4px;
-            }
+.detail-box-value {
+    font-weight: 600;
+    color: #334155;
+}
 
-            /* Gantt Chart Container */
-            .gantt-container {
-                margin-top: 40px;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                overflow: hidden;
-                width: 100%;
-            }
+.detail-box-price {
+    color: #10b981;
+    font-weight: 600;
+}
 
-            .gantt-header {
-                background-color: #f1f5f9;
-                padding: 12px 16px;
-                border-bottom: 1px solid #e2e8f0;
-            }
+.subdetails {
+    margin-top: 8px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 8px;
+    font-size: 0.85em;
+    page-break-inside: avoid; /* Avoid breaking within subdetails */
+    break-inside: avoid-page;
+}
 
-            .gantt-title {
-                font-weight: 600;
-                font-size: 1.1em;
-                color: #334155;
-            }
+.subdetail-row {
+    display: flex;
+    justify-content: space-between;
+    color: #64748b;
+    margin-bottom: 4px;
+}
 
-            .gantt-chart {
-                background-color: #ffffff;
-                padding: 20px;
-                position: relative;
-                min-height: 300px;
-                width: 100%;
-                overflow: auto;
-            }
+/* Gantt Chart Container */
+.gantt-container {
+    margin-top: 30px; /* Adjusted margin */
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden; /* Keep overflow hidden for the container border-radius */
+    width: 100%;
+    /* ADDED: Control breaking before this section if possible */
+    page-break-before: auto;
+    break-before: auto;
+}
 
-            /* Gantt chart styles */
-            .gantt-grid {
-                display: grid;
-                width: 100%;
-                border: 1px solid #e2e8f0;
-            }
-            
-            .gantt-days {
-                display: flex;
-                border-bottom: 1px solid #e2e8f0;
-                background-color: #f8fafc;
-            }
-            
-            .gantt-day {
-                flex: 1;
-                text-align: center;
-                padding: 8px 0;
-                font-size: 0.8em;
-                font-weight: 600;
-                color: #64748b;
-                border-right: 1px solid #e2e8f0;
-            }
-            
-            .gantt-day:last-child {
-                border-right: none;
-            }
-            
-            .gantt-resource-row {
-                display: flex;
-                border-bottom: 1px solid #e2e8f0;
-                position: relative;
-                height: 40px;
-            }
-            
-            .gantt-resource-row:last-child {
-                border-bottom: none;
-            }
-            
-            .gantt-resource-name {
-                width: 150px;
-                padding: 10px;
-                background-color: #f8fafc;
-                border-right: 1px solid #e2e8f0;
-                font-weight: 500;
-                color: #334155;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                position: sticky;
-                left: 0;
-                z-index: 1;
-            }
-            
-            .gantt-days-container {
-                flex: 1;
-                display: flex;
-                position: relative;
-            }
-            
-            .gantt-day-cell {
-                flex: 1;
-                border-right: 1px solid #e2e8f0;
-            }
-            
-            .gantt-day-cell:last-child {
-                border-right: none;
-            }
-            
-            .gantt-task {
-                position: absolute;
-                height: 24px;
-                top: 8px;
-                border-radius: 4px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-size: 0.8em;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                padding: 0 5px;
-                z-index: 2;
-            }
-            
-            /* Task colors by resource type */
-            .task-machine {
-                background-color: #3b82f6;
-            }
-            
-            .task-software {
-                background-color: #10b981;
-            }
-            
-            .task-default {
-                background-color: #6366f1;
-            }
+.gantt-header {
+    background-color: #f1f5f9;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    page-break-after: avoid; /* Keep header with the chart */
+}
 
-            /* Summary Section */
-            .cost-summary {
-                margin-top: 30px;
-                padding: 20px;
-                background-color: #f8fafc;
-                border-radius: 8px;
-                border: 1px solid #e2e8f0;
-            }
+.gantt-title {
+    font-weight: 600;
+    font-size: 1.1em;
+    color: #334155;
+}
 
-            .summary-row {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 8px;
-                color: #475569;
-            }
+.gantt-chart {
+    background-color: #ffffff;
+    padding: 0; /* Remove padding here, handle inside grid */
+    position: relative; /* Keep for absolute positioned tasks */
+    width: 100%;
+    /* REMOVED: overflow: auto; - This prevents content flow in print */
+    /* REMOVED: min-height: 300px; - Let content dictate height */
+}
 
-            .summary-row.total {
-                margin-top: 10px;
-                padding-top: 10px;
-                border-top: 1px solid #e2e8f0;
-                font-weight: 600;
-                font-size: 1.1em;
-                color: #10b981;
-            }
+/* Gantt chart styles */
+/* IMPORTANT: The Gantt chart breaking naturally across pages is tricky.
+   CSS page breaks work best *between* block elements.
+   Breaking inside a complex grid/flex structure across pages often fails.
+   The best bet is to ensure rows don't break internally and hope the
+   renderer breaks *between* rows. If the chart is *wider* than the page,
+   it *will* be cut off horizontally unless scaled down. */
 
-            /* Footer */
-            .page-footer {
-                margin-top: 40px;
-                text-align: center;
-                color: #94a3b8;
-                font-size: 0.85em;
-                border-top: 1px solid #e2e8f0;
-                padding-top: 15px;
-            }
+.gantt-grid {
+    display: grid; /* Keep using grid */
+    width: 100%;
+    border: none; /* Remove outer border, container has one */
+    /* ADDED: Tell the grid it's okay to break between rows */
+    page-break-inside: auto;
+    break-inside: auto;
+}
 
-            }
+.gantt-days {
+    display: flex; /* Use flex for the header row */
+    border-bottom: 1px solid #e2e8f0;
+    background-color: #f8fafc;
+    /* ADDED: Keep header together */
+    page-break-inside: avoid;
+    break-inside: avoid-page;
+}
+
+.gantt-day {
+    flex: 1;
+    text-align: center;
+    padding: 8px 0;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: #64748b;
+    border-right: 1px solid #e2e8f0;
+}
+
+.gantt-day:last-child {
+    border-right: none;
+}
+
+/* This represents one entire resource row in the Gantt */
+.gantt-resource-row {
+    display: flex; /* Use flex for layout */
+    border-bottom: 1px solid #e2e8f0;
+    position: relative; /* Keep for absolute positioned tasks */
+    min-height: 40px; /* Use min-height instead of height */
+    /* ADDED: CRITICAL - Avoid breaking *inside* a single resource's row */
+    page-break-inside: avoid;
+    break-inside: avoid-page;
+}
+
+.gantt-resource-row:last-child {
+    border-bottom: none;
+}
+
+.gantt-resource-name {
+    width: 150px; /* Keep fixed width */
+    padding: 10px;
+    background-color: #f8fafc;
+    border-right: 1px solid #e2e8f0;
+    font-weight: 500;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* REMOVED: position: sticky; left: 0; z-index: 1; - Sticky position doesn't work well in print/PDF */
+    /* ADDED: Ensure it stays vertically aligned */
+    display: flex;
+    align-items: center;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.gantt-days-container {
+    flex: 1; /* Takes remaining space */
+    display: flex;
+    position: relative; /* Keep for absolute tasks */
+}
+
+.gantt-day-cell {
+    flex: 1;
+    border-right: 1px solid #e2e8f0;
+    min-height: 40px; /* Match row min-height */
+}
+
+.gantt-day-cell:last-child {
+    border-right: none;
+}
+
+.gantt-task {
+    position: absolute;
+    height: 24px;
+    top: 8px; /* Adjust as needed */
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.8em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 5px;
+    z-index: 2; /* Keep on top */
+}
+
+/* Task colors by resource type */
+.task-machine { background-color: #3b82f6; }
+.task-software { background-color: #10b981; }
+.task-default { background-color: #6366f1; }
+
+
+/* Summary Section */
+.cost-summary {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    /* ADDED: Control breaking */
+    page-break-inside: avoid;
+    break-inside: avoid-page;
+    page-break-before: auto; /* Allow break before if needed */
+    break-before: auto;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: #475569;
+}
+
+.summary-row.total {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+    font-weight: 600;
+    font-size: 1.1em;
+    color: #10b981;
+}
+
+/* Footer */
+.page-footer {
+    margin-top: 30px; /* Reduced margin */
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85em;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 10px; /* Reduced padding */
+    /* ADDED: Try to keep footer on the same page as the summary if possible */
+    page-break-before: auto;
+    break-before: auto;
+    /* Or force to bottom if using running footers (more advanced) */
+}
+
+/* Add media print rules specifically (optional but good practice) */
+@media print {
+    body {
+        /* Already set globally, but ensuring */
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .container {
+       /* Ensure no box-shadows etc. that might interfere */
+       box-shadow: none;
+       border: none; /* If container border is not desired in print */
+    }
+    /* Add any other print-specific overrides */
+
+    /* Re-iterate break rules for clarity if needed, though they work outside @media print too */
+    .resource-card,
+    .detail-box,
+    .subdetails,
+    .gantt-resource-row,
+    .cost-summary {
+        page-break-inside: avoid;
+        break-inside: avoid-page;
+    }
+
+    .details-header,
+    .resources-title,
+    .gantt-header {
+         page-break-after: avoid;
+         break-after: avoid-page;
+    }
+
+    .gantt-container,
+    .cost-summary,
+    .page-footer {
+        page-break-before: auto;
+        break-before: auto;
+    }
+}
+
+/* Removed the extra closing brace */
+/* } */ /* This brace was extra */
         </style>
     </head>
     <body>
