@@ -136,7 +136,9 @@ export const generateQuotePDF = async (
           scale: 2,
           useCORS: true,
           allowTaint: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          width: 840, // Larger width to ensure full page content
+          height: 1200 // Larger height to ensure full content
         });
         
         // Add details page to PDF
@@ -490,6 +492,9 @@ const generatePlanDetailsPageHtml = (
   const totalTripCost = plan.totalTripCost;
   const grandTotal = totalTrainingCost + totalTripCost;
 
+  // Generate a visual Gantt chart if schedule data is available
+  const ganttChartHTML = generateGanttChartHTML(plan.scheduledTasks || []);
+
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -513,6 +518,7 @@ const generatePlanDetailsPageHtml = (
                 margin: 0 auto;
                 padding: 15mm;
                 background-color: #ffffff;
+                width: 100%;
             }
 
             /* Header Section */
@@ -654,6 +660,7 @@ const generatePlanDetailsPageHtml = (
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
                 overflow: hidden;
+                width: 100%;
             }
 
             .gantt-header {
@@ -669,23 +676,110 @@ const generatePlanDetailsPageHtml = (
             }
 
             .gantt-chart {
-                height: 300px;
                 background-color: #ffffff;
                 padding: 20px;
                 position: relative;
+                min-height: 300px;
+                width: 100%;
+                overflow: auto;
             }
 
-            /* Gantt chart placeholder */
-            .gantt-placeholder {
+            /* Gantt chart styles */
+            .gantt-grid {
+                display: grid;
                 width: 100%;
-                height: 100%;
+                border: 1px solid #e2e8f0;
+            }
+            
+            .gantt-days {
+                display: flex;
+                border-bottom: 1px solid #e2e8f0;
+                background-color: #f8fafc;
+            }
+            
+            .gantt-day {
+                flex: 1;
+                text-align: center;
+                padding: 8px 0;
+                font-size: 0.8em;
+                font-weight: 600;
+                color: #64748b;
+                border-right: 1px solid #e2e8f0;
+            }
+            
+            .gantt-day:last-child {
+                border-right: none;
+            }
+            
+            .gantt-resource-row {
+                display: flex;
+                border-bottom: 1px solid #e2e8f0;
+                position: relative;
+                height: 40px;
+            }
+            
+            .gantt-resource-row:last-child {
+                border-bottom: none;
+            }
+            
+            .gantt-resource-name {
+                width: 150px;
+                padding: 10px;
+                background-color: #f8fafc;
+                border-right: 1px solid #e2e8f0;
+                font-weight: 500;
+                color: #334155;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                position: sticky;
+                left: 0;
+                z-index: 1;
+            }
+            
+            .gantt-days-container {
+                flex: 1;
+                display: flex;
+                position: relative;
+            }
+            
+            .gantt-day-cell {
+                flex: 1;
+                border-right: 1px solid #e2e8f0;
+            }
+            
+            .gantt-day-cell:last-child {
+                border-right: none;
+            }
+            
+            .gantt-task {
+                position: absolute;
+                height: 24px;
+                top: 8px;
+                border-radius: 4px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                color: #94a3b8;
-                font-size: 1em;
-                border: 2px dashed #e2e8f0;
-                border-radius: 6px;
+                color: white;
+                font-size: 0.8em;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                padding: 0 5px;
+                z-index: 2;
+            }
+            
+            /* Task colors by resource type */
+            .task-machine {
+                background-color: #3b82f6;
+            }
+            
+            .task-software {
+                background-color: #10b981;
+            }
+            
+            .task-default {
+                background-color: #6366f1;
             }
 
             /* Summary Section */
@@ -784,11 +878,7 @@ const generatePlanDetailsPageHtml = (
                     <div class="gantt-title">Resource Training Schedule</div>
                 </div>
                 <div class="gantt-chart">
-                    <div class="gantt-placeholder">
-                        ${plan.scheduledTasks && plan.scheduledTasks.length > 0 
-                            ? `Training schedule with ${plan.scheduledTasks.length} segments` 
-                            : 'No schedule data available for this plan'}
-                    </div>
+                    ${ganttChartHTML}
                 </div>
             </section>
 
@@ -815,3 +905,73 @@ const generatePlanDetailsPageHtml = (
     </html>
   `;
 };
+
+/**
+ * Generate the HTML for the Gantt chart visualization
+ */
+function generateGanttChartHTML(tasks: ScheduledTaskSegment[]): string {
+  if (!tasks || tasks.length === 0) {
+    return `<div class="gantt-placeholder">No schedule data available for this plan</div>`;
+  }
+
+  // Find the maximum day to determine chart width
+  const maxDay = Math.max(...tasks.map(task => task.start_day + task.duration_days));
+  // Add buffer days to make the chart look better
+  const totalDays = maxDay + 2;
+  
+  // Group tasks by resource for better visualization
+  const resourceMap = new Map<number, ScheduledTaskSegment[]>();
+  
+  tasks.forEach(task => {
+    if (!resourceMap.has(task.resource_id)) {
+      resourceMap.set(task.resource_id, []);
+    }
+    resourceMap.get(task.resource_id)!.push(task);
+  });
+
+  // Generate day headers
+  const daysHeader = Array.from({ length: totalDays }, (_, i) => `<div class="gantt-day">Day ${i + 1}</div>`).join('');
+  
+  // Generate resource rows with tasks
+  const resourceRows = Array.from(resourceMap.entries()).map(([resourceId, resourceTasks]) => {
+    const firstTask = resourceTasks[0];
+    const resourceName = firstTask.resource_name;
+    
+    // Generate task bars
+    const taskBars = resourceTasks.map(task => {
+      const left = (task.start_day / totalDays) * 100;
+      const width = (task.duration_days / totalDays) * 100;
+      const taskClass = task.resource_category === 'Machine' ? 'task-machine' : 
+                       task.resource_category === 'Software' ? 'task-software' : 'task-default';
+      
+      return `<div class="gantt-task ${taskClass}" 
+                  style="left: ${left}%; width: ${width}%;" 
+                  title="${task.machine_name}: ${task.segment_hours} hours">
+                ${task.segment_hours}h
+              </div>`;
+    }).join('');
+    
+    // Generate empty day cells for the grid
+    const dayCells = Array.from({ length: totalDays }, () => `<div class="gantt-day-cell"></div>`).join('');
+    
+    return `
+      <div class="gantt-resource-row">
+        <div class="gantt-resource-name">${resourceName}</div>
+        <div class="gantt-days-container">
+          ${dayCells}
+          ${taskBars}
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  return `
+    <div class="gantt-grid">
+      <div class="gantt-days">
+        <div style="width: 150px; border-right: 1px solid #e2e8f0; background-color: #f8fafc;"></div>
+        <div style="flex: 1; display: flex;">${daysHeader}</div>
+      </div>
+      ${resourceRows}
+    </div>
+  `;
+}

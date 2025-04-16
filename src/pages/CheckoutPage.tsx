@@ -8,7 +8,7 @@ import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
-import { useTrainingRequirements, TrainingRequirement } from "@/hooks/useTrainingRequirements";
+import { useTrainingRequirements } from "@/hooks/useTrainingRequirements";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { useAreaCosts } from "@/hooks/useAreaCosts";
 import { useResources } from "@/hooks/useResources";
@@ -114,17 +114,6 @@ const CheckoutPage: React.FC = () => {
           
           if (!quoteId) return null;
           
-          const fetchRequirementsForPlan = async () => {
-            const { data, error } = await supabase
-              .from('planning_details')
-              .select('*, resources(name, hourly_rate, icon_name)')
-              .eq('quote_id', quoteId)
-              .eq('plan_id', planId);
-              
-            if (error) throw error;
-            return data || [];
-          };
-          
           const requirements = plan.requirements || [];
           if (requirements.length === 0) return null;
           
@@ -199,20 +188,25 @@ const CheckoutPage: React.FC = () => {
             const resourceName = resource?.name || `Resource ${item.resource_id}`;
             
             let machineName = '';
+            let resourceCategory: 'Machine' | 'Software' | undefined;
+            
             if (item.machine_types_id) {
               const machine = resources.find(r => r.resource_id === item.machine_types_id);
               machineName = machine?.name || `Machine ${item.machine_types_id}`;
+              resourceCategory = 'Machine';
             } else if (item.software_types_id) {
               const software = resources.find(r => r.resource_id === item.software_types_id);
               machineName = software?.name || `Software ${item.software_types_id}`;
+              resourceCategory = 'Software';
             }
             
             return {
-              id: item.id,
+              id: item.id.toString(),
               originalRequirementId: item.id,
-              resource_id: item.resource_id || 0,
+              resource_id: item.resource_id,
               resource_name: resourceName,
-              machine_name: machineName,
+              machine_name: machineName || "Unknown Resource",
+              resource_category: resourceCategory,
               segment_hours: item.allocated_hours || 0,
               total_training_hours: item.allocated_hours || 0,
               start_day: item.start_day || 1,
@@ -328,26 +322,13 @@ const CheckoutPage: React.FC = () => {
         });
       }
       
-      const today = new Date();
-      const dd = String(today.getDate()).padStart(2, '0');
-      const mm = String(today.getMonth() + 1).padStart(2, '0'); // January is 0!
-      const yyyy = today.getFullYear();
-      const quoteIdShort = quoteId ? quoteId.substring(0, 8) : 'unknown';
-      
-      const cleanCustomerName = (quoteData.client_name || 'Customer')
-        .replace(/[^\w\s]/gi, '')
-        .replace(/\s+/g, '_');
-      
-      const filename = `${cleanCustomerName}_${dd}_${mm}_${yyyy}_${quoteIdShort}`;
-      
       const success = await generateQuotePDF(
         quoteId || 'unknown',
         profileData.firstName ? `${profileData.firstName} ${profileData.lastName || ''}` : user?.email,
         quoteData.client_name,
         planCostData,
         planDetailsData,
-        '/placeholder.svg',
-        filename
+        '/placeholder.svg'
       );
       
       if (success) {
