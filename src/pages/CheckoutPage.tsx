@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -140,7 +139,7 @@ const CheckoutPage: React.FC = () => {
               </TextShimmerWave>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="max-w-3xl mx-auto space-y-6">
               {plans.map((plan) => (
                 <TrainingPlanCard 
                   key={plan.plan_id} 
@@ -183,7 +182,6 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId }) =>
         map.set(task.resource_id, {
           resourceId: task.resource_id,
           resourceName: task.resource_name,
-          trainingDays: new Set(),
           totalHours: 0,
           businessTripDays: 0,
         });
@@ -192,14 +190,10 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId }) =>
       const resource = map.get(task.resource_id);
       resource.totalHours += task.segment_hours;
       
-      // Track unique days for training
-      const day = task.start_day;
-      resource.trainingDays.add(day);
-      
       // Business trip days include travel days (1 before + 1 after)
       // and all days in between (including weekends)
-      const businessTripStart = day - 1; // 1 day before for travel
-      const businessTripEnd = day + task.duration_days; // Include travel day after
+      const businessTripStart = task.start_day - 1; // 1 day before for travel
+      const businessTripEnd = task.start_day + task.duration_days; // Include travel day after
       
       // Calculate business trip length
       resource.businessTripDays = Math.max(
@@ -252,19 +246,13 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId }) =>
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Training Days</div>
                     <div className="text-gray-200 font-medium">
-                      {resource.trainingDays.size}
+                      {Math.ceil(resource.totalHours / 8)}
                     </div>
                   </div>
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Business Trip Days</div>
                     <div className="text-gray-200 font-medium">
                       {resource.businessTripDays}
-                    </div>
-                  </div>
-                  <div className="col-span-2 bg-slate-700/40 p-2 rounded border border-white/5">
-                    <div className="text-gray-400 text-xs">Total Training Hours</div>
-                    <div className="text-gray-200 font-medium">
-                      {resource.totalHours}
                     </div>
                   </div>
                 </div>
