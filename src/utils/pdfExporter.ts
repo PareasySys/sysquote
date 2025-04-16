@@ -2,6 +2,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ScheduledTaskSegment } from './types';
+import { supabase } from "@/integrations/supabase/client";
 
 // Common interface for plan cost data
 export interface PlanCostData {
@@ -17,10 +18,26 @@ export interface PlanCostData {
 export const generateQuotePDF = async (
   quoteId: string,
   userName: string | undefined,
-  areaName: string | undefined,
+  clientName: string | undefined,  // Changed parameter from areaName to clientName
   planCosts: PlanCostData[],
   logoUrl: string = '/placeholder.svg'
 ): Promise<boolean> => {
+  // Try to get the logo from Supabase storage
+  let logoSrc = logoUrl;
+  try {
+    const { data, error } = await supabase.storage
+      .from('identityimages')
+      .download('System_Logo.png');
+    
+    if (data && !error) {
+      logoSrc = URL.createObjectURL(data);
+    } else {
+      console.warn('Could not load logo from storage:', error);
+    }
+  } catch (err) {
+    console.error('Error loading logo from storage:', err);
+  }
+
   // Create a temporary container to render the HTML for the PDF
   const container = document.createElement('div');
   container.style.position = 'absolute';
@@ -188,11 +205,11 @@ export const generateQuotePDF = async (
         <div class="container">
             <header class="quote-header">
                 <div class="logo-container">
-                    <img src="${logoUrl}" alt="Company Logo">
+                    <img src="${logoSrc}" alt="Company Logo">
                 </div>
                 <div class="quote-details">
                     <h2>Training Quote</h2>
-                    <p><strong>Quote To:</strong> ${areaName || 'Customer'}</p>
+                    <p><strong>Quote To:</strong> ${clientName || 'Customer'}</p>
                     <p><strong>Quote Date:</strong> ${currentDate}</p>
                     <p><strong>Prepared By:</strong> ${userName || 'Training Specialist'}</p>
                 </div>
@@ -250,6 +267,11 @@ export const generateQuotePDF = async (
       imgHeight * ratio
     );
     
+    // Clean up - revoke the object URL for the logo if we created one
+    if (logoSrc !== logoUrl) {
+      URL.revokeObjectURL(logoSrc);
+    }
+    
     // Remove the temporary container
     document.body.removeChild(container);
     
@@ -259,6 +281,12 @@ export const generateQuotePDF = async (
     return true;
   } catch (error) {
     console.error('Error generating PDF:', error);
+    
+    // Clean up - revoke the object URL for the logo if we created one
+    if (logoSrc !== logoUrl) {
+      URL.revokeObjectURL(logoSrc);
+    }
+    
     document.body.removeChild(container);
     return false;
   }

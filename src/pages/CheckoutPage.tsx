@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +51,7 @@ const CheckoutPage: React.FC = () => {
   const [quoteData, setQuoteData] = useState<{
     area_id?: number | null;
     area_name?: string;
+    client_name?: string;
   }>({});
   const [loadingQuote, setLoadingQuote] = useState(true);
   const {
@@ -76,6 +76,7 @@ const CheckoutPage: React.FC = () => {
       } = await supabase.from("quotes").select(`
           quote_id,
           area_id,
+          client_name,
           area_costs (
             area_id,
             area_name,
@@ -87,7 +88,8 @@ const CheckoutPage: React.FC = () => {
         const areaName = data.area_costs?.area_name || "No Area Selected";
         setQuoteData({
           area_id: data.area_id,
-          area_name: areaName
+          area_name: areaName,
+          client_name: data.client_name
         });
       }
     } catch (err) {
@@ -105,16 +107,12 @@ const CheckoutPage: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      // Extract plan cost data without using hooks inside this function
       const planCostData: PlanCostData[] = plans
         .map(plan => {
-          // Instead of using the hook inside the map function, we need to fetch data separately
-          // This is a common pattern that avoids violating the Rules of Hooks
           const planId = plan.plan_id;
           
           if (!quoteId) return null;
           
-          // Instead of using the hook, manually fetch or filter scheduled tasks for this plan
           const fetchRequirementsForPlan = async () => {
             const { data, error } = await supabase
               .from('planning_details')
@@ -126,7 +124,6 @@ const CheckoutPage: React.FC = () => {
             return data || [];
           };
           
-          // We will calculate training days and costs without the hook
           const requirements = plan.requirements || [];
           if (requirements.length === 0) return null;
           
@@ -134,7 +131,6 @@ const CheckoutPage: React.FC = () => {
             requirements.reduce((total, req) => total + (req.training_hours || 0), 0) / 8
           );
           
-          // Calculate costs based on resources
           let totalCost = 0;
           const resourceMap = new Map();
           
@@ -155,7 +151,6 @@ const CheckoutPage: React.FC = () => {
             resourceData.totalHours += req.training_hours || 0;
           });
           
-          // Calculate total costs including business trip expenses
           Array.from(resourceMap.values()).forEach(resource => {
             const trainingCost = resource.hourlyRate * resource.totalHours;
             
@@ -183,7 +178,7 @@ const CheckoutPage: React.FC = () => {
       const success = await generateQuotePDF(
         quoteId || 'unknown',
         profileData.firstName ? `${profileData.firstName} ${profileData.lastName || ''}` : user?.email,
-        quoteData.area_name,
+        quoteData.client_name,
         planCostData,
         '/placeholder.svg'
       );
@@ -301,7 +296,7 @@ interface TrainingPlanCardProps {
     name: string;
     description: string | null;
     icon_name: string | null;
-    requirements?: any[]; // Added for direct access in PDF export
+    requirements?: any[];
   };
   quoteId: string;
   areaId: number | null;
@@ -345,7 +340,6 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
     loading
   } = useTrainingRequirements(quoteId, plan.plan_id, false, false);
 
-  // Store requirements in the plan object for PDF export
   useEffect(() => {
     if (!loading && scheduledTasks.length > 0) {
       plan.requirements = scheduledTasks.map(task => ({
