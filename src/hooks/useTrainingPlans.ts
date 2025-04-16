@@ -10,6 +10,7 @@ export interface TrainingPlan {
   display_order: number | null;
   created_at: string;
   icon_name: string | null;
+  requirements?: any[]; // Added this line to define the requirements property
 }
 
 export const useTrainingPlans = () => {
