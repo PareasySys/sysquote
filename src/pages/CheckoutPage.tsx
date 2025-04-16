@@ -19,6 +19,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { useResourceIcons } from "@/hooks/useResourceIcons";
 import { useTrainingIcons } from "@/hooks/useTrainingIcons";
+
 const CheckoutPage: React.FC = () => {
   const {
     quoteId
@@ -56,11 +57,13 @@ const CheckoutPage: React.FC = () => {
   const {
     icons: trainingIcons
   } = useTrainingIcons();
+
   useEffect(() => {
     if (quoteId) {
       fetchQuoteDetails();
     }
   }, [quoteId]);
+
   const fetchQuoteDetails = async () => {
     try {
       setLoadingQuote(true);
@@ -91,13 +94,16 @@ const CheckoutPage: React.FC = () => {
       setLoadingQuote(false);
     }
   };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
+
   const handleBackToPlanning = () => {
     navigate(`/quote/${quoteId}/planning`);
   };
+
   const sidebarLinks = [{
     label: "Dashboard",
     href: "/home",
@@ -116,9 +122,11 @@ const CheckoutPage: React.FC = () => {
     icon: <LogOut className="text-gray-300 h-5 w-5 flex-shrink-0" />,
     onClick: handleSignOut
   }];
+
   const handleExport = () => {
     toast.success("Export functionality coming soon");
   };
+
   return <div className="flex h-screen bg-slate-950 text-gray-200">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
         <SidebarBody className="flex flex-col h-full justify-between">
@@ -199,6 +207,7 @@ const CheckoutPage: React.FC = () => {
       </main>
     </div>;
 };
+
 interface TrainingPlanCardProps {
   plan: {
     plan_id: number;
@@ -233,6 +242,7 @@ interface TrainingPlanCardProps {
     source: string;
   }>;
 }
+
 const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
   plan,
   quoteId,
@@ -328,6 +338,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
       grandTotal: trainingTotal + businessTripTotal
     };
   }, [resourceMap]);
+
   return <Card className="bg-slate-800/80 border border-white/5 overflow-hidden h-full flex flex-col">
       <CardHeader className="bg-slate-700/50 flex flex-row items-center justify-between pb-4">
         <div className="flex items-center gap-3">
@@ -352,7 +363,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
           </div> : resourceMap.length === 0 ? <div className="py-4 text-center text-gray-400">
             No resources assigned to this plan
           </div> : <div className="space-y-4">
-            {resourceMap.map(resource => <div key={resource.resourceId} className="border border-white/5 rounded-md p-3 bg-[#121b22]/30">
+            {resourceMap.map(resource => <div key={resource.resourceId} className="border border-white/5 rounded-md bg-transparent">
                 <div className="flex items-center gap-2 font-medium text-gray-200 mb-2">
                   {getResourceIcon(resource.resourceIcon) ? <img src={getResourceIcon(resource.resourceIcon)} alt={resource.resourceName} className="h-5 w-5" onError={e => {
               (e.target as HTMLImageElement).src = "/placeholder.svg";
@@ -446,4 +457,5 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
         </CardFooter>}
     </Card>;
 };
+
 export default CheckoutPage;
