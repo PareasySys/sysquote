@@ -54,10 +54,10 @@ export const generateQuotePDF = async (
 
   // Array of colors for the cards
   const cardColors = [
-    { bg: '#F2FCE2', border: '#C9E29E', text: '#3F5713', accent: '#6B8E23' }, // Green
-    { bg: '#FEF7CD', border: '#F0D861', text: '#6B5D10', accent: '#D4AC16' }, // Yellow
-    { bg: '#E5DEFF', border: '#B9A5F0', text: '#42348C', accent: '#6C5CE7' }, // Purple
-    { bg: '#D3E4FD', border: '#92BBF3', text: '#2C4C7A', accent: '#3B82F6' }  // Blue
+    { bg: '#F2FCE2', border: '#C9E29E', text: '#3F5713', accent: '#6B8E23', description: "A comprehensive training covering essential concepts and hands-on practical exercises tailored to your team's skill level." }, // Green
+    { bg: '#FEF7CD', border: '#F0D861', text: '#6B5D10', accent: '#D4AC16', description: "An extended program that dives deeper into advanced techniques with real-world scenarios and problem-solving workshops." }, // Yellow
+    { bg: '#E5DEFF', border: '#B9A5F0', text: '#42348C', accent: '#6C5CE7', description: "Our premium training that includes all standard modules plus specialized content for advanced users and system administrators." }, // Purple
+    { bg: '#D3E4FD', border: '#92BBF3', text: '#2C4C7A', accent: '#3B82F6', description: "Experience hands-on learning alongside our experts with this shadowing program designed for complete knowledge transfer." }  // Blue
   ];
 
   // Build the HTML content using the template
@@ -76,37 +76,33 @@ export const generateQuotePDF = async (
                 color: #333;
                 margin: 0;
                 padding: 0;
-                background-color: #f4f7f6; /* Background outside the 'page' */
+                background-color: #f4f7f6;
             }
 
-            /* Page Container - Adapts to @page size */
+            /* Page Container */
             .container {
-                /* Removed max-width to fill page margins */
-                margin: 0 auto; /* Centering if screen view is wider than page */
-                padding: 0; /* Padding handled by @page margins or internal elements */
-                background-color: #ffffff; /* White paper background */
-                /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); */ /* Less relevant for direct print */
-                /* border-radius: 5px; */ /* Less relevant for print */
-                border: 1px solid #e0e0e0; /* Optional border for screen view */
+                margin: 0 auto;
+                padding: 0;
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
             }
 
             .content-padding {
-                padding: 15mm; /* Add padding inside the container */
+                padding: 15mm;
             }
-
 
             /* Header Section */
             .quote-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-start;
-                margin-bottom: 30px; /* Reduced margin */
-                padding-bottom: 10px; /* Reduced padding */
-                border-bottom: 2px solid #007bff;
+                margin-bottom: 40px;
+                padding-bottom: 15px;
+                border-bottom: 3px solid #007bff;
             }
 
             .logo-container img {
-                max-height: 70px; /* Slightly smaller */
+                max-height: 90px;
                 width: auto;
             }
 
@@ -117,19 +113,19 @@ export const generateQuotePDF = async (
             .quote-details h2 {
                 margin: 0 0 10px 0;
                 color: #007bff;
-                font-size: 1.8em; /* Adjusted size */
+                font-size: 1.8em;
                 font-weight: 600;
             }
 
             .quote-details p {
                 margin: 4px 0;
-                font-size: 0.9em; /* Adjusted size */
+                font-size: 0.9em;
                 color: #555;
             }
 
             .quote-details strong {
                 display: inline-block;
-                min-width: 90px; /* Adjusted size */
+                min-width: 90px;
                 text-align: left;
                 color: #333;
                 font-weight: 600;
@@ -140,26 +136,29 @@ export const generateQuotePDF = async (
                 margin-bottom: 30px;
             }
 
-            main > h3 { /* Title above cards */
+            main > h3 {
                 color: #333;
-                border-bottom: 1px solid #ccc;
-                padding-bottom: 6px;
-                margin-bottom: 20px;
-                font-size: 1.3em; /* Adjusted size */
+                padding-bottom: 14px;
+                margin-bottom: 30px;
+                font-size: 1.4em;
                 font-weight: 600;
+                text-align: center;
             }
 
             /* Card Container */
             .plans-container {
                 display: grid;
-                grid-template-columns: 1fr 1fr; /* 2 columns */
-                grid-template-rows: auto auto;   /* 2 rows */
-                gap: 20px; /* Space between cards */
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto;
+                gap: 20px;
+                height: calc(100% - 180px);
+                min-height: 450px;
             }
 
             /* --- UPDATED CARD STYLES --- */
             .card {
-                height: 220px; /* Fixed height for consistency */
+                height: 100%;
+                min-height: 220px;
                 position: relative;
                 border-radius: 8px;
                 display: flex;
@@ -171,7 +170,6 @@ export const generateQuotePDF = async (
             }
 
             .quote {
-                /* Contains the SVG Icon */
                 position: absolute;
                 top: 10px;
                 right: 10px;
@@ -180,7 +178,7 @@ export const generateQuotePDF = async (
             }
             
             .quote svg {
-                height: 40px; /* Reduced size */
+                height: 40px;
                 width: 40px;
             }
             
@@ -258,6 +256,7 @@ export const generateQuotePDF = async (
                 
                 .plans-container {
                     gap: 15px;
+                    height: 450px;
                 }
                 
                 .card {
@@ -308,7 +307,7 @@ export const generateQuotePDF = async (
                                     </svg>
                                 </div>
                                 <div class="card-name" style="color: ${colorScheme.accent};">${plan.planName}</div>
-                                <div class="body-text" style="color: ${colorScheme.text};">A ${plan.trainingDays}-day intensive workshop covering the essential concepts and core techniques.</div>
+                                <div class="body-text" style="color: ${colorScheme.text};">${colorScheme.description}</div>
                                 <div class="price" style="color: ${colorScheme.accent}; border-top-color: ${colorScheme.border};"> 
                                     €${plan.totalCost.toFixed(2)}
                                 </div>
