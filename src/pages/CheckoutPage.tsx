@@ -19,6 +19,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { useResourceIcons } from "@/hooks/useResourceIcons";
 import { useTrainingIcons } from "@/hooks/useTrainingIcons";
+import { generateQuotePDF, PlanCostData } from "@/utils/pdfExporter";
 
 const CheckoutPage: React.FC = () => {
   const {
@@ -104,6 +105,75 @@ const CheckoutPage: React.FC = () => {
     navigate(`/quote/${quoteId}/planning`);
   };
 
+  const handleExport = async () => {
+    try {
+      const planCostData: PlanCostData[] = plans
+        .map(plan => {
+          const planResources = scheduledTasks.filter(task => task.plan_id === plan.plan_id);
+          if (planResources.length === 0) return null;
+          
+          const trainingDays = Math.ceil(
+            planResources.reduce((total, task) => total + task.segment_hours, 0) / 8
+          );
+          
+          const resourceMap = new Map();
+          planResources.forEach(task => {
+            if (!resourceMap.has(task.resource_id)) {
+              const resource = resources.find(r => r.resource_id === task.resource_id);
+              resourceMap.set(task.resource_id, {
+                resourceId: task.resource_id,
+                hourlyRate: resource?.hourly_rate || 0,
+                totalHours: 0,
+                businessTripDays: 0,
+              });
+            }
+            const resourceData = resourceMap.get(task.resource_id);
+            resourceData.totalHours += task.segment_hours;
+          });
+          
+          let totalCost = 0;
+          Array.from(resourceMap.values()).forEach(resource => {
+            const trainingCost = resource.hourlyRate * resource.totalHours;
+            
+            const businessTripDays = Math.ceil(resource.totalHours / 8) + 2;
+            
+            const tripCosts = selectedArea ? (
+              selectedArea.daily_accommodation_food_cost +
+              selectedArea.daily_allowance +
+              selectedArea.daily_pocket_money
+            ) * businessTripDays : 0;
+            
+            totalCost += trainingCost + tripCosts;
+          });
+          
+          return {
+            planId: plan.plan_id,
+            planName: plan.name,
+            trainingDays,
+            totalCost
+          };
+        })
+        .filter(Boolean) as PlanCostData[];
+      
+      const success = await generateQuotePDF(
+        quoteId || 'unknown',
+        profileData.firstName ? `${profileData.firstName} ${profileData.lastName || ''}` : user?.email,
+        quoteData.area_name,
+        planCostData,
+        '/placeholder.svg'
+      );
+      
+      if (success) {
+        toast.success("PDF exported successfully!");
+      } else {
+        toast.error("Failed to generate PDF");
+      }
+    } catch (error) {
+      console.error("Error in PDF export:", error);
+      toast.error("Failed to export PDF");
+    }
+  };
+
   const sidebarLinks = [{
     label: "Dashboard",
     href: "/home",
@@ -122,10 +192,6 @@ const CheckoutPage: React.FC = () => {
     icon: <LogOut className="text-gray-300 h-5 w-5 flex-shrink-0" />,
     onClick: handleSignOut
   }];
-
-  const handleExport = () => {
-    toast.success("Export functionality coming soon");
-  };
 
   return <div className="flex h-screen bg-slate-950 text-gray-200">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
@@ -196,10 +262,15 @@ const CheckoutPage: React.FC = () => {
                 {plans.map(plan => <TrainingPlanCard key={plan.plan_id} plan={plan} quoteId={quoteId || ''} areaId={quoteData.area_id || null} resources={resources} areaCosts={areaCosts} resourceIcons={resourceIcons} trainingIcons={trainingIcons} />)}
               </div>
               
-              <div className="mt-10 flex justify-center">
+              <div className="mt-10 flex justify-center gap-4">
+                <Button variant="outline" onClick={handleBackToPlanning}>
+                  <ArrowLeft className="h-5 w-5 mr-2" />
+                  Back to Planning
+                </Button>
+                
                 <RainbowButton variant="light" onClick={handleExport}>
                   <FileText className="h-5 w-5 mr-2" />
-                  Export
+                  Export PDF
                 </RainbowButton>
               </div>
             </>}
