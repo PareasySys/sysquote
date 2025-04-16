@@ -9,6 +9,7 @@ import ProfileSettingsPage from "@/pages/ProfileSettingsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import QuoteConfigPage from "@/pages/QuoteConfigPage";
 import QuotePlanningPage from "@/pages/QuotePlanningPage";
+import CheckoutPage from "@/pages/CheckoutPage";
 import PrivateRoute from "./PrivateRoute";
 
 const Router = () => {
@@ -53,6 +54,12 @@ const Router = () => {
       path: "/quote/:quoteId/planning",
       element: <PrivateRoute>
                 <QuotePlanningPage />
+               </PrivateRoute>
+    },
+    {
+      path: "/quote/:quoteId/checkout",
+      element: <PrivateRoute>
+                <CheckoutPage />
                </PrivateRoute>
     },
     {

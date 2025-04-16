@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +9,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, CreditCard } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card } from "@/components/ui/card";
@@ -110,6 +111,10 @@ const QuotePlanningPage: React.FC = () => {
 
   const handleBackToQuote = () => {
     navigate(`/quote/${quoteId}/config`);
+  };
+
+  const handleGoToCheckout = () => {
+    navigate(`/quote/${quoteId}/checkout`);
   };
 
   const updateWeekendSettings = async (key: 'workOnSaturday' | 'workOnSunday', value: boolean) => {
@@ -310,6 +315,17 @@ const QuotePlanningPage: React.FC = () => {
                   ))}
                 </Tabs>
               </Card>
+              
+              {/* Checkout button */}
+              <div className="flex justify-end mb-6">
+                <Button 
+                  onClick={handleGoToCheckout}
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Checkout
+                </Button>
+              </div>
             </div>
           )}
         </div>
