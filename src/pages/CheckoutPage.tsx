@@ -422,32 +422,16 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                     <div className="text-gray-400 text-xs">Training Days</div>
                     <div className="text-gray-200 font-medium flex justify-between items-center">
                       <span>{resource.trainingDaysCount}</span>
-                      <span className="text-emerald-300 text-xs flex items-center">
-                        <Euro className="h-3 w-3 mr-1" />
-                        {resource.trainingCost.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-slate-700/40 p-2 rounded border border-white/5">
-                    <div className="text-gray-400 text-xs">Business Trip Days</div>
-                    <div className="text-gray-200 font-medium flex justify-between items-center">
-                      <span>{resource.businessTripDays}</span>
-                      <span className="text-emerald-300 text-xs flex items-center">
-                        <Euro className="h-3 w-3 mr-1" />
-                        {resource.tripCosts.total.toFixed(2)}
-                      </span>
-                      
                       {selectedArea && (
-                        <Collapsible className="mt-1">
+                        <Collapsible className="mr-auto ml-2">
                           <CollapsibleTrigger asChild>
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="p-1 h-auto w-full text-xs text-gray-400 flex items-center justify-between"
+                              className="p-1 h-auto text-xs text-gray-400 flex items-center"
                             >
                               <span>Trip details</span>
-                              <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                              <ChevronDown className="h-3 w-3 ml-1 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                             </Button>
                           </CollapsibleTrigger>
                           <CollapsibleContent className="text-xs text-gray-400 space-y-1 px-1 pt-1 collapsible-content">
@@ -466,6 +450,21 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                           </CollapsibleContent>
                         </Collapsible>
                       )}
+                      <span className="text-emerald-300 text-xs flex items-center">
+                        <Euro className="h-3 w-3 mr-1" />
+                        {resource.trainingCost.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-slate-700/40 p-2 rounded border border-white/5">
+                    <div className="text-gray-400 text-xs">Business Trip Days</div>
+                    <div className="text-gray-200 font-medium flex justify-between items-center">
+                      <span>{resource.businessTripDays}</span>
+                      <span className="text-emerald-300 text-xs flex items-center">
+                        <Euro className="h-3 w-3 mr-1" />
+                        {resource.tripCosts.total.toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 </div>
