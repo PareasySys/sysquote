@@ -9,14 +9,19 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, MapPin, Euro } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
 import { useTrainingRequirements } from "@/hooks/useTrainingRequirements";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
+import { useAreaCosts } from "@/hooks/useAreaCosts";
+import { useResources } from "@/hooks/useResources";
+import { supabase } from "@/integrations/supabase/client";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 
 const CheckoutPage: React.FC = () => {
   const { quoteId } = useParams<{ quoteId: string }>();
@@ -25,7 +30,56 @@ const CheckoutPage: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { profileData } = useUserProfile(user);
   const { plans, loading: loadingPlans } = useTrainingPlans();
+  const { areaCosts, loading: loadingAreaCosts } = useAreaCosts();
+  const { resources } = useResources();
   
+  const [quoteData, setQuoteData] = useState<{
+    area_id?: number | null;
+    area_name?: string;
+  }>({});
+  const [loadingQuote, setLoadingQuote] = useState(true);
+
+  useEffect(() => {
+    if (quoteId) {
+      fetchQuoteDetails();
+    }
+  }, [quoteId]);
+
+  const fetchQuoteDetails = async () => {
+    try {
+      setLoadingQuote(true);
+      const { data, error } = await supabase
+        .from("quotes")
+        .select(`
+          quote_id,
+          area_id,
+          area_costs (
+            area_id,
+            area_name,
+            icon_name
+          )
+        `)
+        .eq("quote_id", quoteId)
+        .single();
+
+      if (error) throw error;
+      
+      if (data) {
+        const areaName = data.area_costs?.area_name || "No Area Selected";
+        
+        setQuoteData({
+          area_id: data.area_id,
+          area_name: areaName
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching quote details:", err);
+      toast.error("Could not load quote details");
+    } finally {
+      setLoadingQuote(false);
+    }
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
@@ -123,10 +177,17 @@ const CheckoutPage: React.FC = () => {
                 
                 <h1 className="text-2xl font-bold text-gray-100">Checkout</h1>
               </div>
+
+              <div className="flex items-center gap-2 text-gray-300">
+                <MapPin className="h-4 w-4" />
+                <span>
+                  {loadingQuote ? "Loading area..." : quoteData.area_name || "No Area Selected"}
+                </span>
+              </div>
             </div>
           </div>
           
-          {loadingPlans ? (
+          {loadingPlans || loadingAreaCosts ? (
             <div className="flex justify-center p-12">
               <TextShimmerWave
                 className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
@@ -146,6 +207,9 @@ const CheckoutPage: React.FC = () => {
                   key={plan.plan_id} 
                   plan={plan} 
                   quoteId={quoteId || ''} 
+                  areaId={quoteData.area_id || null}
+                  resources={resources}
+                  areaCosts={areaCosts}
                 />
               ))}
             </div>
@@ -164,9 +228,24 @@ interface TrainingPlanCardProps {
     icon_name: string | null;
   };
   quoteId: string;
+  areaId: number | null;
+  resources: Array<{
+    resource_id: number;
+    name: string;
+    hourly_rate: number;
+    icon_name?: string;
+  }>;
+  areaCosts: Array<{
+    area_id: number;
+    area_name: string;
+    daily_accommodation_food_cost: number;
+    daily_allowance: number;
+    daily_pocket_money: number;
+    icon_name?: string | null;
+  }>;
 }
 
-const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId }) => {
+const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, areaId, resources, areaCosts }) => {
   const { scheduledTasks, loading } = useTrainingRequirements(
     quoteId, 
     plan.plan_id, 
@@ -174,15 +253,24 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId }) =>
     false   // workOnSunday
   );
   
+  // Get area cost info for the selected area
+  const selectedArea = React.useMemo(() => {
+    return areaCosts.find(area => area.area_id === areaId) || null;
+  }, [areaCosts, areaId]);
+  
   // Group tasks by resource and calculate business trip days
   const resourceMap = React.useMemo(() => {
     const map = new Map();
     
     scheduledTasks.forEach(task => {
       if (!map.has(task.resource_id)) {
+        const resource = resources.find(r => r.resource_id === task.resource_id);
+        
         map.set(task.resource_id, {
           resourceId: task.resource_id,
           resourceName: task.resource_name,
+          resourceIcon: resource?.icon_name || null,
+          hourlyRate: resource?.hourly_rate || 0,
           totalHours: 0,
           trainingDays: [],
           startDates: [],
@@ -216,42 +304,83 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId }) =>
       const tripEnd = latestEnd + 1;
       
       // Count total calendar days including weekends
-      // (assuming 1-based days where 1 = Monday, 7 = Sunday)
-      let businessTripDays = 0;
+      let businessTripDays = tripEnd - tripStart + 1;
       
-      for (let day = tripStart; day <= tripEnd; day++) {
-        businessTripDays++;
-      }
+      // Calculate training cost (hourly rate * training hours)
+      const trainingCost = resource.hourlyRate * resource.totalHours;
+      
+      // Calculate business trip costs based on area costs
+      const tripCosts = {
+        accommodationFood: selectedArea ? selectedArea.daily_accommodation_food_cost * businessTripDays : 0,
+        allowance: selectedArea ? selectedArea.daily_allowance * businessTripDays : 0,
+        pocketMoney: selectedArea ? selectedArea.daily_pocket_money * businessTripDays : 0,
+        total: 0
+      };
+      
+      tripCosts.total = tripCosts.accommodationFood + tripCosts.allowance + tripCosts.pocketMoney;
       
       return {
         ...resource,
         trainingDaysCount,
         businessTripDays,
         tripStart,
-        tripEnd
+        tripEnd,
+        trainingCost,
+        tripCosts
       };
     });
-  }, [scheduledTasks]);
+  }, [scheduledTasks, resources, selectedArea]);
+
+  // Calculate total training cost and business trip cost across all resources
+  const totalCosts = React.useMemo(() => {
+    let trainingTotal = 0;
+    let businessTripTotal = 0;
+    
+    resourceMap.forEach(resource => {
+      trainingTotal += resource.trainingCost;
+      businessTripTotal += resource.tripCosts.total;
+    });
+    
+    return {
+      trainingTotal,
+      businessTripTotal,
+      grandTotal: trainingTotal + businessTripTotal
+    };
+  }, [resourceMap]);
 
   return (
-    <Card className="bg-slate-800/80 border border-white/5 overflow-hidden h-full">
-      <CardHeader className="bg-slate-700/50 flex flex-row items-center gap-3 pb-4">
-        {plan.icon_name && (
+    <Card className="bg-slate-800/80 border border-white/5 overflow-hidden h-full flex flex-col">
+      <CardHeader className="bg-slate-700/50 flex flex-row items-center justify-between pb-4">
+        <div className="flex items-center gap-3">
           <div className="bg-slate-600/50 p-2 rounded-md">
-            <img
-              src={`/lovable-uploads/${plan.icon_name}.png`}
-              alt={plan.name}
-              className="h-6 w-6"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/placeholder.svg";
-              }}
-            />
+            {plan.icon_name ? (
+              <img
+                src={`/lovable-uploads/${plan.icon_name}.png`}
+                alt={plan.name}
+                className="h-6 w-6"
+                onError={(e) => {
+                  console.error(`Failed to load icon: ${plan.icon_name}`);
+                  (e.target as HTMLImageElement).src = "/placeholder.svg";
+                }}
+              />
+            ) : (
+              <div className="h-6 w-6 bg-gray-400/20 rounded flex items-center justify-center">
+                <span className="text-xs text-gray-300">{plan.name.charAt(0)}</span>
+              </div>
+            )}
+          </div>
+          <CardTitle className="text-lg font-semibold text-gray-100">{plan.name}</CardTitle>
+        </div>
+        
+        {selectedArea && (
+          <div className="flex items-center gap-2 text-xs text-gray-300">
+            <MapPin className="h-3 w-3" />
+            <span>{selectedArea.area_name}</span>
           </div>
         )}
-        <CardTitle className="text-lg font-semibold text-gray-100">{plan.name}</CardTitle>
       </CardHeader>
       
-      <CardContent className="pt-4">
+      <CardContent className="pt-4 flex-grow">
         {loading ? (
           <div className="py-4 text-center text-gray-400">
             Loading resources...
@@ -267,28 +396,95 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId }) =>
                 key={resource.resourceId}
                 className="bg-slate-700/30 border border-white/5 rounded-md p-3"
               >
-                <div className="font-medium text-gray-200 mb-1">
-                  {resource.resourceName}
+                <div className="flex items-center gap-2 font-medium text-gray-200 mb-2">
+                  {resource.resourceIcon ? (
+                    <img
+                      src={`/lovable-uploads/${resource.resourceIcon}.png`}
+                      alt={resource.resourceName}
+                      className="h-5 w-5"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                      }}
+                    />
+                  ) : (
+                    <div className="h-5 w-5 bg-gray-500/20 rounded flex items-center justify-center">
+                      <span className="text-xs">{resource.resourceName.charAt(0)}</span>
+                    </div>
+                  )}
+                  <span>{resource.resourceName}</span>
                 </div>
+                
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Training Days</div>
-                    <div className="text-gray-200 font-medium">
-                      {resource.trainingDaysCount}
+                    <div className="text-gray-200 font-medium flex justify-between">
+                      <span>{resource.trainingDaysCount}</span>
+                      <span className="text-emerald-300 text-xs flex items-center">
+                        <Euro className="h-3 w-3 mr-1" />
+                        {resource.trainingCost.toFixed(2)}
+                      </span>
                     </div>
                   </div>
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Business Trip Days</div>
-                    <div className="text-gray-200 font-medium">
-                      {resource.businessTripDays}
+                    <div className="text-gray-200 font-medium flex justify-between">
+                      <span>{resource.businessTripDays}</span>
+                      <span className="text-emerald-300 text-xs flex items-center">
+                        <Euro className="h-3 w-3 mr-1" />
+                        {resource.tripCosts.total.toFixed(2)}
+                      </span>
                     </div>
                   </div>
+                </div>
+                
+                <div className="text-xs text-gray-400 mt-1 pl-1">
+                  {selectedArea ? (
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <span>Accommodation & Food:</span>
+                        <span>€{resource.tripCosts.accommodationFood.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Daily Allowance:</span>
+                        <span>€{resource.tripCosts.allowance.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Pocket Money:</span>
+                        <span>€{resource.tripCosts.pocketMoney.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-yellow-500">
+                      No area selected for cost calculation
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </CardContent>
+      
+      {resourceMap.length > 0 && (
+        <CardFooter className="bg-slate-700/30 p-4 flex flex-col">
+          <Separator className="mb-3 bg-white/10" />
+          <div className="w-full text-sm">
+            <div className="flex justify-between text-gray-300">
+              <span>Training Cost:</span>
+              <span className="font-medium">€{totalCosts.trainingTotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-gray-300">
+              <span>Business Trip Cost:</span>
+              <span className="font-medium">€{totalCosts.businessTripTotal.toFixed(2)}</span>
+            </div>
+            <Separator className="my-2 bg-white/10" />
+            <div className="flex justify-between text-emerald-300 font-medium">
+              <span>Total:</span>
+              <span>€{totalCosts.grandTotal.toFixed(2)}</span>
+            </div>
+          </div>
+        </CardFooter>
+      )}
     </Card>
   );
 };
