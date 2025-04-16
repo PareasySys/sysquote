@@ -41,12 +41,12 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, Plus, FileText } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, Plus, FileText, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { APP_VERSION } from "@/utils/types";
+import { APP_NAME } from "@/utils/constants";
 
 const formSchema = z.object({
   quote_name: z.string().min(1, { message: "Quote name is required" }),
@@ -59,10 +59,8 @@ type FormValues = z.infer<typeof formSchema>;
 // Function to get sidebar state (no changes needed)
 const getSidebarState = () => {
   const savedState = localStorage.getItem('sidebar-state');
-  // Default to true (open) if no state is saved or if saved state is invalid
   return savedState ? savedState === 'true' : true;
 };
-
 
 const HomePage = () => {
   const { user, signOut } = useAuth();
@@ -72,7 +70,7 @@ const HomePage = () => {
   const { areas, loading: areasLoading } = useGeographicAreas();
   const [sidebarOpen, setSidebarOpen] = useState(getSidebarState());
   const { profileData } = useUserProfile(user);
-  const [logoPopoverOpen, setLogoPopoverOpen] = useState(false);
+  const [logoDialogOpen, setLogoDialogOpen] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -91,13 +89,11 @@ const HomePage = () => {
     localStorage.setItem('sidebar-state', sidebarOpen.toString());
   }, [sidebarOpen]);
 
-
-  // --- MODIFIED handleLogoClick ---
-  // Only opens the popover, doesn't toggle it off. Closing is handled by onOpenChange.
+  // Modified to handle logo dialog
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent potential default link behavior
     e.stopPropagation(); // Prevent triggering other click listeners
-    setLogoPopoverOpen(true); // Always try to open on click
+    setLogoDialogOpen(true); // Open the logo dialog
   };
 
   const handleSignOut = async () => {
@@ -174,24 +170,11 @@ const HomePage = () => {
         <SidebarBody className="flex flex-col h-full justify-between">
           {/* Sidebar Top */}
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            {/* Popover wraps the trigger div */}
-            <Popover open={logoPopoverOpen} onOpenChange={setLogoPopoverOpen}>
-              <PopoverTrigger asChild>
-                 {/* Trigger div with the modified onClick */}
-                <div className="py-2 cursor-pointer" onClick={handleLogoClick}>
-                  {sidebarOpen ? <Logo /> : <LogoIcon />}
-                </div>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 bg-slate-800 border border-slate-700 text-white p-4 ml-2"> {/* Added ml-2 for slight offset */}
-                {/* Popover Content */}
-                <div className="flex flex-col items-center space-y-4">
-                  <div className="flex items-center justify-center w-full"> <img src="https://egbpjvbrqtvxtlpqkszr.supabase.co/storage/v1/object/public/identityimages//System_Logo.png" alt="System Logo" className="h-16 w-auto object-contain" /> </div>
-                  <div className="text-center"> <h3 className="font-medium text-gray-200">SysQuote</h3> <p className="text-sm text-gray-400">Version: {APP_VERSION}</p> </div>
-                  <div className="border-t border-slate-700 w-full my-2"></div>
-                  <div className="flex flex-col items-center text-xs text-gray-400"> <p>Powered by:</p> <p className="font-medium text-gray-300">Andrea Parisi</p> <div className="flex items-center mt-1 space-x-1"> <span>and</span> <a href="https://lovable.ai" target="_blank" rel="noopener noreferrer" className="flex items-center"> <span className="font-medium text-blue-400">Lovable</span> <img src="https://lovable.ai/images/lovable-icon.svg" alt="Lovable Logo" className="h-4 w-4 ml-1" /> </a> </div> </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+            {/* Logo div with click handler */}
+            <div className="py-2 cursor-pointer" onClick={handleLogoClick}>
+              {sidebarOpen ? <Logo /> : <LogoIcon />}
+            </div>
+            
             {/* Sidebar Links */}
             <div className="mt-8 flex flex-col gap-2">
               {sidebarLinks.map((link, idx) => (<SidebarLink key={idx} link={link} />))}
@@ -240,6 +223,59 @@ const HomePage = () => {
           )}
         </div>
       </main>
+
+      {/* Logo Info Dialog (replacing the Popover) */}
+      <Dialog open={logoDialogOpen} onOpenChange={setLogoDialogOpen}>
+        <DialogContent className="w-80 bg-slate-800 border border-slate-700 text-white p-4">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-lg text-gray-100 flex justify-between items-center">
+              <span>About {APP_NAME}</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0" 
+                onClick={() => setLogoDialogOpen(false)}
+              >
+                <X className="h-4 w-4 text-gray-400" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4">
+            <div className="flex items-center justify-center w-full"> 
+              <img 
+                src="/lovable-uploads/75a8fdbc-01ed-4d63-a2a7-dfd2a6b794dd.png"
+                alt="System Logo" 
+                className="h-16 w-auto object-contain" 
+              /> 
+            </div>
+            <div className="text-center"> 
+              <h3 className="font-medium text-gray-200">{APP_NAME}</h3> 
+              <p className="text-sm text-gray-400">Version: {APP_VERSION}</p> 
+            </div>
+            <div className="border-t border-slate-700 w-full my-2"></div>
+            <div className="flex flex-col items-center text-xs text-gray-400"> 
+              <p>Powered by:</p> 
+              <p className="font-medium text-gray-300">Andrea Parisi</p> 
+              <div className="flex items-center mt-1 space-x-1"> 
+                <span>and</span> 
+                <a 
+                  href="https://lovable.ai" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex items-center"
+                > 
+                  <span className="font-medium text-blue-400">Lovable</span> 
+                  <img 
+                    src="https://lovable.ai/images/lovable-icon.svg" 
+                    alt="Lovable Logo" 
+                    className="h-4 w-4 ml-1" 
+                  /> 
+                </a> 
+              </div> 
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Quote Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
