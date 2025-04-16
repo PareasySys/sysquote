@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Sidebar, SidebarBody, SidebarLink, Logo, LogoIcon } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, MapPin, Euro, ChevronDown, FileText, Briefcase, CalendarDays, Wallet, Coffee, Gift, DollarSign, BadgeCheck, User } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, MapPin, Euro, ChevronDown, FileText, Briefcase, CalendarDays, Wallet, Coffee, Gift, DollarSign, BadgeCheck, User, Save } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -198,6 +199,11 @@ const CheckoutPage: React.FC = () => {
   const handleBackToPlanning = () => {
     navigate(`/quote/${quoteId}/planning`);
   };
+  
+  const handleSaveAndClose = () => {
+    toast.success("Quote saved successfully");
+    navigate("/home");
+  };
 
   const sidebarLinks = [{
     label: "Dashboard",
@@ -271,14 +277,32 @@ const CheckoutPage: React.FC = () => {
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
                 
-                <h1 className="text-2xl font-bold text-gray-100">Checkout</h1>
+                <div className="flex items-center gap-4">
+                  <h1 className="text-2xl font-bold text-gray-100">Checkout</h1>
+                  
+                  <div className="flex items-center gap-2 text-gray-300 bg-slate-800/50 px-3 py-1 rounded-md">
+                    <MapPin className="h-4 w-4" />
+                    <span>
+                      {loadingQuote ? "Loading area..." : quoteData.area_name || "No Area Selected"}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 text-gray-300">
-                <MapPin className="h-4 w-4" />
-                <span>
-                  {loadingQuote ? "Loading area..." : quoteData.area_name || "No Area Selected"}
-                </span>
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline"
+                  onClick={handleSaveAndClose}
+                  className="flex items-center gap-2 border-gray-700 hover:bg-gray-800 text-gray-300"
+                >
+                  <Save className="h-5 w-5" />
+                  Save & Close
+                </Button>
+                
+                <RainbowButton variant="light" onClick={handleExport}>
+                  <FileText className="h-5 w-5 mr-2" />
+                  Export PDF
+                </RainbowButton>
               </div>
             </div>
           </div>
@@ -290,13 +314,6 @@ const CheckoutPage: React.FC = () => {
             </div> : <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {plans.map(plan => <TrainingPlanCard key={plan.plan_id} plan={plan} quoteId={quoteId || ''} areaId={quoteData.area_id || null} resources={resources} areaCosts={areaCosts} resourceIcons={resourceIcons} trainingIcons={trainingIcons} />)}
-              </div>
-              
-              <div className="mt-10 flex justify-center">
-                <RainbowButton variant="light" onClick={handleExport}>
-                  <FileText className="h-5 w-5 mr-2" />
-                  Export PDF
-                </RainbowButton>
               </div>
             </>}
         </div>
@@ -564,3 +581,4 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
 };
 
 export default CheckoutPage;
+
