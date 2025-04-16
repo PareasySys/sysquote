@@ -256,7 +256,7 @@ export const generateQuotePDF = async (
                 
                 .plans-container {
                     gap: 15px;
-                    height: 450px;
+                    height: 850px;
                 }
                 
                 .card {
