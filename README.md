@@ -1,73 +1,96 @@
-# Welcome to your Lovable project
 
-## Project info
+# SysQuote - Training Quote Management System
 
-**URL**: https://lovable.dev/projects/463d6c01-da6a-441b-af7b-edc707867113
+SysQuote is a comprehensive web application designed to streamline the process of creating, managing, and pricing training quotes for technical systems.
 
-## How can I edit this code?
+## Project Overview
 
-There are several ways of editing your application.
+SysQuote helps professionals create detailed training quotes by providing a structured workflow that includes:
 
-**Use Lovable**
+- Machine selection and configuration
+- Software selection and configuration
+- Training topic organization
+- Resource planning and allocation
+- Cost calculation and quote generation
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/463d6c01-da6a-441b-af7b-edc707867113) and start prompting.
+## Features
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Quote Management**: Create, edit, and track quotes in a centralized dashboard
+- **Geographic Areas**: Organize quotes by region with specific pricing models
+- **Machine & Software Configuration**: Select from a library of machine types and software packages
+- **Training Planning**: Plan training sessions with detailed topic breakdown
+- **Resource Allocation**: Assign resources efficiently to optimize training delivery
+- **Cost Calculation**: Automatically calculate costs based on selected components
+- **PDF Export**: Generate professional quote documents for clients
+- **User Management**: Multi-user system with role-based permissions
+- **Dark Mode UI**: Eye-friendly interface optimized for extended use
 
-**Use your preferred IDE**
+## Technology Stack
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Frontend**: React, TypeScript, Tailwind CSS, Shadcn UI
+- **State Management**: React Query, React Context
+- **Backend**: Supabase (PostgreSQL, Auth, Storage)
+- **Form Handling**: React Hook Form with Zod validation
+- **Routing**: React Router
+- **Visualization**: Recharts, Gantt charts for planning
+- **Development**: Vite, ESLint
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Getting Started
 
-Follow these steps:
+### Prerequisites
+
+- Node.js & npm - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Step 1: Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# Step 2: Navigate to the project directory
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
+# Step 3: Install dependencies
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Environment Variables
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Create a `.env` file in the project root with the following variables:
 
-**Use GitHub Codespaces**
+```
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+- `/src` - Application source code
+  - `/components` - UI components
+    - `/shared` - Reusable domain components
+    - `/ui` - Base UI components
+  - `/hooks` - Custom React hooks
+  - `/pages` - Page components
+  - `/integrations` - External service integrations
+  - `/utils` - Utility functions
+  - `/router` - Routing configuration
+  - `/store` - State management
 
-This project is built with:
+## Deployment
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+This project can be deployed through Lovable's built-in deployment system. Simply open [Lovable](https://lovable.dev/projects/463d6c01-da6a-441b-af7b-edc707867113) and click on Share -> Publish.
 
-## How can I deploy this project?
+## Custom Domain Setup
 
-Simply open [Lovable](https://lovable.dev/projects/463d6c01-da6a-441b-af7b-edc707867113) and click on Share -> Publish.
+To connect a domain, navigate to Project > Settings > Domains in Lovable and click Connect Domain.
 
-## Can I connect a custom domain to my Lovable project?
+## License
 
-Yes it is!
+This project is proprietary and confidential. Unauthorized copying, transfer, or reproduction of the contents is strictly prohibited.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Acknowledgments
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- Powered by Andrea Parisi and Lovable
