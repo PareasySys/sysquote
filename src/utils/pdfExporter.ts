@@ -505,18 +505,8 @@ const generatePlanDetailsPageHtml = (
         <style>
 
          /* Print-specific styles */
-            @page {
-                size: A4;
-                }
-
-                @media print {
-                      html, body {
-                        width: 210mm;
-                        height: 297mm;
-                        }
-
-            
-            /* Basic Reset & Body Styling */
+         
+          /* Basic Reset & Body Styling */
             body {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 line-height: 1.6;
@@ -524,8 +514,15 @@ const generatePlanDetailsPageHtml = (
                 margin: 0;
                 padding: 0;
                 background-color: #ffffff;
-                width: 210mm;
+                
             }
+            
+           @page {
+                size: A4;
+                margin: 0;
+                    }
+            
+           
 
             /* Page Container */
             .container {
@@ -577,6 +574,7 @@ const generatePlanDetailsPageHtml = (
                 flex-direction: column;
                 gap: 20px;
                 margin-bottom: 30px;
+                
             }
 
             .resources-title {
@@ -591,6 +589,7 @@ const generatePlanDetailsPageHtml = (
                 border-radius: 8px;
                 overflow: hidden;
                 background-color: #f8fafc;
+                
             }
 
             .resource-header {
