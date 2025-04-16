@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +8,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, MapPin, Euro, ChevronDown, FileExport } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, MapPin, Euro, ChevronDown, FileText } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -115,7 +114,6 @@ const CheckoutPage: React.FC = () => {
     },
   ];
 
-  // Temporarily mock export function
   const handleExport = () => {
     toast.success("Export functionality coming soon");
   };
@@ -224,7 +222,7 @@ const CheckoutPage: React.FC = () => {
               
               <div className="mt-10 flex justify-center">
                 <RainbowButton variant="light" onClick={handleExport}>
-                  <FileExport className="h-5 w-5 mr-2" />
+                  <FileText className="h-5 w-5 mr-2" />
                   Export
                 </RainbowButton>
               </div>
@@ -269,12 +267,10 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
     false   // workOnSunday
   );
   
-  // Get area cost info for the selected area
   const selectedArea = React.useMemo(() => {
     return areaCosts.find(area => area.area_id === areaId) || null;
   }, [areaCosts, areaId]);
   
-  // Group tasks by resource and calculate business trip days
   const resourceMap = React.useMemo(() => {
     const map = new Map();
     
@@ -297,35 +293,27 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
       const resource = map.get(task.resource_id);
       resource.totalHours += task.segment_hours;
       
-      // Track start and end dates for each task segment
       const startDay = task.start_day;
-      const endDay = task.start_day + task.duration_days - 1; // End day is inclusive
+      const endDay = task.start_day + task.duration_days - 1;
       
       resource.trainingDays.push({ start: startDay, end: endDay });
       resource.startDates.push(startDay);
       resource.endDates.push(endDay);
     });
     
-    // Process the data to calculate business trip days
     return Array.from(map.values()).map(resource => {
-      // Calculate training days (total hours / 8 and rounded up)
       const trainingDaysCount = Math.ceil(resource.totalHours / 8);
       
-      // Find earliest start date and latest end date across all segments
       const earliestStart = Math.min(...resource.startDates);
       const latestEnd = Math.max(...resource.endDates);
       
-      // For business trip, add 1 day before for travel and 1 day after
       const tripStart = earliestStart - 1;
       const tripEnd = latestEnd + 1;
       
-      // Count total calendar days including weekends
       let businessTripDays = tripEnd - tripStart + 1;
       
-      // Calculate training cost (hourly rate * training hours)
       const trainingCost = resource.hourlyRate * resource.totalHours;
       
-      // Calculate business trip costs based on area costs
       const tripCosts = {
         accommodationFood: selectedArea ? selectedArea.daily_accommodation_food_cost * businessTripDays : 0,
         allowance: selectedArea ? selectedArea.daily_allowance * businessTripDays : 0,
@@ -346,8 +334,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
       };
     });
   }, [scheduledTasks, resources, selectedArea]);
-
-  // Calculate total training cost and business trip cost across all resources
+  
   const totalCosts = React.useMemo(() => {
     let trainingTotal = 0;
     let businessTripTotal = 0;
@@ -363,7 +350,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
       grandTotal: trainingTotal + businessTripTotal
     };
   }, [resourceMap]);
-
+  
   return (
     <Card className="bg-slate-800/80 border border-white/5 overflow-hidden h-full flex flex-col">
       <CardHeader className="bg-slate-700/50 flex flex-row items-center justify-between pb-4">
@@ -431,7 +418,6 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2">
-                  {/* Training Days Container (Now First) */}
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Training Days</div>
                     <div className="text-gray-200 font-medium flex justify-between items-center">
@@ -443,7 +429,6 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                     </div>
                   </div>
                   
-                  {/* Business Trip Days Container (Now Second) with nested menu */}
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Business Trip Days</div>
                     <div className="text-gray-200 font-medium flex justify-between items-center">
