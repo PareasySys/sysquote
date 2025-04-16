@@ -109,8 +109,10 @@ const CheckoutPage: React.FC = () => {
     try {
       const planCostData: PlanCostData[] = plans
         .map(plan => {
-          const { scheduledTasks } = useTrainingRequirements(quoteId, plan.plan_id, false, false);
-          const planResources = scheduledTasks.filter(task => task.plan_id === plan.plan_id);
+          const { scheduledTasks } = useTrainingRequirements(quoteId || '', plan.plan_id, false, false);
+          const planResources = scheduledTasks.filter(task => {
+            return task.originalRequirementId === plan.plan_id;
+          });
           if (planResources.length === 0) return null;
           
           const trainingDays = Math.ceil(
