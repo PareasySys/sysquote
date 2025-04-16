@@ -20,7 +20,7 @@ export const generateQuotePDF = async (
   areaName: string | undefined,
   planCosts: PlanCostData[],
   logoUrl: string = '/placeholder.svg'
-) => {
+): Promise<boolean> => {
   // Create a temporary container to render the HTML for the PDF
   const container = document.createElement('div');
   container.style.position = 'absolute';
