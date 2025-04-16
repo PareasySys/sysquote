@@ -13,6 +13,32 @@ export interface PlanCostData {
   totalCost: number;
 }
 
+// Interface for resource data in a training plan
+export interface PlanResourceData {
+  resourceId: number;
+  resourceName: string;
+  resourceIcon: string | null;
+  hourlyRate: number;
+  totalHours: number;
+  trainingDaysCount: number;
+  businessTripDays: number;
+  trainingCost: number;
+  tripCosts: {
+    accommodationFood: number;
+    allowance: number;
+    pocketMoney: number;
+    total: number;
+  };
+}
+
+// Extended interface for plan details data
+export interface PlanDetailsData extends PlanCostData {
+  resources: PlanResourceData[];
+  totalTrainingCost: number;
+  totalTripCost: number;
+  scheduledTasks?: ScheduledTaskSegment[];
+}
+
 /**
  * Generate a PDF quote document based on the checkout data
  */
@@ -21,6 +47,7 @@ export const generateQuotePDF = async (
   userName: string | undefined,
   clientName: string | undefined,
   planCosts: PlanCostData[],
+  planDetails: PlanDetailsData[] = [],
   logoUrl: string = '/placeholder.svg'
 ): Promise<boolean> => {
   // Try to get the logo from Supabase storage
@@ -39,22 +66,144 @@ export const generateQuotePDF = async (
     console.error('Error loading logo from storage:', err);
   }
 
-  // Create a temporary container to render the HTML for the PDF
-  const container = document.createElement('div');
-  container.style.position = 'absolute';
-  container.style.left = '-9999px';
-  container.style.top = '-9999px';
-  document.body.appendChild(container);
+  // Create a PDF with multiple pages
+  const pdf = new jsPDF('p', 'pt', 'a4');
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = pdf.internal.pageSize.getHeight();
 
+  try {
+    // Generate the first page (Cover page with cards)
+    const coverHtml = generateCoverPageHtml(quoteId, userName, clientName, planCosts, logoSrc);
+    
+    // Create a temporary container for the cover page
+    const coverContainer = document.createElement('div');
+    coverContainer.style.position = 'absolute';
+    coverContainer.style.left = '-9999px';
+    coverContainer.style.top = '-9999px';
+    document.body.appendChild(coverContainer);
+    coverContainer.innerHTML = coverHtml;
+    
+    // Convert cover page HTML to canvas
+    const coverCanvas = await html2canvas(coverContainer, {
+      scale: 2, // Better quality
+      useCORS: true, // Allow loading cross-origin images
+      allowTaint: true,
+      backgroundColor: '#ffffff'
+    });
+    
+    // Add cover page to PDF
+    const imgData = coverCanvas.toDataURL('image/png');
+    const imgWidth = coverCanvas.width;
+    const imgHeight = coverCanvas.height;
+    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+    const imgX = (pdfWidth - imgWidth * ratio) / 2;
+    const imgY = 30;
+    
+    pdf.addImage(
+      imgData, 
+      'PNG', 
+      imgX, 
+      imgY, 
+      imgWidth * ratio, 
+      imgHeight * ratio
+    );
+    
+    // Clean up cover page container
+    document.body.removeChild(coverContainer);
+    
+    // If plan details are provided, add a detail page for each plan
+    if (planDetails.length > 0) {
+      // For each plan, create a new page with details
+      for (let i = 0; i < planDetails.length; i++) {
+        const plan = planDetails[i];
+        
+        // Add a new page
+        pdf.addPage();
+        
+        // Generate HTML for plan details
+        const detailsHtml = generatePlanDetailsPageHtml(plan, quoteId, logoSrc);
+        
+        // Create a temporary container for the details page
+        const detailsContainer = document.createElement('div');
+        detailsContainer.style.position = 'absolute';
+        detailsContainer.style.left = '-9999px';
+        detailsContainer.style.top = '-9999px';
+        document.body.appendChild(detailsContainer);
+        detailsContainer.innerHTML = detailsHtml;
+        
+        // Convert details page HTML to canvas
+        const detailsCanvas = await html2canvas(detailsContainer, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff'
+        });
+        
+        // Add details page to PDF
+        const detailsImgData = detailsCanvas.toDataURL('image/png');
+        const detailsImgWidth = detailsCanvas.width;
+        const detailsImgHeight = detailsCanvas.height;
+        const detailsRatio = Math.min(pdfWidth / detailsImgWidth, pdfHeight / detailsImgHeight);
+        const detailsImgX = (pdfWidth - detailsImgWidth * detailsRatio) / 2;
+        const detailsImgY = 30;
+        
+        pdf.addImage(
+          detailsImgData, 
+          'PNG', 
+          detailsImgX, 
+          detailsImgY, 
+          detailsImgWidth * detailsRatio, 
+          detailsImgHeight * detailsRatio
+        );
+        
+        // Clean up details container
+        document.body.removeChild(detailsContainer);
+      }
+    }
+    
+    // Clean up - revoke the object URL for the logo if we created one
+    if (logoSrc !== logoUrl) {
+      URL.revokeObjectURL(logoSrc);
+    }
+    
+    // Format the PDF filename as requested
+    const shortenedQuoteId = quoteId.substring(0, 8);
+    const customerName = clientName?.replace(/\s+/g, '_') || 'Customer';
+    const fileDate = format(new Date(), 'dd_MM_yyyy');
+    const filename = `${customerName}_${fileDate}_${shortenedQuoteId}.pdf`;
+    
+    // Save the PDF with the formatted name
+    pdf.save(filename);
+    
+    return true;
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    
+    // Clean up - revoke the object URL for the logo if we created one
+    if (logoSrc !== logoUrl) {
+      URL.revokeObjectURL(logoSrc);
+    }
+    
+    return false;
+  }
+};
+
+/**
+ * Generate HTML for the cover page
+ */
+const generateCoverPageHtml = (
+  quoteId: string,
+  userName: string | undefined,
+  clientName: string | undefined,
+  planCosts: PlanCostData[],
+  logoSrc: string
+): string => {
   // Get the current date in the desired format
   const currentDate = new Date().toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric', 
     year: 'numeric'
   });
-  
-  // Format date for filename: dd_mm_yyyy
-  const fileDate = format(new Date(), 'dd_MM_yyyy');
 
   // Array of colors for the cards
   const cardColors = [
@@ -64,8 +213,7 @@ export const generateQuotePDF = async (
     { bg: '#D3E4FD', border: '#92BBF3', text: '#2C4C7A', accent: '#3B82F6', description: "Experience hands-on learning alongside our experts with this shadowing program designed for complete knowledge transfer." }  // Blue
   ];
 
-  // Build the HTML content using the template
-  container.innerHTML = `
+  return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -101,12 +249,10 @@ export const generateQuotePDF = async (
                 justify-content: space-between;
                 align-items: flex-start;
                 margin-bottom: 40px;
-                padding-bottom: 15px;
-                border-bottom: 3px solid #007bff;
             }
 
             .logo-container img {
-                max-height: 90px;
+                max-height: 120px;
                 width: auto;
             }
 
@@ -142,8 +288,7 @@ export const generateQuotePDF = async (
 
             main > h3 {
                 color: #333;
-                padding-bottom: 14px;
-                margin-bottom: 30px;
+                margin: 0 0 30px 0;
                 font-size: 1.4em;
                 font-weight: 600;
                 text-align: center;
@@ -330,62 +475,343 @@ export const generateQuotePDF = async (
     </body>
     </html>
   `;
-
-  try {
-    // Generate a PDF from the HTML
-    const pdf = new jsPDF('p', 'pt', 'a4');
-    const canvas = await html2canvas(container, {
-      scale: 2, // Better quality
-      useCORS: true, // Allow loading cross-origin images
-      allowTaint: true,
-      backgroundColor: '#ffffff'
-    });
-    
-    const imgData = canvas.toDataURL('image/png');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-    const imgX = (pdfWidth - imgWidth * ratio) / 2;
-    const imgY = 30;
-    
-    pdf.addImage(
-      imgData, 
-      'PNG', 
-      imgX, 
-      imgY, 
-      imgWidth * ratio, 
-      imgHeight * ratio
-    );
-    
-    // Clean up - revoke the object URL for the logo if we created one
-    if (logoSrc !== logoUrl) {
-      URL.revokeObjectURL(logoSrc);
-    }
-    
-    // Remove the temporary container
-    document.body.removeChild(container);
-    
-    // Format the PDF filename as requested
-    const shortenedQuoteId = quoteId.substring(0, 8);
-    const customerName = clientName?.replace(/\s+/g, '_') || 'Customer';
-    const filename = `${customerName}_${fileDate}_${shortenedQuoteId}.pdf`;
-    
-    // Save the PDF with the formatted name
-    pdf.save(filename);
-    
-    return true;
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    
-    // Clean up - revoke the object URL for the logo if we created one
-    if (logoSrc !== logoUrl) {
-      URL.revokeObjectURL(logoSrc);
-    }
-    
-    document.body.removeChild(container);
-    return false;
-  }
 };
 
+/**
+ * Generate HTML for a plan details page
+ */
+const generatePlanDetailsPageHtml = (
+  plan: PlanDetailsData,
+  quoteId: string,
+  logoSrc: string
+): string => {
+  // Get the total costs
+  const totalTrainingCost = plan.totalTrainingCost;
+  const totalTripCost = plan.totalTripCost;
+  const grandTotal = totalTrainingCost + totalTripCost;
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Training Plan Details - A4</title>
+        <style>
+            /* Basic Reset & Body Styling */
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                margin: 0;
+                padding: 0;
+                background-color: #ffffff;
+            }
+
+            /* Page Container */
+            .container {
+                margin: 0 auto;
+                padding: 15mm;
+                background-color: #ffffff;
+            }
+
+            /* Header Section */
+            .details-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 30px;
+            }
+
+            .logo-container img {
+                height: 60px;
+                width: auto;
+            }
+
+            .plan-title {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+            }
+
+            .plan-title h2 {
+                margin: 0;
+                font-size: 1.8em;
+                font-weight: 600;
+                color: #2d3748;
+            }
+            
+            .plan-icon {
+                background: #E5E7EB;
+                width: 40px;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 8px;
+            }
+
+            /* Resource Cards */
+            .resources-container {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                margin-bottom: 30px;
+            }
+
+            .resources-title {
+                font-size: 1.4em;
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 15px;
+            }
+
+            .resource-card {
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                overflow: hidden;
+                background-color: #f8fafc;
+            }
+
+            .resource-header {
+                background-color: #f1f5f9;
+                padding: 12px 16px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                border-bottom: 1px solid #e2e8f0;
+            }
+
+            .resource-name {
+                font-weight: 600;
+                font-size: 1.1em;
+                color: #334155;
+            }
+
+            .resource-icon {
+                width: 20px;
+                height: 20px;
+                background: #cbd5e1;
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .resource-details {
+                padding: 16px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-gap: 15px;
+            }
+
+            .detail-box {
+                background-color: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+                padding: 12px;
+            }
+
+            .detail-box-header {
+                font-size: 0.8em;
+                color: #64748b;
+                margin-bottom: 5px;
+            }
+
+            .detail-box-content {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .detail-box-value {
+                font-weight: 600;
+                color: #334155;
+            }
+
+            .detail-box-price {
+                color: #10b981;
+                font-weight: 600;
+            }
+
+            .subdetails {
+                margin-top: 8px;
+                border-top: 1px solid #e2e8f0;
+                padding-top: 8px;
+                font-size: 0.85em;
+            }
+
+            .subdetail-row {
+                display: flex;
+                justify-content: space-between;
+                color: #64748b;
+                margin-bottom: 4px;
+            }
+
+            /* Gantt Chart Container */
+            .gantt-container {
+                margin-top: 40px;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+
+            .gantt-header {
+                background-color: #f1f5f9;
+                padding: 12px 16px;
+                border-bottom: 1px solid #e2e8f0;
+            }
+
+            .gantt-title {
+                font-weight: 600;
+                font-size: 1.1em;
+                color: #334155;
+            }
+
+            .gantt-chart {
+                height: 300px;
+                background-color: #ffffff;
+                padding: 20px;
+                position: relative;
+            }
+
+            /* Gantt chart placeholder */
+            .gantt-placeholder {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #94a3b8;
+                font-size: 1em;
+                border: 2px dashed #e2e8f0;
+                border-radius: 6px;
+            }
+
+            /* Summary Section */
+            .cost-summary {
+                margin-top: 30px;
+                padding: 20px;
+                background-color: #f8fafc;
+                border-radius: 8px;
+                border: 1px solid #e2e8f0;
+            }
+
+            .summary-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 8px;
+                color: #475569;
+            }
+
+            .summary-row.total {
+                margin-top: 10px;
+                padding-top: 10px;
+                border-top: 1px solid #e2e8f0;
+                font-weight: 600;
+                font-size: 1.1em;
+                color: #10b981;
+            }
+
+            /* Footer */
+            .page-footer {
+                margin-top: 40px;
+                text-align: center;
+                color: #94a3b8;
+                font-size: 0.85em;
+                border-top: 1px solid #e2e8f0;
+                padding-top: 15px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header class="details-header">
+                <div class="plan-title">
+                    <div class="plan-icon">📋</div>
+                    <h2>${plan.planName}</h2>
+                </div>
+                <div class="logo-container">
+                    <img src="${logoSrc}" alt="Company Logo">
+                </div>
+            </header>
+
+            <section class="resources-container">
+                <div class="resources-title">Resource Allocation</div>
+                
+                ${plan.resources.map(resource => `
+                    <div class="resource-card">
+                        <div class="resource-header">
+                            <div class="resource-icon">👤</div>
+                            <div class="resource-name">${resource.resourceName}</div>
+                        </div>
+                        <div class="resource-details">
+                            <div class="detail-box">
+                                <div class="detail-box-header">Training Days</div>
+                                <div class="detail-box-content">
+                                    <div class="detail-box-value">📅 ${resource.trainingDaysCount}</div>
+                                    <div class="detail-box-price">€ ${resource.trainingCost.toFixed(2)}</div>
+                                </div>
+                            </div>
+                            <div class="detail-box">
+                                <div class="detail-box-header">Business Trip Days</div>
+                                <div class="detail-box-content">
+                                    <div class="detail-box-value">🧳 ${resource.businessTripDays}</div>
+                                    <div class="detail-box-price">€ ${resource.tripCosts.total.toFixed(2)}</div>
+                                </div>
+                                <div class="subdetails">
+                                    <div class="subdetail-row">
+                                        <span>Accommodation & Food:</span>
+                                        <span>€ ${resource.tripCosts.accommodationFood.toFixed(2)}</span>
+                                    </div>
+                                    <div class="subdetail-row">
+                                        <span>Daily Allowance:</span>
+                                        <span>€ ${resource.tripCosts.allowance.toFixed(2)}</span>
+                                    </div>
+                                    <div class="subdetail-row">
+                                        <span>Pocket Money:</span>
+                                        <span>€ ${resource.tripCosts.pocketMoney.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </section>
+
+            <section class="gantt-container">
+                <div class="gantt-header">
+                    <div class="gantt-title">Resource Training Schedule</div>
+                </div>
+                <div class="gantt-chart">
+                    <div class="gantt-placeholder">
+                        ${plan.scheduledTasks && plan.scheduledTasks.length > 0 
+                            ? `Training schedule with ${plan.scheduledTasks.length} segments` 
+                            : 'No schedule data available for this plan'}
+                    </div>
+                </div>
+            </section>
+
+            <section class="cost-summary">
+                <div class="summary-row">
+                    <span>Training Cost:</span>
+                    <span>€ ${totalTrainingCost.toFixed(2)}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Business Trip Cost:</span>
+                    <span>€ ${totalTripCost.toFixed(2)}</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total:</span>
+                    <span>€ ${grandTotal.toFixed(2)}</span>
+                </div>
+            </section>
+
+            <footer class="page-footer">
+                <p>Quote ID: ${quoteId} | Plan: ${plan.planName}</p>
+            </footer>
+        </div>
+    </body>
+    </html>
+  `;
+};

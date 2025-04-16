@@ -19,7 +19,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { useResourceIcons } from "@/hooks/useResourceIcons";
 import { useTrainingIcons } from "@/hooks/useTrainingIcons";
-import { generateQuotePDF, PlanCostData } from "@/utils/pdfExporter";
+import { generateQuotePDF, PlanCostData, PlanDetailsData, PlanResourceData } from "@/utils/pdfExporter";
 import { ScheduledTaskSegment } from "@/utils/types";
 import { ArrowLeft } from "lucide-react";
 
@@ -176,11 +176,125 @@ const CheckoutPage: React.FC = () => {
         })
         .filter(Boolean) as PlanCostData[];
       
+      const planDetailsData: PlanDetailsData[] = [];
+      
+      for (const plan of plans) {
+        if (!plan.requirements || plan.requirements.length === 0) continue;
+        
+        const planId = plan.plan_id;
+        const planName = plan.name;
+        
+        let scheduledTasks: ScheduledTaskSegment[] = [];
+        try {
+          const { data, error } = await supabase
+            .from('planning_details')
+            .select('*')
+            .eq('quote_id', quoteId)
+            .eq('plan_id', planId);
+          
+          if (error) throw error;
+          scheduledTasks = data || [];
+        } catch (err) {
+          console.error(`Error fetching scheduled tasks for plan ${planId}:`, err);
+        }
+        
+        const resourceMap = new Map<number, PlanResourceData>();
+        let totalTrainingCost = 0;
+        let totalTripCost = 0;
+        
+        plan.requirements.forEach(req => {
+          if (!req.resource_id) return;
+          
+          if (!resourceMap.has(req.resource_id)) {
+            const resource = resources.find(r => r.resource_id === req.resource_id);
+            if (!resource) return;
+            
+            const trainingHours = req.training_hours || 0;
+            const trainingDaysCount = Math.ceil(trainingHours / 8);
+            const businessTripDays = trainingDaysCount + 2;
+            
+            const selectedArea = areaCosts.find(area => area.area_id === quoteData.area_id);
+            
+            const accommodationFood = selectedArea ? selectedArea.daily_accommodation_food_cost * businessTripDays : 0;
+            const allowance = selectedArea ? selectedArea.daily_allowance * businessTripDays : 0;
+            const pocketMoney = selectedArea ? selectedArea.daily_pocket_money * businessTripDays : 0;
+            const tripCostsTotal = accommodationFood + allowance + pocketMoney;
+            
+            const trainingCost = resource.hourly_rate * trainingHours;
+            
+            totalTrainingCost += trainingCost;
+            totalTripCost += tripCostsTotal;
+            
+            resourceMap.set(req.resource_id, {
+              resourceId: req.resource_id,
+              resourceName: resource.name,
+              resourceIcon: resource.icon_name || null,
+              hourlyRate: resource.hourly_rate,
+              totalHours: trainingHours,
+              trainingDaysCount,
+              businessTripDays,
+              trainingCost,
+              tripCosts: {
+                accommodationFood,
+                allowance,
+                pocketMoney,
+                total: tripCostsTotal
+              }
+            });
+          } else {
+            const resourceData = resourceMap.get(req.resource_id)!;
+            const additionalHours = req.training_hours || 0;
+            
+            resourceData.totalHours += additionalHours;
+            resourceData.trainingDaysCount = Math.ceil(resourceData.totalHours / 8);
+            resourceData.businessTripDays = resourceData.trainingDaysCount + 2;
+            
+            const resource = resources.find(r => r.resource_id === req.resource_id);
+            if (!resource) return;
+            
+            resourceData.trainingCost = resource.hourly_rate * resourceData.totalHours;
+            
+            resourceData.tripCosts = {
+              accommodationFood: selectedArea ? selectedArea.daily_accommodation_food_cost * resourceData.businessTripDays : 0,
+              allowance: selectedArea ? selectedArea.daily_allowance * resourceData.businessTripDays : 0,
+              pocketMoney: selectedArea ? selectedArea.daily_pocket_money * resourceData.businessTripDays : 0,
+              total: 0
+            };
+            
+            resourceData.tripCosts.total = 
+              resourceData.tripCosts.accommodationFood + 
+              resourceData.tripCosts.allowance + 
+              resourceData.tripCosts.pocketMoney;
+            
+            totalTrainingCost = Array.from(resourceMap.values()).reduce((sum, r) => sum + r.trainingCost, 0);
+            totalTripCost = Array.from(resourceMap.values()).reduce((sum, r) => sum + r.tripCosts.total, 0);
+          }
+        });
+        
+        const trainingDays = Math.ceil(
+          plan.requirements.reduce((total, req) => total + (req.training_hours || 0), 0) / 8
+        );
+        
+        const totalCost = totalTrainingCost + totalTripCost;
+        
+        planDetailsData.push({
+          planId: planId,
+          planName: planName,
+          trainingDays,
+          totalCost,
+          resources: Array.from(resourceMap.values()),
+          totalTrainingCost,
+          totalTripCost,
+          scheduledTasks
+        });
+      }
+      
       const success = await generateQuotePDF(
         quoteId || 'unknown',
         profileData.firstName ? `${profileData.firstName} ${profileData.lastName || ''}` : user?.email,
         quoteData.client_name,
         planCostData,
+        planDetailsData,
         '/placeholder.svg'
       );
       
