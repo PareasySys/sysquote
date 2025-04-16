@@ -209,8 +209,8 @@ const CheckoutPage: React.FC = () => {
               resource_category: resourceCategory,
               segment_hours: item.allocated_hours || 0,
               total_training_hours: item.allocated_hours || 0,
-              start_day: item.start_day || 1,
-              duration_days: item.duration_days || 1,
+              start_day: 1,
+              duration_days: 1,
               start_hour_offset: 0,
               allocated_hours: item.allocated_hours,
               created_at: item.created_at,
@@ -230,6 +230,7 @@ const CheckoutPage: React.FC = () => {
         
         let totalTrainingCost = 0;
         let totalTripCost = 0;
+        const resourceMap = new Map<number, PlanResourceData>();
         
         plan.requirements.forEach(req => {
           if (!req.resource_id) return;

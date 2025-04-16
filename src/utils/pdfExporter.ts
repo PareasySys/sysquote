@@ -1,3 +1,4 @@
+
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ScheduledTaskSegment } from './types'; // Import from types.ts
@@ -17,8 +18,8 @@ export interface PlanResourceData {
   resourceId: number;
   resourceName: string;
   resourceIcon: string | null;
-  hourlyRate: number; // Added based on gantt data usage, adjust if needed
-  totalHours: number;  // Added based on gantt data usage, adjust if needed
+  hourlyRate: number;
+  totalHours: number;
   trainingDaysCount: number;
   businessTripDays: number;
   trainingCost: number;
@@ -28,8 +29,8 @@ export interface PlanResourceData {
     pocketMoney: number;
     total: number;
   };
-  // Added based on gantt data usage, adjust if needed
-  resource_category?: string;
+  // Fields to match with ScheduledTaskSegment if needed
+  resource_category?: 'Machine' | 'Software' | 'Unknown';
   machine_name?: string;
   segment_hours?: number;
 }
