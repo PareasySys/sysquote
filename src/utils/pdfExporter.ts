@@ -136,14 +136,7 @@ export const generateQuotePDF = async (
                 margin-bottom: 30px;
             }
 
-            main > h3 {
-                color: #333;
-                padding-bottom: 14px;
-                margin-bottom: 30px;
-                font-size: 1.4em;
-                font-weight: 600;
-                text-align: center;
-            }
+           
 
             /* Card Container */
             .plans-container {
