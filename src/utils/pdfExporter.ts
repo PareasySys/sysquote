@@ -276,6 +276,62 @@ export const generateQuotePDF = async (
                     margin-top: 30px;
                     padding-top: 10px;
                 }
+
+                .btn-small {
+                position: relative;
+                padding: 0;
+                width: 100px; /* Smaller width */
+                height: 100px; /* Smaller height */
+                border: 2px solid #888888;
+                outline: none;
+                background-color: #f4f5f6;
+                border-radius: 20px; /* Adjusted border-radius */
+                box-shadow:
+                  -3px -10px 15px #ffffff,
+                  -3px -5px 8px #ffffff,
+                  -10px 0px 15px #ffffff,
+                  3px 10px 12px rgba(0, 0, 0, 0.2);
+                transition: 0.3s ease-in-out; /* Smooth animation */
+                cursor: pointer;
+              }
+              
+              
+              .btn-small-content {
+                position: relative;
+                display: grid;
+                padding: 10px; /* Smaller padding */
+                width: 100%;
+                height: 100%;
+                grid-template-columns: 1fr 1fr 1fr 1fr;
+                grid-template-rows: 1fr 1fr;
+                box-shadow:
+                  inset 0px -4px 0px #dddddd,
+                  0px -4px 0px #f4f5f6;
+                border-radius: 20px;
+                transition: 0.3s ease-in-out; /* Smooth animation */
+                z-index: 1;
+              }
+              
+              
+              
+              /* Text hover effect: Floating effect */
+              .btn-small-text {
+                position: relative;
+                transform: translate3d(0px, -2px, 0px); /* Smaller translation */
+                margin: 0;
+                align-self: end;
+                grid-column: 1 / 5;
+                grid-row: 2;
+                text-align: center;
+                font-size: 16px; /* Smaller font size */
+                background-color: #888888;
+                color: transparent;
+                text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
+                -webkit-background-clip: text;
+                background-clip: text;
+                transition: 0.3s ease-in-out;
+              }
+
             }
         </style>
     </head>
@@ -295,7 +351,11 @@ export const generateQuotePDF = async (
                 </header>
 
                 <main>
-                    <h3>Training Plan Options</h3>
+                    <h3 class="btn-small">
+                      <div class="btn-small-content">
+                          <p class="btn-small-text">Training Plans Options</p>
+                      </div>
+                    </h3>Training Plan Options</h3>
                     <div class="plans-container">
                         ${planCosts.map((plan, index) => {
                           const colorScheme = cardColors[index % cardColors.length];
