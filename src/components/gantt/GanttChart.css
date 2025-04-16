@@ -1,3 +1,4 @@
+
 /* src/components/gantt/GanttChart.css */
 
 /* --- Base Setup --- */
@@ -25,18 +26,16 @@
 
 * { box-sizing: border-box; }
 
-/* --- Gantt Container MODIFIED --- */
+/* --- Gantt Container --- */
 .gantt-container {
   display: flex;
   flex-direction: column;
   width: 100%;
-  /* REMOVED height: 100%; */
-  /* REMOVED overflow: hidden; */
   border: 1px solid var(--gantt-border-color);
   border-radius: 0.5rem;
   background-color: var(--gantt-container-bg);
   color: var(--gantt-text-color);
-  /* Height will now grow with content */
+  /* Height will adjust based on content */
 }
 
 /* --- Zoom Controls --- */
@@ -51,7 +50,7 @@
 /* --- Header Row --- */
 .gantt-header-row { display: flex; flex-shrink: 0; height: var(--gantt-header-height); z-index: 30; position: relative; /* Stickiness could be added if needed */ }
 
-/* --- Resource Header Cell MODIFIED --- */
+/* --- Resource Header Cell --- */
 .gantt-resource-header-cell {
   min-width: var(--gantt-resource-col-width);
   width: var(--gantt-resource-col-width);
@@ -73,36 +72,27 @@
 .gantt-day.weekend { color: var(--gantt-text-color-faint); }
 
 
-/* --- Main Content Row MODIFIED --- */
+/* --- Main Content Row --- */
 .gantt-main-content-row {
   display: flex;
-  /* REMOVED flex: 1; */ /* Allow height to be determined by content */
-  /* REMOVED overflow: hidden; */
-  position: relative; /* Keep for positioning children */
+  position: relative; 
 }
 
 
-/* --- Resource List Wrapper MODIFIED --- */
+/* --- Resource List Wrapper --- */
 .gantt-resource-list-wrapper {
   min-width: var(--gantt-resource-col-width);
   width: var(--gantt-resource-col-width);
-  /* REMOVED height: 100%; */
-  /* REMOVED overflow: hidden; */
-  position: relative; /* Keep for positioning content */
+  position: relative;
   background-color: var(--gantt-resource-bg);
   border-right: 1px solid var(--gantt-border-color);
   z-index: 20;
   flex-shrink: 0;
 }
 
-/* --- Resource List Content MODIFIED --- */
+/* --- Resource List Content --- */
 .gantt-resource-list-content {
-  /* position: absolute; NO LONGER absolute, let it flow */
   width: 100%;
-  /* top: 0; */
-  /* left: 0; */
-  /* REMOVED will-change: transform; */
-  /* Height set inline to match grid height */
 }
 
 .gantt-resource-group { padding-bottom: var(--gantt-resource-group-padding); }
@@ -111,11 +101,11 @@
 .gantt-resource-machine { height: var(--gantt-machine-row-height); display: flex; align-items: center; padding: 0 10px 0 20px; font-size: 0.8rem; color: var(--gantt-text-color-muted); }
 
 
-/* --- Grid Scroll Container MODIFIED --- */
+/* --- Grid Scroll Container --- */
 .gantt-grid-scroll-container {
-  flex: 1; /* Takes remaining horizontal space */
-  overflow-x: auto; /* Allow HORIZONTAL scrolling */
-  overflow-y: hidden; /* PREVENT vertical scrolling here */
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
   position: relative;
   background-color: var(--gantt-grid-bg);
   scrollbar-width: thin;
@@ -127,11 +117,9 @@
 .gantt-grid-scroll-container::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.3); border-radius: 4px; }
 .gantt-grid-scroll-container::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.5); }
 
-/* --- Grid Content MODIFIED --- */
+/* --- Grid Content --- */
 .gantt-grid-content {
   position: relative;
-  /* Width and Height set inline */
-  /* Ensure it doesn't shrink below its content */
   min-height: 100%;
 }
 

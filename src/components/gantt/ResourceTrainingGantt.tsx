@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useCallback } from "react";
 import GanttChart from "./GanttChart"; // Adjust path if needed
 import { Card } from "@/components/ui/card";
@@ -83,11 +84,9 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
   // --- Display Logic ---
   if (!planId) {
      return (
-      <Card className="p-6 bg-slate-800/80 border border-white/5">
-        <div className="text-center text-gray-400">
-          Please select a training plan to view the resource schedule.
-        </div>
-      </Card>
+      <div className="text-center text-gray-400 py-8">
+        Please select a training plan to view the resource schedule.
+      </div>
     );
   }
 
@@ -98,24 +97,21 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
   const totalAssignments = scheduledTasks?.length ?? 0;
 
   return (
-    <Card className="p-4 bg-slate-800/80 border border-white/5">
-      {/* Header */}
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-200">Resource Training Schedule</h3>
-        <div className="text-gray-400 text-sm h-5 flex items-center"> {/* Fixed height */}
-          {isLoading ? (
-             <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
-                  {isSyncing ? "Syncing hours..." : "Loading schedule..."}
-                </TextShimmerWave>
-             </div>
-          ) : displayError ? (
-             <span className="text-red-400">Error loading schedule</span>
-          ): (
-             `Showing ${totalAssignments} scheduled training segments`
-          )}
-        </div>
+    <>
+      {/* Removed the Card wrapper to let parent component handle the styling */}
+      <div className="mb-2 h-5 flex items-center"> {/* Fixed height */}
+        {isLoading ? (
+           <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+              <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
+                {isSyncing ? "Syncing hours..." : "Loading schedule..."}
+              </TextShimmerWave>
+           </div>
+        ) : displayError ? (
+           <span className="text-red-400">Error loading schedule</span>
+        ): (
+           `Showing ${totalAssignments} scheduled training segments`
+        )}
       </div>
 
       {/* Error Alert */}
@@ -127,7 +123,6 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       )}
 
       {/* Gantt Chart Area */}
-      {/* Ensure parent container provides height */}
       <div className="h-[500px] overflow-hidden border border-slate-700 rounded-md bg-slate-900/50">
         <GanttChart
           // Pass empty array while loading to avoid errors in Gantt component
@@ -139,7 +134,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
           onRetry={fetchRequirements} // Allow retry on error
         />
       </div>
-    </Card>
+    </>
   );
 };
 

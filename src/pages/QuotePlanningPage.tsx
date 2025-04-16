@@ -247,71 +247,71 @@ const QuotePlanningPage: React.FC = () => {
             </div>
           ) : (
             <div>
-              <Card className="bg-slate-800/80 border border-white/5 p-4 mb-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-200">Weekend Settings</h2>
-                  <div className="flex gap-6">
-                    <div className="flex items-center gap-2">
-                      <Switch 
-                        id="work-on-saturday" 
-                        checked={workOnWeekends.workOnSaturday}
-                        onCheckedChange={(checked) => updateWeekendSettings('workOnSaturday', checked)}
-                      />
-                      <Label htmlFor="work-on-saturday" className="text-gray-300">Work on Saturday</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch 
-                        id="work-on-sunday" 
-                        checked={workOnWeekends.workOnSunday}
-                        onCheckedChange={(checked) => updateWeekendSettings('workOnSunday', checked)}
-                      />
-                      <Label htmlFor="work-on-sunday" className="text-gray-300">Work on Sunday</Label>
-                    </div>
-                  </div>
-                </div>
-
-                <Tabs 
-                  defaultValue={selectedPlanId ? selectedPlanId.toString() : ""} 
-                  value={selectedPlanId ? selectedPlanId.toString() : ""}
-                  onValueChange={(value) => setSelectedPlanId(parseInt(value))}
-                >
-                  <TabsList className="bg-slate-700">
-                    {plansLoading ? (
-                      <div className="p-4">
-                        <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
-                          Loading Plans
-                        </TextShimmerWave>
-                      </div>
-                    ) : (
-                      plans.map((plan) => (
-                        <TabsTrigger 
-                          key={plan.plan_id} 
-                          value={plan.plan_id.toString()}
-                          className="data-[state=active]:bg-blue-600"
-                        >
-                          {plan.name}
-                        </TabsTrigger>
-                      ))
-                    )}
-                  </TabsList>
-                  
-                  {plans.map((plan) => (
-                    <TabsContent key={plan.plan_id} value={plan.plan_id.toString()}>
-                      <div className="mt-4">
-                        <div className="mb-4">
-                          <h3 className="text-xl font-semibold text-gray-200">{plan.name} Plan</h3>
+              <div className="flex justify-center mb-0">
+                <Card className="bg-slate-800/80 border border-white/5 p-2 rounded-b-none border-b-0">
+                  <Tabs 
+                    defaultValue={selectedPlanId ? selectedPlanId.toString() : ""} 
+                    value={selectedPlanId ? selectedPlanId.toString() : ""}
+                    onValueChange={(value) => setSelectedPlanId(parseInt(value))}
+                  >
+                    <TabsList className="bg-slate-700">
+                      {plansLoading ? (
+                        <div className="p-4">
+                          <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
+                            Loading Plans
+                          </TextShimmerWave>
                         </div>
+                      ) : (
+                        plans.map((plan) => (
+                          <TabsTrigger 
+                            key={plan.plan_id} 
+                            value={plan.plan_id.toString()}
+                            className="data-[state=active]:bg-blue-600"
+                          >
+                            {plan.name}
+                          </TabsTrigger>
+                        ))
+                      )}
+                    </TabsList>
+                  </Tabs>
+                </Card>
+              </div>
 
-                        <ResourceTrainingGantt
-                          quoteId={quoteId}
-                          planId={selectedPlanId}
-                          workOnSaturday={workOnWeekends.workOnSaturday}
-                          workOnSunday={workOnWeekends.workOnSunday}
-                        />
+              <Card className="bg-slate-800/80 border border-white/5 p-4 mb-6 rounded-t-none">
+                {plans.map((plan) => (
+                  <TabsContent key={plan.plan_id} value={plan.plan_id.toString()}>
+                    <div className="mt-0">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold text-gray-200">Resource Training Schedule</h3>
+                        <div className="flex gap-6">
+                          <div className="flex items-center gap-2">
+                            <Switch 
+                              id="work-on-saturday" 
+                              checked={workOnWeekends.workOnSaturday}
+                              onCheckedChange={(checked) => updateWeekendSettings('workOnSaturday', checked)}
+                            />
+                            <Label htmlFor="work-on-saturday" className="text-gray-300">Work on Saturday</Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch 
+                              id="work-on-sunday" 
+                              checked={workOnWeekends.workOnSunday}
+                              onCheckedChange={(checked) => updateWeekendSettings('workOnSunday', checked)}
+                            />
+                            <Label htmlFor="work-on-sunday" className="text-gray-300">Work on Sunday</Label>
+                          </div>
+                        </div>
                       </div>
-                    </TabsContent>
-                  ))}
-                </Tabs>
+
+                      <ResourceTrainingGantt
+                        quoteId={quoteId}
+                        planId={selectedPlanId}
+                        workOnSaturday={workOnWeekends.workOnSaturday}
+                        workOnSunday={workOnWeekends.workOnSunday}
+                      />
+                    </div>
+                  </TabsContent>
+                ))}
               </Card>
               
               <div className="flex justify-center mb-6">
