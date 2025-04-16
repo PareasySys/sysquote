@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -137,6 +138,7 @@ const CheckoutPage: React.FC = () => {
             
             const businessTripDays = Math.ceil(resource.totalHours / 8) + 2;
             
+            const selectedArea = areaCosts.find(area => area.area_id === quoteData.area_id);
             const tripCosts = selectedArea ? (
               selectedArea.daily_accommodation_food_cost +
               selectedArea.daily_allowance +
@@ -435,7 +437,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
             No resources assigned to this plan
           </div> : <div className="space-y-4">
             {resourceMap.map(resource => <div key={resource.resourceId} className="border border-white/5 rounded-md bg-transparent">
-                <div className="flex items-center gap-2 font-medium text-gray-200 mb-2 pl-2">
+                <div className="flex items-center gap-2 font-medium text-gray-200 mb-2 pt-2 pb-2 pl-2">
                   {getResourceIcon(resource.resourceIcon) ? <img src={getResourceIcon(resource.resourceIcon)} alt={resource.resourceName} className="h-5 w-5" onError={e => {
               (e.target as HTMLImageElement).src = "/placeholder.svg";
             }} /> : <User className="h-5 w-5 text-gray-300" />}
