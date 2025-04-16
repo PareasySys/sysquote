@@ -14,7 +14,8 @@ const ZOOM_STEP = 15;
 const RESOURCE_HEADER_HEIGHT = 40;
 const MACHINE_ROW_HEIGHT = 30;
 const DAILY_HOUR_LIMIT = 8;
-const TOTAL_BAR_OPACITY = 0.4; // Define the opacity for the total engagement bar
+const TOTAL_BAR_OPACITY = 0.4;
+const RESOURCE_GROUP_PADDING_BOTTOM = 10; // <-- ADDED: Space below each resource group
 
 // --- Interfaces ---
 // ... (keep existing interfaces: GanttChartProps, ResourceGroup, TotalEngagementBar, TaskRenderInfo)
@@ -30,19 +31,13 @@ function getResourceColor(id: number): string {
   return colors[index];
 }
 
-// --- NEW Helper function to convert hex color to RGB object ---
+// --- Helper function to convert hex color to RGB object ---
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  // ... (keep existing implementation)
   const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-  hex = hex.replace(shorthandRegex, (m, r, g, b) => {
-    return r + r + g + g + b + b;
-  });
-
+  hex = hex.replace(shorthandRegex, (m, r, g, b) => { return r + r + g + g + b + b; });
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? {
-    r: parseInt(result[1], 16),
-    g: parseInt(result[2], 16),
-    b: parseInt(result[3], 16)
-  } : null;
+  return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
 }
 
 
@@ -69,35 +64,24 @@ const GanttChart: React.FC<GanttChartProps> = ({
   const resourceGroups = useMemo(() => {
      // ... (keep existing logic)
      const groups = new Map<number, ResourceGroup>();
-     requirements.forEach(seg => {
-       if (seg.resource_id == null) return;
-       if (!groups.has(seg.resource_id)) {
-         groups.set(seg.resource_id, { resourceId: seg.resource_id, resourceName: seg.resource_name || `Resource ${seg.resource_id}`, machines: [] });
-       }
-       const resourceGroup = groups.get(seg.resource_id)!;
-       const machineName = seg.machine_name || "Unknown Machine";
-       let machineGroup = resourceGroup.machines.find(m => m.machineName === machineName);
-       if (!machineGroup) {
-         machineGroup = { machineName, displayHours: 0, requirements: [], resourceCategory: seg.resource_category };
-         resourceGroup.machines.push(machineGroup);
-       }
-       machineGroup.requirements.push(seg);
-     });
-     groups.forEach(group => {
-       group.machines.forEach(machine => {
-         const uniqueTasks = new Map<string | number, number>();
-         machine.requirements.forEach(seg => { if (seg.originalRequirementId != null && !uniqueTasks.has(seg.originalRequirementId)) uniqueTasks.set(seg.originalRequirementId, seg.total_training_hours); });
-         machine.displayHours = Array.from(uniqueTasks.values()).reduce((sum, h) => sum + (h || 0), 0);
-       });
-       group.machines.sort((a, b) => { if ((a.resourceCategory || 'Machine') !== (b.resourceCategory || 'Machine')) { return (a.resourceCategory || 'Machine') === 'Machine' ? -1 : 1; } return a.machineName.localeCompare(b.machineName); });
-     });
+     requirements.forEach(seg => { if (seg.resource_id == null) return; if (!groups.has(seg.resource_id)) { groups.set(seg.resource_id, { resourceId: seg.resource_id, resourceName: seg.resource_name || `Resource ${seg.resource_id}`, machines: [] }); } const resourceGroup = groups.get(seg.resource_id)!; const machineName = seg.machine_name || "Unknown Machine"; let machineGroup = resourceGroup.machines.find(m => m.machineName === machineName); if (!machineGroup) { machineGroup = { machineName, displayHours: 0, requirements: [], resourceCategory: seg.resource_category }; resourceGroup.machines.push(machineGroup); } machineGroup.requirements.push(seg); });
+     groups.forEach(group => { group.machines.forEach(machine => { const uniqueTasks = new Map<string | number, number>(); machine.requirements.forEach(seg => { if (seg.originalRequirementId != null && !uniqueTasks.has(seg.originalRequirementId)) uniqueTasks.set(seg.originalRequirementId, seg.total_training_hours); }); machine.displayHours = Array.from(uniqueTasks.values()).reduce((sum, h) => sum + (h || 0), 0); }); group.machines.sort((a, b) => { if ((a.resourceCategory || 'Machine') !== (b.resourceCategory || 'Machine')) { return (a.resourceCategory || 'Machine') === 'Machine' ? -1 : 1; } return a.machineName.localeCompare(b.machineName); }); });
      return Array.from(groups.values());
   }, [requirements]);
 
-  // --- Calculate Total Grid Height ---
+  // --- Calculate Total Grid Height --- MODIFIED to include padding
   const totalGridHeight = useMemo(() => {
-     // ... (keep existing logic)
-     return resourceGroups.reduce((height, group) => height + RESOURCE_HEADER_HEIGHT + (group.machines.length * MACHINE_ROW_HEIGHT), 0);
+    let height = 0;
+    resourceGroups.forEach(group => {
+        height += RESOURCE_HEADER_HEIGHT; // Height for the resource name
+        height += group.machines.length * MACHINE_ROW_HEIGHT; // Height for all machine rows
+        height += RESOURCE_GROUP_PADDING_BOTTOM; // Add padding below the group
+    });
+    // Remove the padding from the very last group as it's not needed at the bottom
+    if (resourceGroups.length > 0) {
+        height -= RESOURCE_GROUP_PADDING_BOTTOM;
+    }
+    return Math.max(height, 100); // Ensure a minimum height
   }, [resourceGroups]);
 
   // --- Day/Month Calculation Helpers ---
@@ -126,19 +110,27 @@ const GanttChart: React.FC<GanttChartProps> = ({
       }
   }, []);
 
-  // --- Calculate Task Rendering Info & Total Engagement Bars ---
+  // --- Calculate Task Rendering Info & Total Engagement Bars --- MODIFIED to include padding
   const { tasksToRender, totalEngagementBars } = useMemo(() => {
-     // ... (keep existing logic, it correctly uses dayWidth)
      const tasks: TaskRenderInfo[] = [];
      const engagements: TotalEngagementBar[] = [];
      const resourceMinMax: { [key: number]: { min: number; max: number } } = {};
+
+     // 1. Find min/max dates per resource (no change)
      requirements.forEach(seg => { if (seg.resource_id == null || seg.start_day == null || seg.duration_days == null) return; const resourceId = seg.resource_id; const startDay = seg.start_day; const endDay = seg.start_day + seg.duration_days - 1; if (!resourceMinMax[resourceId]) { resourceMinMax[resourceId] = { min: startDay, max: endDay }; } else { resourceMinMax[resourceId].min = Math.min(resourceMinMax[resourceId].min, startDay); resourceMinMax[resourceId].max = Math.max(resourceMinMax[resourceId].max, endDay); } });
+
+     // 2. Calculate rendering info, adding padding between groups
      let currentTop = 0;
-     resourceGroups.forEach(group => {
+     resourceGroups.forEach((group, groupIndex) => {
        const resourceId = group.resourceId;
-       const resourceTop = currentTop;
+       const resourceTop = currentTop; // Top position for the resource header row
+
+       // Calculate engagement bar data (no change needed here as it uses resourceTop)
        if (resourceMinMax[resourceId]) { const earliestTaskStart = resourceMinMax[resourceId].min; const latestTaskEnd = resourceMinMax[resourceId].max; const travelStartDay = earliestTaskStart - 1; const travelEndDay = latestTaskEnd + 1; const safeTravelStartDay = Math.max(1, travelStartDay); const totalDuration = Math.max(1, travelEndDay - safeTravelStartDay + 1); engagements.push({ resourceId, resourceName: group.resourceName, travelStartDay: safeTravelStartDay, travelEndDay, totalDuration, top: resourceTop }); }
-       currentTop += RESOURCE_HEADER_HEIGHT;
+
+       currentTop += RESOURCE_HEADER_HEIGHT; // Move past the resource header
+
+       // Calculate individual task segment positions
        group.machines.forEach(machine => {
          machine.requirements.forEach(seg => {
             if (seg.start_day == null || seg.resource_id == null || seg.start_hour_offset == null || seg.segment_hours == null) { console.warn("Skipping segment render due to missing data:", seg); return; }
@@ -150,19 +142,20 @@ const GanttChart: React.FC<GanttChartProps> = ({
             width = Math.max(width, 4);
             tasks.push({ ...seg, top: currentTop, left: left, width: width, month: month, dayOfMonth: dayOfMonth, });
          });
-         currentTop += MACHINE_ROW_HEIGHT;
+         currentTop += MACHINE_ROW_HEIGHT; // Move past this machine row
        });
+
+       // Add padding *after* processing all machines for this group, except for the last group
+       if (groupIndex < resourceGroups.length - 1) {
+            currentTop += RESOURCE_GROUP_PADDING_BOTTOM;
+       }
      });
      return { tasksToRender: tasks, totalEngagementBars: engagements };
-  }, [resourceGroups, requirements, getDayPosition, daysPerMonth, dayWidth]);
+  }, [resourceGroups, requirements, getDayPosition, daysPerMonth, dayWidth]); // Ensure dayWidth is dependency
 
   // --- Zoom Handlers ---
-  const handleZoomIn = useCallback(() => {
-    setDayWidth(prev => Math.min(MAX_DAY_WIDTH, prev + ZOOM_STEP));
-  }, []);
-  const handleZoomOut = useCallback(() => {
-    setDayWidth(prev => Math.max(MIN_DAY_WIDTH, prev - ZOOM_STEP));
-  }, []);
+  const handleZoomIn = useCallback(() => { setDayWidth(prev => Math.min(MAX_DAY_WIDTH, prev + ZOOM_STEP)); }, []);
+  const handleZoomOut = useCallback(() => { setDayWidth(prev => Math.max(MIN_DAY_WIDTH, prev - ZOOM_STEP)); }, []);
 
   // --- Loading/Error/Empty States ---
   if (loading) { /* ... keep existing ... */ }
@@ -186,23 +179,37 @@ const GanttChart: React.FC<GanttChartProps> = ({
 
       {/* Fixed Header Row */}
       <div className="gantt-header-row">
-         {/* ... keep existing header structure ... */}
          <div className="gantt-resource-header-cell">Resources & Machines/Software</div>
          <div className="gantt-timeline-header-wrapper">
              <div className="gantt-timeline-header-content" ref={timelineHeaderRef} style={{ width: `${totalTimelineWidth}px` }}>
-                 <div className="gantt-months">{months.map(month => (<div key={`month-${month}`} className="gantt-month" style={{ minWidth: `${daysPerMonth * dayWidth}px`, width: `${daysPerMonth * dayWidth}px` }}>Month {month}</div>))}</div>
-                 <div className="gantt-days">{months.map(month => days.map(day => (<div key={`day-${month}-${day}`} className={`gantt-day ${isWeekend(month, day) ? 'weekend' : ''}`} style={{ minWidth: `${dayWidth}px`, width: `${dayWidth}px` }}>{day}</div>)))}</div>
+                 {/* --- Month Header MODIFIED --- */}
+                 <div className="gantt-months">
+                     {months.map(month => (
+                         <div key={`month-${month}`} className="gantt-month" style={{ minWidth: `${daysPerMonth * dayWidth}px`, width: `${daysPerMonth * dayWidth}px` }}>
+                             {/* Text aligned left now via CSS */}
+                             Month {month}
+                         </div>
+                     ))}
+                 </div>
+                 <div className="gantt-days">
+                     {months.map(month => days.map(day => (
+                         <div key={`day-${month}-${day}`} className={`gantt-day ${isWeekend(month, day) ? 'weekend' : ''}`} style={{ minWidth: `${dayWidth}px`, width: `${dayWidth}px` }}>
+                             {day}
+                         </div>
+                     )))}
+                 </div>
              </div>
          </div>
       </div>
 
       {/* Main Content Row */}
       <div className="gantt-main-content-row">
-        {/* Resource List */}
+        {/* Resource List (Fixed Width, Scrolls Vertically) */}
          <div className="gantt-resource-list-wrapper">
+             {/* Set height to allow scrolling content to match grid */}
             <div className="gantt-resource-list-content" ref={resourceListRef} style={{ height: `${totalGridHeight}px` }}>
-                {/* ... keep existing resource list rendering ... */}
                  {resourceGroups.map(group => (
+                    // Added padding via CSS class '.gantt-resource-group'
                     <div key={`resource-group-${group.resourceId}`} className="gantt-resource-group">
                         <div className="gantt-resource-name" style={{ height: `${RESOURCE_HEADER_HEIGHT}px` }}>{group.resourceName}</div>
                         {group.machines.map((machine) => (
@@ -218,81 +225,67 @@ const GanttChart: React.FC<GanttChartProps> = ({
             </div>
          </div>
 
-        {/* Scrollable Grid Container */}
+        {/* Scrollable Grid Container (Scrolls Horizontally and Vertically) */}
         <div className="gantt-grid-scroll-container" ref={scrollContainerRef} onScroll={handleScroll}>
+          {/* Grid content dimensions use state/calculations */}
           <div className="gantt-grid-content" style={{ width: `${totalTimelineWidth}px`, height: `${totalGridHeight}px` }}>
 
-            {/* Grid Background */}
+            {/* Grid Background Layer (Lines and Weekend Shading) --- MODIFIED HLINE LOGIC --- */}
             <div className="gantt-grid-background">
-                {/* ... keep existing vlines, hlines, weekend rendering using dayWidth ... */}
+                 {/* Vertical lines */}
                  {Array.from({ length: totalDays + 1 }).map((_, index) => ( <div key={`vline-${index}`} className="gantt-grid-vline" style={{ left: `${index * dayWidth}px` }} /> ))}
-                 {(() => { let currentTop = 0; const rows: React.ReactNode[] = []; resourceGroups.forEach(group => { rows.push(<div key={`hr-res-${group.resourceId}`} className="gantt-grid-hline group-separator" style={{ top: `${currentTop + RESOURCE_HEADER_HEIGHT -1}px` }} />); currentTop += RESOURCE_HEADER_HEIGHT; group.machines.forEach((machine, index) => { rows.push(<div key={`hr-mac-${group.resourceId}-${machine.machineName}`} className="gantt-grid-hline" style={{ top: `${currentTop + MACHINE_ROW_HEIGHT - 1}px` }} />); currentTop += MACHINE_ROW_HEIGHT; }); }); return rows; })()}
+
+                 {/* Horizontal lines & Group Separators */}
+                 {(() => {
+                     let currentTop = 0;
+                     const rows: React.ReactNode[] = [];
+                     resourceGroups.forEach((group, groupIndex) => {
+                         // Line below Resource Header (thin)
+                         rows.push(<div key={`hr-res-${group.resourceId}`} className="gantt-grid-hline" style={{ top: `${currentTop + RESOURCE_HEADER_HEIGHT -1}px` }} />);
+                         currentTop += RESOURCE_HEADER_HEIGHT;
+
+                         // Lines between machines (thin)
+                         group.machines.forEach((machine) => {
+                             rows.push(<div key={`hr-mac-${group.resourceId}-${machine.machineName}`} className="gantt-grid-hline" style={{ top: `${currentTop + MACHINE_ROW_HEIGHT - 1}px` }} />);
+                             currentTop += MACHINE_ROW_HEIGHT;
+                         });
+
+                         // Add thicker group separator line *after* the last machine's line,
+                         // but only if it's NOT the very last group overall.
+                         if (groupIndex < resourceGroups.length - 1) {
+                            rows.push(<div key={`hr-group-sep-${group.resourceId}`} className="gantt-grid-hline group-separator" style={{ top: `${currentTop -1}px` }} />); // Position it at the bottom edge
+                            // Add the padding space *after* the separator line for the next group
+                            currentTop += RESOURCE_GROUP_PADDING_BOTTOM;
+                         }
+                     });
+                     return rows;
+                 })()}
+
+                 {/* Weekend background */}
                  {months.map(month => days.map(day => { const dayNum = (month - 1) * daysPerMonth + day; return isWeekend(month, day) && ( <div key={`weekend-bg-${month}-${day}`} className="gantt-grid-weekend-bg" style={{ left: `${(dayNum - 1) * dayWidth}px`, width: `${dayWidth}px` }} /> ); }))}
             </div>
 
-            {/* Total Engagement Layer --- MODIFIED FOR DYNAMIC BG COLOR */}
+            {/* Total Engagement Layer */}
             <div className="gantt-total-engagement-layer">
                 {totalEngagementBars.map(bar => {
+                    // ... (keep existing calculation for positioning and dynamic bg color)
                     const left = (bar.travelStartDay - 1) * dayWidth;
                     const width = bar.totalDuration * dayWidth;
                     const barTop = bar.top + 5;
                     const barHeight = RESOURCE_HEADER_HEIGHT - 10;
-
-                    // Calculate background color based on resource color
                     const resourceColorHex = getResourceColor(bar.resourceId);
                     const resourceColorRgb = hexToRgb(resourceColorHex);
-                    const backgroundColor = resourceColorRgb
-                        ? `rgba(${resourceColorRgb.r}, ${resourceColorRgb.g}, ${resourceColorRgb.b}, ${TOTAL_BAR_OPACITY})`
-                        : `rgba(100, 116, 139, ${TOTAL_BAR_OPACITY})`; // Fallback color
-
-                    return (
-                        <div
-                            key={`total-${bar.resourceId}`}
-                            className="gantt-total-engagement-bar"
-                            style={{
-                                top: `${barTop}px`,
-                                left: `${left}px`,
-                                width: `${width}px`,
-                                height: `${barHeight}px`,
-                                backgroundColor: backgroundColor // Apply dynamic background color
-                                // Border color still comes from CSS (--gantt-total-bar-border)
-                            }}
-                            title={`Total Engagement for ${bar.resourceName}: Day ${bar.travelStartDay} to ${bar.travelEndDay} (Includes Travel)`}
-                        >
-                            {width > dayWidth * 1.5 && (
-                                <>
-                                    <span className="gantt-travel-icon start" title="Travel Start"><PlaneTakeoff size={14} /></span>
-                                    <span className="gantt-travel-icon end" title="Travel End"><PlaneLanding size={14} /></span>
-                                </>
-                            )}
-                        </div>
-                    );
+                    const backgroundColor = resourceColorRgb ? `rgba(${resourceColorRgb.r}, ${resourceColorRgb.g}, ${resourceColorRgb.b}, ${TOTAL_BAR_OPACITY})` : `rgba(100, 116, 139, ${TOTAL_BAR_OPACITY})`;
+                    return ( <div key={`total-${bar.resourceId}`} className="gantt-total-engagement-bar" style={{ top: `${barTop}px`, left: `${left}px`, width: `${width}px`, height: `${barHeight}px`, backgroundColor: backgroundColor }} title={`Total Engagement for ${bar.resourceName}: Day ${bar.travelStartDay} to ${bar.travelEndDay} (Includes Travel)`}> {width > dayWidth * 1.5 && ( <> <span className="gantt-travel-icon start" title="Travel Start"><PlaneTakeoff size={14} /></span> <span className="gantt-travel-icon end" title="Travel End"><PlaneLanding size={14} /></span> </> )} </div> );
                 })}
             </div>
 
             {/* Task Layer */}
             <div className="gantt-task-layer">
-              {/* ... keep existing task rendering ... */}
+              {/* Tasks are positioned based on the modified currentTop, accounting for padding */}
               {tasksToRender.map((seg) => (
-                <div
-                  key={seg.id}
-                  className={`gantt-task ${seg.resource_category === 'Software' ? 'software-task' : ''}`}
-                  style={{
-                    top: `${seg.top + 3}px`,
-                    left: `${seg.left}px`,
-                    width: `${seg.width}px`,
-                    height: `${MACHINE_ROW_HEIGHT - 6}px`,
-                    backgroundColor: getResourceColor(seg.resource_id), // Task color remains the same
-                    opacity: seg.resource_category === 'Software' ? 0.85 : 1,
-                    borderStyle: seg.resource_category === 'Software' ? 'dashed' : 'solid'
-                  }}
-                  title={`${seg.machine_name}: ${seg.segment_hours}h this block (Total ${seg.total_training_hours}h). Start: M${seg.month} D${seg.dayOfMonth} Offset: ${seg.start_hour_offset.toFixed(1)}h. Logical Duration: ${seg.duration_days} day(s).`}
-                >
-                  {seg.width > 25 && (
-                     <span className="gantt-task-label">
-                        {seg.segment_hours % 1 === 0 ? seg.segment_hours : seg.segment_hours.toFixed(1)}h
-                     </span>
-                  )}
+                <div key={seg.id} className={`gantt-task ${seg.resource_category === 'Software' ? 'software-task' : ''}`} style={{ top: `${seg.top + 3}px`, left: `${seg.left}px`, width: `${seg.width}px`, height: `${MACHINE_ROW_HEIGHT - 6}px`, backgroundColor: getResourceColor(seg.resource_id), opacity: seg.resource_category === 'Software' ? 0.85 : 1, borderStyle: seg.resource_category === 'Software' ? 'dashed' : 'solid' }} title={`${seg.machine_name}: ${seg.segment_hours}h this block (Total ${seg.total_training_hours}h). Start: M${seg.month} D${seg.dayOfMonth} Offset: ${seg.start_hour_offset.toFixed(1)}h. Logical Duration: ${seg.duration_days} day(s).`}>
+                  {seg.width > 25 && ( <span className="gantt-task-label"> {seg.segment_hours % 1 === 0 ? seg.segment_hours : seg.segment_hours.toFixed(1)}h </span> )}
                 </div>
               ))}
             </div>
