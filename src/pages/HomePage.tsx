@@ -202,7 +202,7 @@ const HomePage = () => {
               <p className="font-medium text-gray-300">Andrea Parisi</p> 
               <div className="flex items-center mt-1 space-x-1"> 
                 <span>and</span> 
-                <span className="font-medium text-blue-400">Lovable</span> 
+                 
               </div>
               <img alt="Lovable Logo" src="/lovable-uploads/3d45c30c-2e1c-439c-bbb9-a4fd9ff44a35.png" className="h-8 w-auto mt-1 object-scale-down" /> 
             </div>
