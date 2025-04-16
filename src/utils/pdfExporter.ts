@@ -152,7 +152,7 @@ export const generateQuotePDF = async (
                 grid-template-rows: auto auto;
                 gap: 20px;
                 height: calc(100% - 180px);
-                min-height: 450px;
+                min-height: 850px;
             }
 
             /* --- UPDATED CARD STYLES --- */
