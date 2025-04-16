@@ -510,7 +510,6 @@ const generatePlanDetailsPageHtml = (
                 
             }
 
-            @media print {
             
             /* Basic Reset & Body Styling */
             body {
@@ -826,7 +825,7 @@ const generatePlanDetailsPageHtml = (
                 padding-top: 15px;
             }
 
-            }
+            
         </style>
     </head>
     <body>
