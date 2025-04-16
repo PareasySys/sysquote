@@ -355,7 +355,7 @@ export const generateQuotePDF = async (
                       <div class="btn-small-content">
                           <p class="btn-small-text">Training Plans Options</p>
                       </div>
-                    </h3>Training Plan Options</h3>
+                    
                     <div class="plans-container">
                         ${planCosts.map((plan, index) => {
                           const colorScheme = cardColors[index % cardColors.length];
