@@ -243,7 +243,7 @@ const HomePage = () => {
           <div className="flex flex-col items-center space-y-4">
             <div className="flex items-center justify-center w-full"> 
               <img 
-                src="https://egbpjvbrqtvxtlpqkszr.supabase.co/storage/v1/object/public/identityimages//System_Logo.png" 
+                src="/lovable-uploads/75a8fdbc-01ed-4d63-a2a7-dfd2a6b794dd.png"
                 alt="System Logo" 
                 className="h-16 w-auto object-contain" 
               /> 
