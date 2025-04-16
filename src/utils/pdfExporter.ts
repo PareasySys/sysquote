@@ -516,9 +516,9 @@ const generatePlanDetailsPageHtml = (
             /* Page Container */
             .container {
                 margin: 0 auto;
-                padding: 15mm;
+                padding: 1mm;
                 background-color: #ffffff;
-                width: 100%;
+                width: 100vw;
             }
 
             /* Header Section */
