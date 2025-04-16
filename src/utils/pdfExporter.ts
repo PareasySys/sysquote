@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ScheduledTaskSegment } from './types';
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 
 // Common interface for plan cost data
 export interface PlanCostData {
@@ -51,6 +52,9 @@ export const generateQuotePDF = async (
     day: 'numeric', 
     year: 'numeric'
   });
+  
+  // Format date for filename: dd_mm_yyyy
+  const fileDate = format(new Date(), 'dd_MM_yyyy');
 
   // Array of colors for the cards
   const cardColors = [
@@ -363,8 +367,13 @@ export const generateQuotePDF = async (
     // Remove the temporary container
     document.body.removeChild(container);
     
-    // Save the PDF
-    pdf.save(`training-quote-${quoteId}.pdf`);
+    // Format the PDF filename as requested
+    const shortenedQuoteId = quoteId.substring(0, 8);
+    const customerName = clientName?.replace(/\s+/g, '_') || 'Customer';
+    const filename = `${customerName}_${fileDate}_${shortenedQuoteId}.pdf`;
+    
+    // Save the PDF with the formatted name
+    pdf.save(filename);
     
     return true;
   } catch (error) {
@@ -379,3 +388,4 @@ export const generateQuotePDF = async (
     return false;
   }
 };
+
