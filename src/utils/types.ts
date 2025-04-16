@@ -18,3 +18,6 @@ export interface ScheduledTaskSegment {
 }
 
 export type ResourceCategory = "Machine" | "Software" | "Unknown";
+
+// App version information
+export const APP_VERSION = "1.0.0";
