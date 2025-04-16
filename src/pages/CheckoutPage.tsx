@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -139,7 +140,7 @@ const CheckoutPage: React.FC = () => {
               </TextShimmerWave>
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {plans.map((plan) => (
                 <TrainingPlanCard 
                   key={plan.plan_id} 
@@ -173,7 +174,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId }) =>
     false   // workOnSunday
   );
   
-  // Group tasks by resource
+  // Group tasks by resource and calculate business trip days
   const resourceMap = React.useMemo(() => {
     const map = new Map();
     
@@ -183,30 +184,57 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId }) =>
           resourceId: task.resource_id,
           resourceName: task.resource_name,
           totalHours: 0,
-          businessTripDays: 0,
+          trainingDays: [],
+          startDates: [],
+          endDates: [],
         });
       }
       
       const resource = map.get(task.resource_id);
       resource.totalHours += task.segment_hours;
       
-      // Business trip days include travel days (1 before + 1 after)
-      // and all days in between (including weekends)
-      const businessTripStart = task.start_day - 1; // 1 day before for travel
-      const businessTripEnd = task.start_day + task.duration_days; // Include travel day after
+      // Track start and end dates for each task segment
+      const startDay = task.start_day;
+      const endDay = task.start_day + task.duration_days - 1; // End day is inclusive
       
-      // Calculate business trip length
-      resource.businessTripDays = Math.max(
-        resource.businessTripDays,
-        businessTripEnd - businessTripStart + 1
-      );
+      resource.trainingDays.push({ start: startDay, end: endDay });
+      resource.startDates.push(startDay);
+      resource.endDates.push(endDay);
     });
     
-    return Array.from(map.values());
+    // Process the data to calculate business trip days
+    return Array.from(map.values()).map(resource => {
+      // Calculate training days (total hours / 8 and rounded up)
+      const trainingDaysCount = Math.ceil(resource.totalHours / 8);
+      
+      // Find earliest start date and latest end date across all segments
+      const earliestStart = Math.min(...resource.startDates);
+      const latestEnd = Math.max(...resource.endDates);
+      
+      // For business trip, add 1 day before for travel and 1 day after
+      const tripStart = earliestStart - 1;
+      const tripEnd = latestEnd + 1;
+      
+      // Count total calendar days including weekends
+      // (assuming 1-based days where 1 = Monday, 7 = Sunday)
+      let businessTripDays = 0;
+      
+      for (let day = tripStart; day <= tripEnd; day++) {
+        businessTripDays++;
+      }
+      
+      return {
+        ...resource,
+        trainingDaysCount,
+        businessTripDays,
+        tripStart,
+        tripEnd
+      };
+    });
   }, [scheduledTasks]);
 
   return (
-    <Card className="bg-slate-800/80 border border-white/5 overflow-hidden">
+    <Card className="bg-slate-800/80 border border-white/5 overflow-hidden h-full">
       <CardHeader className="bg-slate-700/50 flex flex-row items-center gap-3 pb-4">
         {plan.icon_name && (
           <div className="bg-slate-600/50 p-2 rounded-md">
@@ -246,7 +274,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId }) =>
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Training Days</div>
                     <div className="text-gray-200 font-medium">
-                      {Math.ceil(resource.totalHours / 8)}
+                      {resource.trainingDaysCount}
                     </div>
                   </div>
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
