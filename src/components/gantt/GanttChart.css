@@ -3,25 +3,24 @@
 /* --- Base Setup --- */
 :root {
   --gantt-resource-col-width: 200px;
-  --gantt-header-height: 70px; /* Total header height (months + days) */
-  --gantt-resource-header-height: 40px; /* Height for resource name row */
-  --gantt-machine-row-height: 30px;     /* Height for machine row / task row */
-  /* --gantt-day-width: 30px; */ /* REMOVED - Width is now dynamic via JS state */
+  --gantt-header-height: 70px;
+  --gantt-resource-header-height: 40px;
+  --gantt-machine-row-height: 30px;
 
   --gantt-border-color: rgba(255, 255, 255, 0.1);
   --gantt-border-color-light: rgba(255, 255, 255, 0.05);
-  --gantt-header-bg: rgba(30, 41, 59, 0.95); /* Slightly more opaque */
+  --gantt-header-bg: rgba(30, 41, 59, 0.95);
   --gantt-resource-bg: rgba(30, 41, 59, 0.7);
   --gantt-weekend-bg: rgba(45, 55, 75, 0.6);
-  --gantt-grid-bg: transparent; /* Grid itself is lines/weekend shades */
+  --gantt-grid-bg: transparent;
   --gantt-container-bg: rgba(15, 23, 42, 0.5);
   --gantt-text-color: rgba(255, 255, 255, 0.9);
   --gantt-text-color-muted: rgba(255, 255, 255, 0.7);
   --gantt-text-color-faint: rgba(255, 255, 255, 0.5);
 
-  --gantt-total-bar-bg: rgba(100, 116, 139, 0.4); /* slate-500 with opacity */
+  --gantt-total-bar-bg: rgba(100, 116, 139, 0.4);
   --gantt-total-bar-border: rgba(100, 116, 139, 0.6);
-  --gantt-travel-icon-color: rgba(203, 213, 225, 0.9); /* slate-300 */
+  --gantt-travel-icon-color: rgba(203, 213, 225, 0.9);
 }
 
 * {
@@ -32,29 +31,63 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%; /* Ensure parent provides height */
-  overflow: hidden; /* Prevent container scrollbars */
+  height: 100%;
+  overflow: hidden;
   border: 1px solid var(--gantt-border-color);
   border-radius: 0.5rem;
   background-color: var(--gantt-container-bg);
   color: var(--gantt-text-color);
 }
 
-/* --- Zoom Controls --- */
-/* Styling for the added controls container */
+/* --- Zoom Controls --- NEW/MODIFIED Styles */
 .gantt-controls {
-    flex-shrink: 0; /* Prevent controls row from shrinking */
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--gantt-border-color);
+    background-color: var(--gantt-header-bg);
 }
+
+.gantt-controls-inner {
+    display: flex;
+    justify-content: flex-end; /* Align controls to the right */
+    align-items: center;
+    gap: 0.75rem; /* Space between icons and text (12px) */
+    padding: 0.5rem; /* Add some padding */
+}
+
+.gantt-zoom-icon {
+    color: var(--gantt-text-color); /* Use standard text color */
+    cursor: pointer;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.gantt-zoom-icon:hover {
+    opacity: 0.8; /* Slight fade on hover */
+}
+
+.gantt-zoom-icon.disabled {
+    color: var(--gantt-text-color-faint); /* More muted color when disabled */
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.gantt-zoom-level {
+    font-size: 0.75rem; /* Small text for percentage */
+    color: var(--gantt-text-color-muted);
+    min-width: 40px; /* Ensure space for 100% */
+    text-align: center;
+    user-select: none; /* Prevent text selection */
+}
+
 
 /* --- Header Row --- */
 .gantt-header-row {
   display: flex;
-  flex-shrink: 0; /* Prevent header from shrinking */
+  flex-shrink: 0;
   height: var(--gantt-header-height);
-  background-color: var(--gantt-header-bg);
-  z-index: 30; /* Above content */
-  position: relative; /* Needed for z-index */
-  border-bottom: 1px solid var(--gantt-border-color);
+  /* background-color: var(--gantt-header-bg); */ /* Background now on controls too */
+  z-index: 30;
+  position: relative;
+  /* border-bottom: 1px solid var(--gantt-border-color); */ /* Border moved to controls */
 }
 
 .gantt-resource-header-cell {
@@ -66,100 +99,97 @@
   font-weight: 500;
   border-right: 1px solid var(--gantt-border-color);
   height: 100%;
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
 }
 
 .gantt-timeline-header-wrapper {
   flex: 1;
-  overflow: hidden; /* Clip the timeline content */
+  overflow: hidden;
   position: relative;
 }
 
 .gantt-timeline-header-content {
   display: flex;
   flex-direction: column;
-  position: absolute; /* Allows transform for scrolling */
+  position: absolute;
   top: 0;
   left: 0;
   height: 100%;
-  will-change: transform; /* Optimize scrolling */
-  /* Width is set inline via style */
+  will-change: transform;
+  /* Width set inline */
 }
 
 .gantt-months {
   display: flex;
-  height: 50%; /* Half of header height */
+  height: 50%;
   border-bottom: 1px solid var(--gantt-border-color);
 }
 
 .gantt-month {
-  /* min-width & width are set inline via style */
   border-right: 1px solid var(--gantt-border-color);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 500;
   font-size: 0.85rem;
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
+  /* Width/minWidth set inline */
 }
 
 .gantt-days {
   display: flex;
-  height: 50%; /* Half of header height */
+  height: 50%;
 }
 
 .gantt-day {
-  /* width & min-width are set inline via style */
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--gantt-text-color-muted);
   font-size: 0.75rem;
   border-right: 1px solid var(--gantt-border-color-light);
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
+  /* Width/minWidth set inline */
 }
 
 .gantt-day.weekend {
-  /* background-color is set inline via style for position/width */
   color: var(--gantt-text-color-faint);
+  /* Background set by gantt-grid-weekend-bg */
 }
 
 /* --- Main Content Row --- */
 .gantt-main-content-row {
   display: flex;
-  flex: 1; /* Take remaining vertical space */
-  overflow: hidden; /* Prevent double scrollbars */
-  position: relative; /* For positioning children */
+  flex: 1;
+  overflow: hidden;
+  position: relative;
 }
 
 /* --- Resource List --- */
 .gantt-resource-list-wrapper {
   min-width: var(--gantt-resource-col-width);
   width: var(--gantt-resource-col-width);
-  height: 100%; /* Fill parent vertically */
-  overflow: hidden; /* Clip the resource list content */
+  height: 100%;
+  overflow: hidden;
   position: relative;
   background-color: var(--gantt-resource-bg);
   border-right: 1px solid var(--gantt-border-color);
-  z-index: 20; /* Above grid content */
-  flex-shrink: 0; /* Prevent shrinking */
+  z-index: 20;
+  flex-shrink: 0;
 }
 
 .gantt-resource-list-content {
-  position: absolute; /* Allows transform for scrolling */
+  position: absolute;
   width: 100%;
   top: 0;
   left: 0;
-  will-change: transform; /* Optimize scrolling */
-  /* Height set inline to match grid height */
+  will-change: transform;
+  /* Height set inline */
 }
 
 .gantt-resource-group {
-  /* border-bottom is handled by horizontal lines in the grid background now */
+  /* Group borders handled by hlines */
 }
-/* .gantt-resource-group:last-child {
-    border-bottom: none;
-} */
 
 .gantt-resource-name {
   height: var(--gantt-resource-header-height);
@@ -167,51 +197,35 @@
   align-items: center;
   padding: 0 10px;
   font-weight: 500;
-  background-color: rgba(0, 0, 0, 0.1); /* Subtle distinction */
-  /* border-bottom: 1px solid var(--gantt-border-color-light); */ /* Replaced by grid lines */
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 .gantt-resource-machine {
   height: var(--gantt-machine-row-height);
   display: flex;
   align-items: center;
-  padding: 0 10px 0 20px; /* Indent machine name */
+  padding: 0 10px 0 20px;
   font-size: 0.8rem;
   color: var(--gantt-text-color-muted);
-  /* border-top: 1px solid var(--gantt-border-color-light); */ /* Replaced by grid lines */
 }
-/* .gantt-resource-group .gantt-resource-machine:first-child {
-    border-top: none;
-} */
 
 /* --- Grid --- */
 .gantt-grid-scroll-container {
   flex: 1;
-  overflow: auto; /* THE ONLY SCROLLBAR */
+  overflow: auto;
   position: relative;
   background-color: var(--gantt-grid-bg);
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: rgba(255, 255, 255, 0.3) transparent; /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
-/* Webkit scrollbar styling */
-.gantt-grid-scroll-container::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-.gantt-grid-scroll-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-.gantt-grid-scroll-container::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
-}
-.gantt-grid-scroll-container::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.5);
-}
+.gantt-grid-scroll-container::-webkit-scrollbar { width: 8px; height: 8px; }
+.gantt-grid-scroll-container::-webkit-scrollbar-track { background: transparent; }
+.gantt-grid-scroll-container::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.3); border-radius: 4px; }
+.gantt-grid-scroll-container::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.5); }
 
 .gantt-grid-content {
-  position: relative; /* Anchor for absolute children (background, tasks) */
-  /* Width and Height are set dynamically via style prop */
+  position: relative;
+  /* Width/Height set inline */
 }
 
 /* --- Grid Background Layer --- */
@@ -221,8 +235,8 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 1; /* Below tasks and total bars */
-  overflow: hidden; /* Clip lines/shading */
+  z-index: 1;
+  overflow: hidden;
 }
 
 .gantt-grid-vline {
@@ -231,7 +245,7 @@
   bottom: 0;
   width: 1px;
   background-color: var(--gantt-border-color-light);
-  /* Left position set inline */
+  /* Left set inline */
 }
 
 .gantt-grid-hline {
@@ -240,10 +254,10 @@
   right: 0;
   height: 1px;
   background-color: var(--gantt-border-color-light);
-  /* Top position set inline */
+  /* Top set inline */
 }
 .gantt-grid-hline.group-separator {
-   background-color: var(--gantt-border-color); /* Make resource separators slightly stronger */
+   background-color: var(--gantt-border-color);
 }
 
 .gantt-grid-weekend-bg {
@@ -251,8 +265,8 @@
   top: 0;
   bottom: 0;
   background-color: var(--gantt-weekend-bg);
-  z-index: 0; /* Behind lines */
-  /* Left and width set inline */
+  z-index: 0;
+  /* Left/Width set inline */
 }
 
 /* --- Total Engagement Layer --- */
@@ -262,8 +276,8 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 5; /* Below tasks (10) but above grid background (1) */
-  pointer-events: none; /* Allow clicks to pass through */
+  z-index: 5;
+  pointer-events: none;
 }
 
 .gantt-total-engagement-bar {
@@ -271,7 +285,7 @@
   background-color: var(--gantt-total-bar-bg);
   border: 1px solid var(--gantt-total-bar-border);
   border-radius: 4px;
-  overflow: visible; /* Allow icons to render correctly */
+  overflow: visible;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -283,19 +297,13 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--gantt-travel-icon-color);
-  display: flex; /* Needed for Lucide icons */
+  display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: auto; /* Allow title tooltip on icons */
+  pointer-events: auto;
 }
-
-.gantt-travel-icon.start {
-  left: 4px; /* Position inside the start */
-}
-
-.gantt-travel-icon.end {
-  right: 4px; /* Position inside the end */
-}
+.gantt-travel-icon.start { left: 4px; }
+.gantt-travel-icon.end { right: 4px; }
 
 /* --- Task Layer --- */
 .gantt-task-layer {
@@ -304,7 +312,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 10; /* Above grid background and total bars */
+  z-index: 10;
 }
 
 .gantt-task {
@@ -313,17 +321,17 @@
   color: white;
   display: flex;
   align-items: center;
-  justify-content: center; /* Center label horizontally */
+  justify-content: center;
   font-size: 0.75rem;
   font-weight: 500;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   cursor: pointer;
-  overflow: hidden; /* Clip content */
+  overflow: hidden;
   /* top, left, width, height, backgroundColor, borderStyle, opacity set inline */
 }
 
 .gantt-task-label {
-  padding: 0 4px; /* Reduced padding */
+  padding: 0 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -336,33 +344,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 200px; /* Give some minimum space */
-  flex: 1; /* Allow filling container if possible */
+  min-height: 200px;
+  flex: 1;
   padding: 1rem;
   color: var(--gantt-text-color-muted);
 }
-
-.gantt-loading {
-  /* Style as needed */
-}
-
-.gantt-error {
-  color: #EF4444; /* Red */
-  flex-direction: column;
-  gap: 1rem;
-  text-align: center;
-}
-
-.gantt-empty {
-  font-style: italic;
-}
+.gantt-loading { /* Style as needed */ }
+.gantt-error { color: #EF4444; flex-direction: column; gap: 1rem; text-align: center; }
+.gantt-empty { font-style: italic; }
 
 /* --- Resource/Task Specific --- */
-.software-resource {
-  color: #c4b5fd; /* text-indigo-300 */
-  font-style: italic;
-}
-
-.software-task {
-  /* border is set inline */
-}
+.software-resource { color: #c4b5fd; font-style: italic; }
+.software-task { /* border set inline */ }
