@@ -204,7 +204,7 @@ const HomePage = () => {
                 <span>and</span> 
                  
               </div>
-              <img alt="Lovable Logo" src="/lovable-uploads/3d45c30c-2e1c-439c-bbb9-a4fd9ff44a35.png" className="h-8 w-auto mt-1 object-scale-down" /> 
+              <img alt="Lovable Logo" src="/lovable-uploads/3d45c30c-2e1c-439c-bbb9-a4fd9ff44a35.png" className="h-4 w-auto mt-1 object-scale-down" /> 
             </div>
           </div>
         </DialogContent>
