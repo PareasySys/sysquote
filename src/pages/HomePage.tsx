@@ -199,7 +199,7 @@ const HomePage = () => {
             <div className="border-t border-slate-700 w-full my-2"></div>
             <div className="flex flex-col items-center text-xs text-gray-400"> 
               <p>Powered by:</p> 
-              <p className="font-medium text-white-400">Andrea Parisi</p> 
+              <p className="text-white-400 text-base font-bold text-slate-200">Andrea Parisi</p> 
               <div className="flex items-center mt-1 space-x-1"> 
                 <span>and</span> 
                  
