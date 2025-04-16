@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -110,6 +109,7 @@ const CheckoutPage: React.FC = () => {
     try {
       const planCostData: PlanCostData[] = plans
         .map(plan => {
+          const { scheduledTasks } = useTrainingRequirements(quoteId, plan.plan_id, false, false);
           const planResources = scheduledTasks.filter(task => task.plan_id === plan.plan_id);
           if (planResources.length === 0) return null;
           
