@@ -503,6 +503,15 @@ const generatePlanDetailsPageHtml = (
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Training Plan Details - A4</title>
         <style>
+
+         /* Print-specific styles */
+            @page {
+                size: A4;
+                
+            }
+
+            @media print {
+            
             /* Basic Reset & Body Styling */
             body {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -815,6 +824,8 @@ const generatePlanDetailsPageHtml = (
                 font-size: 0.85em;
                 border-top: 1px solid #e2e8f0;
                 padding-top: 15px;
+            }
+
             }
         </style>
     </head>
