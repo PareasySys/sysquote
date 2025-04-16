@@ -9,7 +9,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, MapPin, Euro } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, MapPin, Euro, ChevronDown, ChevronUp } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -22,6 +22,8 @@ import { useResources } from "@/hooks/useResources";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RainbowButton } from "@/components/ui/rainbow-button";
 
 const CheckoutPage: React.FC = () => {
   const { quoteId } = useParams<{ quoteId: string }>();
@@ -414,10 +416,10 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                   <span>{resource.resourceName}</span>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Training Days</div>
-                    <div className="text-gray-200 font-medium flex justify-between">
+                    <div className="text-gray-200 font-medium flex justify-between items-center">
                       <span>{resource.trainingDaysCount}</span>
                       <span className="text-emerald-300 text-xs flex items-center">
                         <Euro className="h-3 w-3 mr-1" />
@@ -425,9 +427,10 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                       </span>
                     </div>
                   </div>
+                  
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Business Trip Days</div>
-                    <div className="text-gray-200 font-medium flex justify-between">
+                    <div className="text-gray-200 font-medium flex justify-between items-center">
                       <span>{resource.businessTripDays}</span>
                       <span className="text-emerald-300 text-xs flex items-center">
                         <Euro className="h-3 w-3 mr-1" />
@@ -437,9 +440,19 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                   </div>
                 </div>
                 
-                <div className="text-xs text-gray-400 mt-1 pl-1">
-                  {selectedArea ? (
-                    <div className="space-y-1">
+                {selectedArea && (
+                  <Collapsible className="mt-2">
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="p-1 h-auto w-full text-xs text-gray-400 flex items-center justify-between"
+                      >
+                        <span>Trip details</span>
+                        <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="text-xs text-gray-400 space-y-1 px-1 pt-1">
                       <div className="flex justify-between">
                         <span>Accommodation & Food:</span>
                         <span>€{resource.tripCosts.accommodationFood.toFixed(2)}</span>
@@ -452,13 +465,9 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                         <span>Pocket Money:</span>
                         <span>€{resource.tripCosts.pocketMoney.toFixed(2)}</span>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-yellow-500">
-                      No area selected for cost calculation
-                    </div>
-                  )}
-                </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
               </div>
             ))}
           </div>
@@ -481,6 +490,12 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
             <div className="flex justify-between text-emerald-300 font-medium">
               <span>Total:</span>
               <span>€{totalCosts.grandTotal.toFixed(2)}</span>
+            </div>
+            
+            <div className="mt-4 flex justify-end">
+              <RainbowButton variant="small" className="w-full">
+                Complete Order
+              </RainbowButton>
             </div>
           </div>
         </CardFooter>
