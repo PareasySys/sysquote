@@ -6,7 +6,7 @@
   --gantt-header-height: 70px; /* Total header height (months + days) */
   --gantt-resource-header-height: 40px; /* Height for resource name row */
   --gantt-machine-row-height: 30px;     /* Height for machine row / task row */
-  --gantt-day-width: 30px;
+  /* --gantt-day-width: 30px; */ /* REMOVED - Width is now dynamic via JS state */
 
   --gantt-border-color: rgba(255, 255, 255, 0.1);
   --gantt-border-color-light: rgba(255, 255, 255, 0.05);
@@ -40,6 +40,12 @@
   color: var(--gantt-text-color);
 }
 
+/* --- Zoom Controls --- */
+/* Styling for the added controls container */
+.gantt-controls {
+    flex-shrink: 0; /* Prevent controls row from shrinking */
+}
+
 /* --- Header Row --- */
 .gantt-header-row {
   display: flex;
@@ -60,6 +66,7 @@
   font-weight: 500;
   border-right: 1px solid var(--gantt-border-color);
   height: 100%;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .gantt-timeline-header-wrapper {
@@ -76,6 +83,7 @@
   left: 0;
   height: 100%;
   will-change: transform; /* Optimize scrolling */
+  /* Width is set inline via style */
 }
 
 .gantt-months {
@@ -85,14 +93,14 @@
 }
 
 .gantt-month {
-  min-width: calc(var(--gantt-day-width) * 30); /* Adjust if daysPerMonth changes */
+  /* min-width & width are set inline via style */
   border-right: 1px solid var(--gantt-border-color);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 500;
   font-size: 0.85rem;
-  flex-shrink: 0;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .gantt-days {
@@ -101,19 +109,18 @@
 }
 
 .gantt-day {
-  width: var(--gantt-day-width);
-  min-width: var(--gantt-day-width);
+  /* width & min-width are set inline via style */
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--gantt-text-color-muted);
   font-size: 0.75rem;
   border-right: 1px solid var(--gantt-border-color-light);
-  flex-shrink: 0;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .gantt-day.weekend {
-  background-color: var(--gantt-weekend-bg);
+  /* background-color is set inline via style for position/width */
   color: var(--gantt-text-color-faint);
 }
 
@@ -135,6 +142,7 @@
   background-color: var(--gantt-resource-bg);
   border-right: 1px solid var(--gantt-border-color);
   z-index: 20; /* Above grid content */
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .gantt-resource-list-content {
@@ -143,14 +151,15 @@
   top: 0;
   left: 0;
   will-change: transform; /* Optimize scrolling */
+  /* Height set inline to match grid height */
 }
 
 .gantt-resource-group {
-  border-bottom: 1px solid var(--gantt-border-color-light);
+  /* border-bottom is handled by horizontal lines in the grid background now */
 }
-.gantt-resource-group:last-child {
+/* .gantt-resource-group:last-child {
     border-bottom: none;
-}
+} */
 
 .gantt-resource-name {
   height: var(--gantt-resource-header-height);
@@ -159,6 +168,7 @@
   padding: 0 10px;
   font-weight: 500;
   background-color: rgba(0, 0, 0, 0.1); /* Subtle distinction */
+  /* border-bottom: 1px solid var(--gantt-border-color-light); */ /* Replaced by grid lines */
 }
 
 .gantt-resource-machine {
@@ -168,11 +178,11 @@
   padding: 0 10px 0 20px; /* Indent machine name */
   font-size: 0.8rem;
   color: var(--gantt-text-color-muted);
-  border-top: 1px solid var(--gantt-border-color-light); /* Line between machines */
+  /* border-top: 1px solid var(--gantt-border-color-light); */ /* Replaced by grid lines */
 }
-.gantt-resource-group .gantt-resource-machine:first-child {
-    border-top: none; /* No top border for the first machine in a group */
-}
+/* .gantt-resource-group .gantt-resource-machine:first-child {
+    border-top: none;
+} */
 
 /* --- Grid --- */
 .gantt-grid-scroll-container {
@@ -221,6 +231,7 @@
   bottom: 0;
   width: 1px;
   background-color: var(--gantt-border-color-light);
+  /* Left position set inline */
 }
 
 .gantt-grid-hline {
@@ -229,9 +240,10 @@
   right: 0;
   height: 1px;
   background-color: var(--gantt-border-color-light);
+  /* Top position set inline */
 }
 .gantt-grid-hline.group-separator {
-   background-color: var(--gantt-border-color); /* Make group separators slightly stronger */
+   background-color: var(--gantt-border-color); /* Make resource separators slightly stronger */
 }
 
 .gantt-grid-weekend-bg {
@@ -240,6 +252,7 @@
   bottom: 0;
   background-color: var(--gantt-weekend-bg);
   z-index: 0; /* Behind lines */
+  /* Left and width set inline */
 }
 
 /* --- Total Engagement Layer --- */
@@ -262,6 +275,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* top, left, width, height set inline */
 }
 
 .gantt-travel-icon {
@@ -299,15 +313,17 @@
   color: white;
   display: flex;
   align-items: center;
+  justify-content: center; /* Center label horizontally */
   font-size: 0.75rem;
   font-weight: 500;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   overflow: hidden; /* Clip content */
+  /* top, left, width, height, backgroundColor, borderStyle, opacity set inline */
 }
 
 .gantt-task-label {
-  padding: 0 8px;
+  padding: 0 4px; /* Reduced padding */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -320,7 +336,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 200px; /* Or make it fill container */
+  min-height: 200px; /* Give some minimum space */
+  flex: 1; /* Allow filling container if possible */
   padding: 1rem;
   color: var(--gantt-text-color-muted);
 }
@@ -340,12 +357,12 @@
   font-style: italic;
 }
 
+/* --- Resource/Task Specific --- */
 .software-resource {
   color: #c4b5fd; /* text-indigo-300 */
   font-style: italic;
 }
 
 .software-task {
-  border-width: 1px;
-  border-radius: 4px;
+  /* border is set inline */
 }
