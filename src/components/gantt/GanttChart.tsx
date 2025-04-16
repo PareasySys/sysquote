@@ -1,4 +1,3 @@
-
 // src/components/gantt/GanttChart.tsx
 
 import React, { useMemo, useRef, useCallback, useEffect } from "react";
@@ -30,7 +29,7 @@ interface ResourceGroup {
     machineName: string;
     displayHours?: number; // For displaying total original hours in the list
     requirements: ScheduledTaskSegment[]; // Stores segments for this machine
-    resourceCategory?: 'Machine' | 'Software' | 'Unknown'; // Updated to include 'Unknown'
+    resourceCategory?: 'Machine' | 'Software'; // Add category to distinguish resource types
   }[];
 }
 

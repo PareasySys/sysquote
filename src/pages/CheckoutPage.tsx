@@ -8,7 +8,7 @@ import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
-import { useTrainingRequirements } from "@/hooks/useTrainingRequirements";
+import { useTrainingRequirements, TrainingRequirement } from "@/hooks/useTrainingRequirements";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { useAreaCosts } from "@/hooks/useAreaCosts";
 import { useResources } from "@/hooks/useResources";
@@ -19,7 +19,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { useResourceIcons } from "@/hooks/useResourceIcons";
 import { useTrainingIcons } from "@/hooks/useTrainingIcons";
-import { generateQuotePDF, PlanCostData, PlanDetailsData, PlanResourceData } from "@/utils/pdfExporter";
+import { generateQuotePDF, PlanCostData } from "@/utils/pdfExporter";
 import { ScheduledTaskSegment } from "@/utils/types";
 import { ArrowLeft } from "lucide-react";
 
@@ -114,6 +114,17 @@ const CheckoutPage: React.FC = () => {
           
           if (!quoteId) return null;
           
+          const fetchRequirementsForPlan = async () => {
+            const { data, error } = await supabase
+              .from('planning_details')
+              .select('*, resources(name, hourly_rate, icon_name)')
+              .eq('quote_id', quoteId)
+              .eq('plan_id', planId);
+              
+            if (error) throw error;
+            return data || [];
+          };
+          
           const requirements = plan.requirements || [];
           if (requirements.length === 0) return null;
           
@@ -165,168 +176,11 @@ const CheckoutPage: React.FC = () => {
         })
         .filter(Boolean) as PlanCostData[];
       
-      const planDetailsData: PlanDetailsData[] = [];
-      
-      for (const plan of plans) {
-        if (!plan.requirements || plan.requirements.length === 0) continue;
-        
-        const planId = plan.plan_id;
-        const planName = plan.name;
-        
-        let scheduledTasks: ScheduledTaskSegment[] = [];
-        try {
-          const { data, error } = await supabase
-            .from('planning_details')
-            .select('*')
-            .eq('quote_id', quoteId)
-            .eq('plan_id', planId);
-          
-          if (error) throw error;
-          
-          scheduledTasks = data?.map(item => {
-            const resource = resources.find(r => r.resource_id === item.resource_id);
-            const resourceName = resource?.name || `Resource ${item.resource_id}`;
-            
-            let machineName = '';
-            let resourceCategory: 'Machine' | 'Software' | 'Unknown' = 'Unknown';
-            
-            if (item.machine_types_id) {
-              const machine = resources.find(r => r.resource_id === item.machine_types_id);
-              machineName = machine?.name || `Machine ${item.machine_types_id}`;
-              resourceCategory = 'Machine';
-            } else if (item.software_types_id) {
-              const software = resources.find(r => r.resource_id === item.software_types_id);
-              machineName = software?.name || `Software ${item.software_types_id}`;
-              resourceCategory = 'Software';
-            }
-            
-            return {
-              id: item.id.toString(),
-              originalRequirementId: item.id,
-              resource_id: item.resource_id,
-              resource_name: resourceName,
-              machine_name: machineName || "Unknown Resource",
-              resource_category: resourceCategory,
-              segment_hours: item.allocated_hours || 0,
-              total_training_hours: item.allocated_hours || 0,
-              start_day: 1,
-              duration_days: 1,
-              start_hour_offset: 0,
-              allocated_hours: item.allocated_hours,
-              created_at: item.created_at,
-              quote_id: item.quote_id,
-              plan_id: item.plan_id,
-              machine_types_id: item.machine_types_id,
-              software_types_id: item.software_types_id,
-              updated_at: item.updated_at,
-              work_on_saturday: item.work_on_saturday,
-              work_on_sunday: item.work_on_sunday
-            };
-          }) || [];
-        } catch (err) {
-          console.error(`Error fetching scheduled tasks for plan ${planId}:`, err);
-          scheduledTasks = [];
-        }
-        
-        let totalTrainingCost = 0;
-        let totalTripCost = 0;
-        const resourceMap = new Map<number, PlanResourceData>();
-        
-        plan.requirements.forEach(req => {
-          if (!req.resource_id) return;
-          
-          if (!resourceMap.has(req.resource_id)) {
-            const resource = resources.find(r => r.resource_id === req.resource_id);
-            if (!resource) return;
-            
-            const trainingHours = req.training_hours || 0;
-            const trainingDaysCount = Math.ceil(trainingHours / 8);
-            const businessTripDays = trainingDaysCount + 2;
-            
-            const selectedArea = areaCosts.find(area => area.area_id === quoteData.area_id);
-            
-            const accommodationFood = selectedArea ? selectedArea.daily_accommodation_food_cost * businessTripDays : 0;
-            const allowance = selectedArea ? selectedArea.daily_allowance * businessTripDays : 0;
-            const pocketMoney = selectedArea ? selectedArea.daily_pocket_money * businessTripDays : 0;
-            const tripCostsTotal = accommodationFood + allowance + pocketMoney;
-            
-            const trainingCost = resource.hourly_rate * trainingHours;
-            
-            totalTrainingCost += trainingCost;
-            totalTripCost += tripCostsTotal;
-            
-            resourceMap.set(req.resource_id, {
-              resourceId: req.resource_id,
-              resourceName: resource.name,
-              resourceIcon: resource.icon_name || null,
-              hourlyRate: resource.hourly_rate,
-              totalHours: trainingHours,
-              trainingDaysCount,
-              businessTripDays,
-              trainingCost,
-              tripCosts: {
-                accommodationFood,
-                allowance,
-                pocketMoney,
-                total: tripCostsTotal
-              }
-            });
-          } else {
-            const resourceData = resourceMap.get(req.resource_id)!;
-            const additionalHours = req.training_hours || 0;
-            
-            resourceData.totalHours += additionalHours;
-            resourceData.trainingDaysCount = Math.ceil(resourceData.totalHours / 8);
-            resourceData.businessTripDays = resourceData.trainingDaysCount + 2;
-            
-            const resource = resources.find(r => r.resource_id === req.resource_id);
-            if (!resource) return;
-            
-            resourceData.trainingCost = resource.hourly_rate * resourceData.totalHours;
-            
-            const selectedArea = areaCosts.find(area => area.area_id === quoteData.area_id);
-            
-            resourceData.tripCosts = {
-              accommodationFood: selectedArea ? selectedArea.daily_accommodation_food_cost * resourceData.businessTripDays : 0,
-              allowance: selectedArea ? selectedArea.daily_allowance * resourceData.businessTripDays : 0,
-              pocketMoney: selectedArea ? selectedArea.daily_pocket_money * resourceData.businessTripDays : 0,
-              total: 0
-            };
-            
-            resourceData.tripCosts.total = 
-              resourceData.tripCosts.accommodationFood + 
-              resourceData.tripCosts.allowance + 
-              resourceData.tripCosts.pocketMoney;
-            
-            totalTrainingCost = Array.from(resourceMap.values()).reduce((sum, r) => sum + r.trainingCost, 0);
-            totalTripCost = Array.from(resourceMap.values()).reduce((sum, r) => sum + r.tripCosts.total, 0);
-          }
-        });
-        
-        const trainingDays = Math.ceil(
-          plan.requirements.reduce((total, req) => total + (req.training_hours || 0), 0) / 8
-        );
-        
-        const totalCost = totalTrainingCost + totalTripCost;
-        
-        planDetailsData.push({
-          planId: planId,
-          planName: planName,
-          trainingDays,
-          totalCost,
-          resources: Array.from(resourceMap.values()),
-          totalTrainingCost,
-          totalTripCost,
-          scheduledTasks
-        });
-      }
-      
       const success = await generateQuotePDF(
         quoteId || 'unknown',
         profileData.firstName ? `${profileData.firstName} ${profileData.lastName || ''}` : user?.email,
         quoteData.client_name,
         planCostData,
-        planDetailsData,
         '/placeholder.svg'
       );
       
@@ -513,19 +367,16 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
   const selectedArea = React.useMemo(() => {
     return areaCosts.find(area => area.area_id === areaId) || null;
   }, [areaCosts, areaId]);
-  
   const planIconUrl = React.useMemo(() => {
     if (!plan.icon_name || !trainingIcons) return null;
     const icon = trainingIcons.find(icon => icon.name === plan.icon_name);
     return icon?.url || null;
   }, [plan.icon_name, trainingIcons]);
-  
   const getResourceIcon = (resourceIconName: string | undefined) => {
     if (!resourceIconName || !resourceIcons) return null;
     const icon = resourceIcons.find(icon => icon.name === resourceIconName);
     return icon?.url || null;
   };
-  
   const resourceMap = React.useMemo(() => {
     const map = new Map();
     scheduledTasks.forEach(task => {
@@ -579,7 +430,6 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
       };
     });
   }, [scheduledTasks, resources, selectedArea]);
-  
   const totalCosts = React.useMemo(() => {
     let trainingTotal = 0;
     let businessTripTotal = 0;

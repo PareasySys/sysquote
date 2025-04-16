@@ -1,8 +1,8 @@
 
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { ScheduledTaskSegment } from './types'; // Import from types.ts
-import { supabase } from "@/integrations/supabase/client"; // Assuming supabase client setup
+import { ScheduledTaskSegment } from './types';
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 // Common interface for plan cost data
@@ -13,36 +13,6 @@ export interface PlanCostData {
   totalCost: number;
 }
 
-// Interface for resource data in a training plan
-export interface PlanResourceData {
-  resourceId: number;
-  resourceName: string;
-  resourceIcon: string | null;
-  hourlyRate: number;
-  totalHours: number;
-  trainingDaysCount: number;
-  businessTripDays: number;
-  trainingCost: number;
-  tripCosts: {
-    accommodationFood: number;
-    allowance: number;
-    pocketMoney: number;
-    total: number;
-  };
-  // Fields to match with ScheduledTaskSegment if needed
-  resource_category?: 'Machine' | 'Software' | 'Unknown';
-  machine_name?: string;
-  segment_hours?: number;
-}
-
-// Extended interface for plan details data
-export interface PlanDetailsData extends PlanCostData {
-  resources: PlanResourceData[];
-  totalTrainingCost: number;
-  totalTripCost: number;
-  scheduledTasks?: ScheduledTaskSegment[]; // Using imported ScheduledTaskSegment
-}
-
 /**
  * Generate a PDF quote document based on the checkout data
  */
@@ -51,219 +21,42 @@ export const generateQuotePDF = async (
   userName: string | undefined,
   clientName: string | undefined,
   planCosts: PlanCostData[],
-  planDetails: PlanDetailsData[] = [],
-  logoUrl: string = '/placeholder.svg' // Default placeholder logo path
+  logoUrl: string = '/placeholder.svg'
 ): Promise<boolean> => {
   // Try to get the logo from Supabase storage
   let logoSrc = logoUrl;
-  let logoObjectUrl: string | null = null; // To keep track for revocation
   try {
     const { data, error } = await supabase.storage
-      .from('identityimages') // Make sure this bucket name is correct
-      .download('System_Logo.png'); // Make sure this file name is correct
-
+      .from('identityimages')
+      .download('System_Logo.png');
+    
     if (data && !error) {
-      logoObjectUrl = URL.createObjectURL(data);
-      logoSrc = logoObjectUrl;
+      logoSrc = URL.createObjectURL(data);
     } else {
-      console.warn('Could not load logo from storage:', error?.message || 'Unknown error');
+      console.warn('Could not load logo from storage:', error);
     }
   } catch (err) {
     console.error('Error loading logo from storage:', err);
   }
 
-  // Create a PDF with multiple pages
-  // 'p' for portrait, 'pt' for points, 'a4' for page size
-  const pdf = new jsPDF('p', 'pt', 'a4');
-  const pdfWidth = pdf.internal.pageSize.getWidth(); // Approx 595.28 points for A4
-  const pdfHeight = pdf.internal.pageSize.getHeight(); // Approx 841.89 points for A4
+  // Create a temporary container to render the HTML for the PDF
+  const container = document.createElement('div');
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  container.style.top = '-9999px';
+  document.body.appendChild(container);
 
-  try {
-    // --- Generate the first page (Cover page with cards) ---
-    const coverHtml = generateCoverPageHtml(quoteId, userName, clientName, planCosts, logoSrc);
-
-    // Create a temporary container for the cover page
-    const coverContainer = document.createElement('div');
-    coverContainer.style.position = 'absolute';
-    coverContainer.style.left = '-9999px'; // Position off-screen
-    coverContainer.style.top = '-9999px';
-    // Set a defined width for the cover page container (A4 width in mm)
-    coverContainer.style.width = '210mm';
-    coverContainer.style.height = 'auto'; // Let height be determined by content
-    document.body.appendChild(coverContainer);
-    coverContainer.innerHTML = coverHtml;
-
-    // Convert cover page HTML to canvas using html2canvas
-    const coverCanvas = await html2canvas(coverContainer, {
-      scale: 2, // Increase scale for better resolution
-      useCORS: true, // Important if logo is from a different origin (like Supabase storage)
-      allowTaint: true, // May be needed depending on image source and CORS setup
-      backgroundColor: '#ffffff', // Ensure solid background
-      windowWidth: coverContainer.scrollWidth, // Use element's width
-      windowHeight: coverContainer.scrollHeight // Use element's height
-    });
-
-    // Add cover page image to PDF
-    const coverImgData = coverCanvas.toDataURL('image/png');
-    const coverImgWidth = coverCanvas.width;
-    const coverImgHeight = coverCanvas.height;
-
-    // Calculate scaling to fit PDF page width
-    const coverRatio = pdfWidth / coverImgWidth;
-    const finalCoverImgHeight = coverImgHeight * coverRatio;
-    const coverImgX = 0; // Align to left edge
-    const coverImgY = 0; // Align to top edge (or add margin if needed)
-
-    // Add the image, scaling to fit the width
-    pdf.addImage(
-      coverImgData,
-      'PNG',
-      coverImgX,
-      coverImgY,
-      pdfWidth, // Fit to page width
-      finalCoverImgHeight // Scaled height
-    );
-
-    // Clean up cover page container from DOM
-    document.body.removeChild(coverContainer);
-
-    // --- Generate detail pages if plan details are provided ---
-    if (planDetails.length > 0) {
-      for (let i = 0; i < planDetails.length; i++) {
-        const plan = planDetails[i];
-
-        // For each plan, generate one or more pages with resource chunks
-        // Break the resources into smaller chunks that can fit on a single page
-        const resourceChunks = splitResourcesIntoChunks(plan.resources);
-
-        for (let chunkIndex = 0; chunkIndex < resourceChunks.length; chunkIndex++) {
-          // Add a new page for each resource chunk
-          if (i > 0 || chunkIndex > 0) {
-            pdf.addPage();
-          }
-
-          // Generate HTML for this chunk of resources
-          const detailsHtml = generatePlanDetailsPageHtml(
-            plan, 
-            quoteId, 
-            logoSrc, 
-            resourceChunks[chunkIndex],
-            chunkIndex === 0, // Only show header on first chunk
-            chunkIndex === resourceChunks.length - 1 // Only show summary on last chunk
-          );
-
-          // Create a temporary container for the details page
-          const detailsContainer = document.createElement('div');
-          detailsContainer.style.position = 'absolute';
-          detailsContainer.style.left = '-9999px'; // Position off-screen
-          detailsContainer.style.top = '-9999px';
-          detailsContainer.style.width = '210mm'; // A4 width
-          detailsContainer.style.height = 'auto'; // Auto height based on content
-          document.body.appendChild(detailsContainer);
-          detailsContainer.innerHTML = detailsHtml;
-
-          // Convert details page HTML to canvas
-          const detailsCanvas = await html2canvas(detailsContainer, {
-            scale: 2, // Use scale for better quality
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: '#ffffff',
-            windowWidth: detailsContainer.scrollWidth,
-            windowHeight: detailsContainer.scrollHeight
-          });
-
-          // Get image data and dimensions from canvas
-          const detailsImgData = detailsCanvas.toDataURL('image/png');
-          const detailsImgWidth = detailsCanvas.width;
-
-          // Calculate scaling to fit PDF width
-          const finalDetailsImgWidth = pdfWidth; // Target full PDF width
-          const finalDetailsImgHeight = (detailsCanvas.height * pdfWidth) / detailsImgWidth;
-          
-          // Add the image to the PDF
-          pdf.addImage(
-            detailsImgData,
-            'PNG',
-            0, // Left edge
-            30, // Top margin
-            finalDetailsImgWidth,
-            finalDetailsImgHeight
-          );
-
-          // Clean up details container from DOM
-          document.body.removeChild(detailsContainer);
-
-          // Add page number if there are multiple chunks
-          if (resourceChunks.length > 1) {
-            const pageText = `Page ${chunkIndex + 1} of ${resourceChunks.length} - ${plan.planName}`;
-            pdf.setFontSize(8);
-            pdf.setTextColor(150, 150, 150);
-            pdf.text(pageText, pdfWidth - 20, pdfHeight - 20, { align: 'right' });
-          }
-        }
-      }
-    }
-
-    // Format the PDF filename
-    const shortenedQuoteId = quoteId.substring(0, 8);
-    const customerName = clientName?.replace(/\s+/g, '_') || 'Customer';
-    const fileDate = format(new Date(), 'dd_MM_yyyy');
-    const filename = `${customerName}_${fileDate}_${shortenedQuoteId}.pdf`;
-
-    // Save the PDF
-    pdf.save(filename);
-
-    // Clean up the logo object URL if it was created
-    if (logoObjectUrl) {
-      URL.revokeObjectURL(logoObjectUrl);
-    }
-
-    return true; // Indicate success
-
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-
-    // Clean up the logo object URL if it was created, even on error
-    if (logoObjectUrl) {
-      URL.revokeObjectURL(logoObjectUrl);
-    }
-
-    return false; // Indicate failure
-  }
-};
-
-/**
- * Split resources into chunks that can fit on a single page
- */
-function splitResourcesIntoChunks(resources: PlanResourceData[]): PlanResourceData[][] {
-  // Estimate how many resources can fit on a page
-  // This is a rough estimate - approx 4-5 resources per page
-  const resourcesPerPage = 5;
-  const chunks: PlanResourceData[][] = [];
-  
-  for (let i = 0; i < resources.length; i += resourcesPerPage) {
-    chunks.push(resources.slice(i, i + resourcesPerPage));
-  }
-  
-  return chunks;
-}
-
-// ===========================================================================
-// Helper Function: Generate HTML for the Cover Page
-// ===========================================================================
-const generateCoverPageHtml = (
-  quoteId: string,
-  userName: string | undefined,
-  clientName: string | undefined,
-  planCosts: PlanCostData[],
-  logoSrc: string
-): string => {
+  // Get the current date in the desired format
   const currentDate = new Date().toLocaleDateString('en-US', {
     month: 'long',
-    day: 'numeric',
+    day: 'numeric', 
     year: 'numeric'
   });
+  
+  // Format date for filename: dd_mm_yyyy
+  const fileDate = format(new Date(), 'dd_MM_yyyy');
 
+  // Array of colors for the cards
   const cardColors = [
     { bg: '#F2FCE2', border: '#C9E29E', text: '#3F5713', accent: '#6B8E23', description: "A comprehensive training covering essential concepts and hands-on practical exercises tailored to your team's skill level." }, // Green
     { bg: '#FEF7CD', border: '#F0D861', text: '#6B5D10', accent: '#D4AC16', description: "An extended program that dives deeper into advanced techniques with real-world scenarios and problem-solving workshops." }, // Yellow
@@ -271,316 +64,328 @@ const generateCoverPageHtml = (
     { bg: '#D3E4FD', border: '#92BBF3', text: '#2C4C7A', accent: '#3B82F6', description: "Experience hands-on learning alongside our experts with this shadowing program designed for complete knowledge transfer." }  // Blue
   ];
 
-  // NOTE: Ensure styles here are compatible with html2canvas rendering.
-  // Avoid overly complex CSS features if possible. Use inline styles or simple CSS.
-  return `
+  // Build the HTML content using the template
+  container.innerHTML = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Training Plan Quote</title>
-        <style>
-            /* Reset and base styles */
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.5; color: #333; margin: 0; padding: 0; background-color: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            * { box-sizing: border-box; }
-            /* Container to control overall layout */
-            .cover-container { width: 100%; /* Take full width of parent */ padding: 40pt; background-color: #ffffff; }
-            /* Header */
-            .quote-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 50pt; }
-            .logo-container img { max-height: 70pt; width: auto; } /* Adjust logo size */
-            .quote-details { text-align: right; }
-            .quote-details h2 { margin: 0 0 10pt 0; color: #005a9e; font-size: 18pt; font-weight: 600; }
-            .quote-details p { margin: 5pt 0; font-size: 10pt; color: #444; }
-            .quote-details strong { display: inline-block; min-width: 80pt; text-align: left; color: #111; font-weight: 600; margin-right: 5pt;}
-            /* Main content title */
-            main > h3 { color: #333; margin: 0 0 30pt 0; font-size: 16pt; font-weight: 600; text-align: center; }
-            /* Grid for plan cards */
-            .plans-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20pt; }
-            /* Card styles */
-            .card { border-radius: 6pt; display: flex; flex-direction: column; overflow: hidden; position: relative; padding: 15pt; min-height: 200pt; border-width: 1px; border-style: solid; }
-            .quote-icon { position: absolute; top: 10pt; right: 10pt; opacity: 0.4; z-index: 0; }
-            .quote-icon svg { height: 35pt; width: 35pt; }
-            .card-name { text-transform: uppercase; font-weight: 700; font-size: 11pt; margin-bottom: 10pt; z-index: 1; }
-            .body-text { font-size: 9.5pt; font-weight: 400; line-height: 1.4; flex-grow: 1; margin-bottom: 15pt; z-index: 1; }
-            .price { font-weight: 700; font-size: 13pt; text-align: right; margin-top: auto; padding-top: 10pt; border-top-width: 2px; border-top-style: solid; z-index: 1; }
-            /* Footer */
-            .quote-footer { margin-top: 50pt; padding-top: 15pt; border-top: 1px solid #eee; font-size: 9pt; color: #777; text-align: center; }
-            .quote-footer p { margin: 4pt 0; }
-        </style>
-    </head>
-    <body>
-        <div class="cover-container">
-            <header class="quote-header">
-                <div class="logo-container">
-                    <img src="${logoSrc}" alt="Company Logo">
-                </div>
-                <div class="quote-details">
-                    <h2>Training Quote</h2>
-                    <p><strong>Quote To:</strong> ${clientName || 'Valued Customer'}</p>
-                    <p><strong>Quote Date:</strong> ${currentDate}</p>
-                    <p><strong>Prepared By:</strong> ${userName || 'System Logistics Specialist'}</p>
-                    <p><strong>Quote ID:</strong> ${quoteId}</p>
-                </div>
-            </header>
-
-            <main>
-                <h3>Training Plan Options</h3>
-                <div class="plans-container">
-                    ${planCosts.map((plan, index) => {
-                      const colorScheme = cardColors[index % cardColors.length];
-                      return `
-                        <div class="card" style="background-color: ${colorScheme.bg}; border-color: ${colorScheme.border};">
-                            <div class="quote-icon" style="color: ${colorScheme.accent};">
-                                <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
-                            </div>
-                            <div class="card-name" style="color: ${colorScheme.accent};">${plan.planName}</div>
-                            <div class="body-text" style="color: ${colorScheme.text};">${colorScheme.description}</div>
-                            <div class="price" style="color: ${colorScheme.accent}; border-top-color: ${colorScheme.border};">
-                                € ${plan.totalCost.toFixed(2)}
-                            </div>
-                        </div>
-                      `;
-                    }).join('')}
-                </div>
-            </main>
-
-            <footer class="quote-footer">
-                <p>Thank you for considering System Logistics training programs.</p>
-                <p>Quote valid for 30 days. Prices are exclusive of applicable taxes.</p>
-            </footer>
-        </div>
-    </body>
-    </html>
-  `;
-};
-
-
-// ===========================================================================
-// Helper Function: Generate HTML for a Plan Details Page
-// ===========================================================================
-const generatePlanDetailsPageHtml = (
-  plan: PlanDetailsData,
-  quoteId: string,
-  logoSrc: string,
-  resourcesChunk: PlanResourceData[],
-  showHeader: boolean = true,
-  showSummary: boolean = true
-): string => {
-  const totalTrainingCost = plan.totalTrainingCost;
-  const totalTripCost = plan.totalTripCost;
-  const grandTotal = totalTrainingCost + totalTripCost;
-
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Training Plan Details - ${plan.planName}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Training Plan Quote - A4</title>
         <style>
             /* Basic Reset & Body Styling */
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.4; color: #333; margin: 0; padding: 0; background-color: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 10pt; }
-            * { box-sizing: border-box; }
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                margin: 0;
+                padding: 0;
+                background-color: #f4f7f6;
+            }
+
             /* Page Container */
-            .container { width: 100%; padding: 30pt 30pt 40pt 30pt; background-color: #ffffff; }
+            .container {
+                margin: 0 auto;
+                padding: 0;
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+            }
+
+            .content-padding {
+                padding: 15mm;
+            }
+
             /* Header Section */
-            .details-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25pt; }
-            .logo-container img { height: 40pt; width: auto; max-width: 150pt; }
-            .plan-title { display: flex; align-items: center; gap: 10pt; }
-            .plan-title h2 { margin: 0; font-size: 16pt; font-weight: 600; color: #2d3748; }
-            .plan-icon { background: #E5E7EB; width: 30pt; height: 30pt; display: flex; align-items: center; justify-content: center; border-radius: 6pt; font-size: 1.5em; flex-shrink: 0; }
-            /* Resource Allocation Section */
-            .resources-container { margin-bottom: 25pt; }
-            .resources-title { font-size: 14pt; font-weight: 600; color: #2d3748; margin-bottom: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 5pt; }
-            .resource-card { border: 1px solid #e2e8f0; border-radius: 6pt; overflow: hidden; background-color: #f8fafc; margin-bottom: 12pt; }
-            .resource-header { background-color: #f1f5f9; padding: 8pt 12pt; display: flex; align-items: center; gap: 8pt; border-bottom: 1px solid #e2e8f0; }
-            .resource-name { font-weight: 600; font-size: 10.5pt; color: #334155; }
-            .resource-icon { font-size: 1.2em; flex-shrink: 0; }
-            .resource-details { padding: 12pt; display: grid; grid-template-columns: 1fr 1fr; grid-gap: 10pt; }
-            .detail-box { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4pt; padding: 8pt 10pt; }
-            .detail-box-header { font-size: 8pt; color: #64748b; margin-bottom: 4pt; text-transform: uppercase; }
-            .detail-box-content { display: flex; justify-content: space-between; align-items: center; gap: 5pt; flex-wrap: wrap; }
-            .detail-box-value { font-weight: 600; color: #334155; font-size: 10pt; display: flex; align-items: center; gap: 4pt; }
-            .detail-box-price { color: #10b981; font-weight: 600; font-size: 10pt; white-space: nowrap; }
-            .subdetails { margin-top: 6pt; border-top: 1px solid #e2e8f0; padding-top: 6pt; font-size: 8.5pt; }
-            .subdetail-row { display: flex; justify-content: space-between; color: #64748b; margin-bottom: 3pt; }
-            .subdetail-row span:first-child { padding-right: 10pt; }
-            /* Summary Section */
-            .cost-summary { margin-top: 25pt; padding: 15pt; background-color: #f8fafc; border-radius: 6pt; border: 1px solid #e2e8f0; }
-            .summary-row { display: flex; justify-content: space-between; margin-bottom: 6pt; color: #475569; font-size: 10pt; }
-            .summary-row span:first-child { padding-right: 15pt; }
-            .summary-row.total { margin-top: 8pt; padding-top: 8pt; border-top: 1px solid #e2e8f0; font-weight: 600; font-size: 11pt; color: #10b981; }
+            .quote-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 40px;
+                padding-bottom: 15px;
+                border-bottom: 3px solid #007bff;
+            }
+
+            .logo-container img {
+                max-height: 90px;
+                width: auto;
+            }
+
+            .quote-details {
+                text-align: right;
+            }
+
+            .quote-details h2 {
+                margin: 0 0 10px 0;
+                color: #007bff;
+                font-size: 1.8em;
+                font-weight: 600;
+            }
+
+            .quote-details p {
+                margin: 4px 0;
+                font-size: 0.9em;
+                color: #555;
+            }
+
+            .quote-details strong {
+                display: inline-block;
+                min-width: 90px;
+                text-align: left;
+                color: #333;
+                font-weight: 600;
+            }
+
+            /* Main Content Area */
+            main {
+                margin-bottom: 30px;
+            }
+
+            main > h3 {
+                color: #333;
+                padding-bottom: 14px;
+                margin-bottom: 30px;
+                font-size: 1.4em;
+                font-weight: 600;
+                text-align: center;
+            }
+
+            /* Card Container */
+            .plans-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto;
+                gap: 20px;
+                height: calc(100% - 180px);
+                min-height: 850px;
+            }
+
+            /* --- UPDATED CARD STYLES --- */
+            .card {
+                height: 100%;
+                min-height: 220px;
+                position: relative;
+                border-radius: 8px;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                box-sizing: border-box;
+                padding: 0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+            .quote {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 0;
+                opacity: 0.5;
+            }
+            
+            .quote svg {
+                height: 40px;
+                width: 40px;
+            }
+            
+            .card-name {
+                text-transform: uppercase;
+                font-weight: 700;
+                padding: 20px 20px 5px 20px;
+                line-height: 1.3;
+                font-size: 1.1em;
+                z-index: 1;
+            }
+
+            .body-text {
+                font-size: 0.95em;
+                font-weight: 500;
+                padding: 10px 20px 15px 20px;
+                line-height: 1.5;
+                flex-grow: 1;
+                z-index: 1;
+            }
+
+            .price {
+                font-weight: 700;
+                padding: 15px 20px 15px 20px;
+                text-align: right;
+                font-size: 1.2em;
+                margin-top: auto;
+                border-top-width: 2px;
+                border-top-style: solid;
+                z-index: 1;
+            }
+
             /* Footer */
-            .page-footer { margin-top: 30pt; text-align: center; color: #94a3b8; font-size: 8pt; border-top: 1px solid #e2e8f0; padding-top: 10pt; }
-            .page-footer p { margin: 0; }
+            .quote-footer {
+                margin-top: 40px;
+                padding-top: 15px;
+                border-top: 1px solid #eee;
+                font-size: 0.85em;
+                color: #888;
+                text-align: center;
+            }
+
+            .quote-footer p {
+                margin: 4px 0;
+            }
+
+            /* Print-specific styles */
+            @page {
+                size: A4;
+                margin: 15mm;
+            }
+
+            @media print {
+                body {
+                    margin: 0;
+                    padding: 0;
+                    background-color: #fff;
+                    font-size: 10pt;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .container {
+                    width: 100%;
+                    margin: 0;
+                    padding: 0;
+                    border: none;
+                    box-shadow: none;
+                    border-radius: 0;
+                }
+                
+                .content-padding {
+                    padding: 0;
+                }
+                
+                .plans-container {
+                    gap: 15px;
+                    height: 850px;
+                }
+                
+                .card {
+                    box-shadow: none;
+                    border-width: 1px;
+                    border-style: solid;
+                    page-break-inside: avoid;
+                }
+
+                .quote-header {
+                    page-break-after: avoid;
+                }
+                
+                .quote-footer {
+                    font-size: 8pt;
+                    color: #aaa;
+                    margin-top: 30px;
+                    padding-top: 10px;
+                }
+            }
         </style>
     </head>
     <body>
         <div class="container">
-            ${showHeader ? `
-            <header class="details-header">
-                <div class="plan-title">
-                    <div class="plan-icon">📋</div>
-                    <h2>${plan.planName}</h2>
-                </div>
-                <div class="logo-container">
-                    <img src="${logoSrc}" alt="Company Logo">
-                </div>
-            </header>
-            ` : ''}
-
-            <section class="resources-container">
-                ${showHeader ? `<div class="resources-title">Resource Allocation</div>` : ''}
-                ${resourcesChunk.map(resource => `
-                    <div class="resource-card">
-                        <div class="resource-header">
-                            <div class="resource-icon">👤</div>
-                            <div class="resource-name">${resource.resourceName}</div>
-                        </div>
-                        <div class="resource-details">
-                            <div class="detail-box">
-                                <div class="detail-box-header">Training Days</div>
-                                <div class="detail-box-content">
-                                    <div class="detail-box-value"><span>📅</span> ${resource.trainingDaysCount}</div>
-                                    <div class="detail-box-price">€ ${resource.trainingCost.toFixed(2)}</div>
-                                </div>
-                            </div>
-                            <div class="detail-box">
-                                <div class="detail-box-header">Business Trip Costs</div>
-                                <div class="detail-box-content">
-                                    <div class="detail-box-value"><span>✈️</span> ${resource.businessTripDays} Days</div>
-                                    <div class="detail-box-price">€ ${resource.tripCosts.total.toFixed(2)}</div>
-                                </div>
-                                <div class="subdetails">
-                                    <div class="subdetail-row">
-                                        <span>Accommodation & Food:</span>
-                                        <span>€ ${resource.tripCosts.accommodationFood.toFixed(2)}</span>
-                                    </div>
-                                    <div class="subdetail-row">
-                                        <span>Daily Allowance:</span>
-                                        <span>€ ${resource.tripCosts.allowance.toFixed(2)}</span>
-                                    </div>
-                                    <div class="subdetail-row">
-                                        <span>Pocket Money:</span>
-                                        <span>€ ${resource.tripCosts.pocketMoney.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+           <div class="content-padding"> 
+                <header class="quote-header">
+                    <div class="logo-container">
+                        <img src="${logoSrc}" alt="Company Logo">
                     </div>
-                `).join('')}
-            </section>
+                    <div class="quote-details">
+                        <h2>Training Quote</h2>
+                        <p><strong>Quote To:</strong> ${clientName || 'Customer'}</p>
+                        <p><strong>Quote Date:</strong> ${currentDate}</p>
+                        <p><strong>Prepared By:</strong> ${userName || 'Training Specialist'}</p>
+                    </div>
+                </header>
 
-            ${showSummary ? `
-            <section class="cost-summary">
-                <div class="summary-row">
-                    <span>Total Training Cost:</span>
-                    <span>€ ${totalTrainingCost.toFixed(2)}</span>
-                </div>
-                <div class="summary-row">
-                    <span>Total Business Trip Cost:</span>
-                    <span>€ ${totalTripCost.toFixed(2)}</span>
-                </div>
-                <div class="summary-row total">
-                    <span>Total Plan Cost:</span>
-                    <span>€ ${grandTotal.toFixed(2)}</span>
-                </div>
-            </section>
-            ` : ''}
+                <main>
+                    <h3>Training Plan Options</h3>
+                    <div class="plans-container">
+                        ${planCosts.map((plan, index) => {
+                          const colorScheme = cardColors[index % cardColors.length];
+                          return `
+                            <div class="card" style="background: ${colorScheme.bg}; border: 1px solid ${colorScheme.border};">
+                                <div class="quote" style="color: ${colorScheme.accent};">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 330 307">
+                                        <path fill="currentColor" d="M302.258 176.221C320.678 176.221 329.889 185.432 329.889 203.853V278.764C329.889 297.185 320.678 306.395 302.258 306.395H231.031C212.61 306.395 203.399 297.185 203.399 278.764V203.853C203.399 160.871 207.902 123.415 216.908 91.4858C226.323 59.1472 244.539 30.902 271.556 6.75027C280.562 -1.02739 288.135 -2.05076 294.275 3.68014L321.906 29.4692C328.047 35.2001 326.614 42.1591 317.608 50.3461C303.69 62.6266 292.228 80.4334 283.223 103.766C274.626 126.69 270.328 150.842 270.328 176.221H302.258ZM99.629 176.221C118.05 176.221 127.26 185.432 127.26 203.853V278.764C127.26 297.185 118.05 306.395 99.629 306.395H28.402C9.98126 306.395 0.770874 297.185 0.770874 278.764V203.853C0.770874 160.871 5.27373 123.415 14.2794 91.4858C23.6945 59.1472 41.9106 30.902 68.9277 6.75027C77.9335 -1.02739 85.5064 -2.05076 91.6467 3.68014L119.278 29.4692C125.418 35.2001 123.985 42.1591 114.98 50.3461C101.062 62.6266 89.6 80.4334 80.5942 103.766C71.9979 126.69 67.6997 150.842 67.6997 176.221H99.629Z"></path>
+                                    </svg>
+                                </div>
+                                <div class="card-name" style="color: ${colorScheme.accent};">${plan.planName}</div>
+                                <div class="body-text" style="color: ${colorScheme.text};">${colorScheme.description}</div>
+                                <div class="price" style="color: ${colorScheme.accent}; border-top-color: ${colorScheme.border};"> 
+                                    €${plan.totalCost.toFixed(2)}
+                                </div>
+                            </div>
+                          `;
+                        }).join('')}
+                    </div>
+                </main>
 
-            <footer class="page-footer">
-                <p>Quote ID: ${quoteId} | Plan: ${plan.planName}</p>
-            </footer>
+                <footer class="quote-footer">
+                    <p>Thank you for considering our training programs!</p>
+                    <p>Quote ID: ${quoteId}</p>
+                </footer>
+            </div> 
         </div>
     </body>
     </html>
   `;
+
+  try {
+    // Generate a PDF from the HTML
+    const pdf = new jsPDF('p', 'pt', 'a4');
+    const canvas = await html2canvas(container, {
+      scale: 2, // Better quality
+      useCORS: true, // Allow loading cross-origin images
+      allowTaint: true,
+      backgroundColor: '#ffffff'
+    });
+    
+    const imgData = canvas.toDataURL('image/png');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+    const imgX = (pdfWidth - imgWidth * ratio) / 2;
+    const imgY = 30;
+    
+    pdf.addImage(
+      imgData, 
+      'PNG', 
+      imgX, 
+      imgY, 
+      imgWidth * ratio, 
+      imgHeight * ratio
+    );
+    
+    // Clean up - revoke the object URL for the logo if we created one
+    if (logoSrc !== logoUrl) {
+      URL.revokeObjectURL(logoSrc);
+    }
+    
+    // Remove the temporary container
+    document.body.removeChild(container);
+    
+    // Format the PDF filename as requested
+    const shortenedQuoteId = quoteId.substring(0, 8);
+    const customerName = clientName?.replace(/\s+/g, '_') || 'Customer';
+    const filename = `${customerName}_${fileDate}_${shortenedQuoteId}.pdf`;
+    
+    // Save the PDF with the formatted name
+    pdf.save(filename);
+    
+    return true;
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    
+    // Clean up - revoke the object URL for the logo if we created one
+    if (logoSrc !== logoUrl) {
+      URL.revokeObjectURL(logoSrc);
+    }
+    
+    document.body.removeChild(container);
+    return false;
+  }
 };
 
-// ===========================================================================
-// Helper Function: Generate HTML for the Gantt Chart Visualization
-// ===========================================================================
-function generateGanttChartHTML(tasks: ScheduledTaskSegment[]): string {
-  if (!tasks || tasks.length === 0) {
-    // Return placeholder styled similarly to other elements
-    return `<div style="padding: 20pt; text-align: center; color: #888; font-style: italic; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">No schedule data available.</div>`;
-  }
-
-  // Find the maximum day span
-  let maxDay = 0;
-  tasks.forEach(task => {
-    const endDay = task.start_day + task.duration_days;
-    if (endDay > maxDay) {
-      maxDay = endDay;
-    }
-  });
-  // Add a small buffer (e.g., 1 day) for visual spacing
-  const totalDays = maxDay + 1;
-
-  // Group tasks by resource
-  const resourceMap = new Map<number, { name: string; tasks: ScheduledTaskSegment[] }>();
-  tasks.forEach(task => {
-    if (!resourceMap.has(task.resource_id)) {
-      resourceMap.set(task.resource_id, { name: task.resource_name, tasks: [] });
-    }
-    resourceMap.get(task.resource_id)!.tasks.push(task);
-  });
-
-  // Generate day headers
-  const daysHeaderCells = Array.from({ length: totalDays }, (_, i) =>
-      `<div class="gantt-day-header">Day ${i + 1}</div>`
-  ).join('');
-  const ganttDaysHeader = `
-    <div class="gantt-days-header">
-      <div class="gantt-resource-label-header">Resource</div>
-      <div class="gantt-days-cells-header">${daysHeaderCells}</div>
-    </div>`;
-
-  // Generate resource rows with tasks
-  const resourceRows = Array.from(resourceMap.values()).map(resourceData => {
-    const resourceName = resourceData.name;
-
-    // Task bars for this resource
-    const taskBars = resourceData.tasks.map(task => {
-      // Calculate position and width based on days (0-indexed start_day)
-      // Ensure duration is at least a small visual element even if 0 days
-      const duration = Math.max(task.duration_days, 0.1); // Prevent zero width
-      const start = Math.max(task.start_day, 0); // Ensure start is not negative
-
-      const leftPercent = (start / totalDays) * 100;
-      const widthPercent = (duration / totalDays) * 100;
-
-      // Determine color based on category
-      let taskClass = 'task-default';
-      if (task.resource_category === 'Machine') taskClass = 'task-machine';
-      else if (task.resource_category === 'Software') taskClass = 'task-software';
-
-      const titleText = `${task.machine_name || resourceName}: Day ${task.start_day + 1} - Day ${task.start_day + task.duration_days} (${task.segment_hours} hours)`;
-
-      return `<div class="gantt-task ${taskClass}"
-                   style="left: ${leftPercent}%; width: ${widthPercent}%;"
-                   title="${titleText}">
-                 ${task.segment_hours}h
-              </div>`;
-    }).join('');
-
-    // Grid cells for this row
-    const dayCells = Array.from({ length: totalDays }, () => `<div class="gantt-day-cell"></div>`).join('');
-
-    return `
-      <div class="gantt-resource-row">
-        <div class="gantt-resource-name">${resourceName}</div>
-        <div class="gantt-days-container">
-          ${dayCells}
-          ${taskBars}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  return `
-    <div class="gantt-grid">
-      ${ganttDaysHeader}
-      ${resourceRows}
-    </div>
-  `;
-}
