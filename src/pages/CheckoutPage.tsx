@@ -417,7 +417,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                   <span>{resource.resourceName}</span>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-2">
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Training Days</div>
                     <div className="text-gray-200 font-medium flex justify-between items-center">
@@ -437,36 +437,36 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                         <Euro className="h-3 w-3 mr-1" />
                         {resource.tripCosts.total.toFixed(2)}
                       </span>
+                      
+                      {selectedArea && (
+                        <Collapsible className="mt-1">
+                          <CollapsibleTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="p-1 h-auto w-full text-xs text-gray-400 flex items-center justify-between"
+                            >
+                              <span>Trip details</span>
+                              <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="text-xs text-gray-400 space-y-1 px-1 pt-1 collapsible-content">
+                            <div className="flex justify-between">
+                              <span>Accommodation & Food:</span>
+                              <span>€{resource.tripCosts.accommodationFood.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Daily Allowance:</span>
+                              <span>€{resource.tripCosts.allowance.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Pocket Money:</span>
+                              <span>€{resource.tripCosts.pocketMoney.toFixed(2)}</span>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
                     </div>
-                    
-                    {selectedArea && (
-                      <Collapsible className="mt-1">
-                        <CollapsibleTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="p-1 h-auto w-full text-xs text-gray-400 flex items-center justify-between"
-                          >
-                            <span>Trip details</span>
-                            <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                          </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="text-xs text-gray-400 space-y-1 px-1 pt-1 collapsible-content">
-                          <div className="flex justify-between">
-                            <span>Accommodation & Food:</span>
-                            <span>€{resource.tripCosts.accommodationFood.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Daily Allowance:</span>
-                            <span>€{resource.tripCosts.allowance.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Pocket Money:</span>
-                            <span>€{resource.tripCosts.pocketMoney.toFixed(2)}</span>
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    )}
                   </div>
                 </div>
               </div>
