@@ -105,7 +105,7 @@ const ResourceTrainingGantt: React.FC<ResourceTrainingGanttProps> = ({
       <div className="flex justify-center bg-slate-800/80 pt-4"> {/* Centering container */}
         <Tabs value={planId ? planId.toString() : ""} onValueChange={value => onPlanChange(parseInt(value))} // Use callback prop
         >
-          <TabsList className="rounded-b-none border-b-0 bg-slate-800"> {/* Removed bottom radius/border */}
+          <TabsList className="rounded-b-none border-b-0 bg-slate-900"> {/* Removed bottom radius/border */}
             {plansLoading ? <div className="px-4 py-2">
                 <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
                   Loading Plans...
