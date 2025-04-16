@@ -10,6 +10,12 @@ interface Links {
   onClick?: () => void;
 }
 
+interface SidebarContextProps {
+  open: boolean;
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  animate: boolean;
+}
+
 const SidebarContext = createContext<SidebarContextProps | undefined>(
   undefined
 );
