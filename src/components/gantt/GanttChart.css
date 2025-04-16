@@ -6,7 +6,7 @@
   --gantt-header-height: 70px;
   --gantt-resource-header-height: 40px;
   --gantt-machine-row-height: 30px;
-  --gantt-resource-group-padding: 10px; /* <-- ADDED CSS Variable for padding */
+  --gantt-resource-group-padding: 10px;
 
   --gantt-border-color: rgba(255, 255, 255, 0.1);
   --gantt-border-color-light: rgba(255, 255, 255, 0.05);
@@ -14,7 +14,7 @@
   --gantt-resource-bg: rgba(30, 41, 59, 0.7);
   --gantt-weekend-bg: rgba(45, 55, 75, 0.6);
   --gantt-grid-bg: transparent;
-  --gantt-container-bg: rgba(15, 23, 42, 0.5);
+  --gantt-container-bg: rgba(15, 23, 42, 0.5); /* Keep container background */
   --gantt-text-color: rgba(255, 255, 255, 0.9);
   --gantt-text-color-muted: rgba(255, 255, 255, 0.7);
   --gantt-text-color-faint: rgba(255, 255, 255, 0.5);
@@ -25,7 +25,19 @@
 
 * { box-sizing: border-box; }
 
-.gantt-container { display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; border: 1px solid var(--gantt-border-color); border-radius: 0.5rem; background-color: var(--gantt-container-bg); color: var(--gantt-text-color); }
+/* --- Gantt Container MODIFIED --- */
+.gantt-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* REMOVED height: 100%; */
+  /* REMOVED overflow: hidden; */
+  border: 1px solid var(--gantt-border-color);
+  border-radius: 0.5rem;
+  background-color: var(--gantt-container-bg);
+  color: var(--gantt-text-color);
+  /* Height will now grow with content */
+}
 
 /* --- Zoom Controls --- */
 .gantt-controls { flex-shrink: 0; border-bottom: 1px solid var(--gantt-border-color); background-color: var(--gantt-header-bg); }
@@ -37,80 +49,104 @@
 
 
 /* --- Header Row --- */
-.gantt-header-row { display: flex; flex-shrink: 0; height: var(--gantt-header-height); z-index: 30; position: relative; }
-.gantt-resource-header-cell { min-width: var(--gantt-resource-col-width); width: var(--gantt-resource-col-width); display: flex; align-items: center; justify-content: center; font-weight: 500; border-right: 1px solid var(--gantt-border-color); height: 100%; flex-shrink: 0; }
+.gantt-header-row { display: flex; flex-shrink: 0; height: var(--gantt-header-height); z-index: 30; position: relative; /* Stickiness could be added if needed */ }
+
+/* --- Resource Header Cell MODIFIED --- */
+.gantt-resource-header-cell {
+  min-width: var(--gantt-resource-col-width);
+  width: var(--gantt-resource-col-width);
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Ensures text is centered */
+  font-weight: 500;
+  border-right: 1px solid var(--gantt-border-color);
+  height: 100%;
+  flex-shrink: 0;
+}
+
 .gantt-timeline-header-wrapper { flex: 1; overflow: hidden; position: relative; }
 .gantt-timeline-header-content { display: flex; flex-direction: column; position: absolute; top: 0; left: 0; height: 100%; will-change: transform; /* Width set inline */ }
 .gantt-months { display: flex; height: 50%; border-bottom: 1px solid var(--gantt-border-color); }
-
-/* --- Month Header MODIFIED --- */
-.gantt-month {
-  border-right: 1px solid var(--gantt-border-color);
-  display: flex;
-  align-items: center;
-  justify-content: flex-start; /* Align text to the start (left) */
-  padding-left: 5px;          /* Add small left padding */
-  font-weight: 500;
-  font-size: 0.85rem;
-  flex-shrink: 0;
-  /* Width/minWidth set inline */
-}
-
+.gantt-month { border-right: 1px solid var(--gantt-border-color); display: flex; align-items: center; justify-content: flex-start; padding-left: 5px; font-weight: 500; font-size: 0.85rem; flex-shrink: 0; /* Width/minWidth set inline */ }
 .gantt-days { display: flex; height: 50%; }
 .gantt-day { display: flex; align-items: center; justify-content: center; color: var(--gantt-text-color-muted); font-size: 0.75rem; border-right: 1px solid var(--gantt-border-color-light); flex-shrink: 0; /* Width/minWidth set inline */ }
 .gantt-day.weekend { color: var(--gantt-text-color-faint); }
 
 
-/* --- Main Content Row --- */
-.gantt-main-content-row { display: flex; flex: 1; overflow: hidden; position: relative; }
-
-
-/* --- Resource List --- */
-.gantt-resource-list-wrapper { min-width: var(--gantt-resource-col-width); width: var(--gantt-resource-col-width); height: 100%; overflow: hidden; position: relative; background-color: var(--gantt-resource-bg); border-right: 1px solid var(--gantt-border-color); z-index: 20; flex-shrink: 0; }
-.gantt-resource-list-content { position: absolute; width: 100%; top: 0; left: 0; will-change: transform; /* Height set inline */ }
-
-/* --- Resource Group MODIFIED --- */
-.gantt-resource-group {
-  /* Add padding to the bottom to create space AFTER the group's content */
-  padding-bottom: var(--gantt-resource-group-padding);
-  /* Remove bottom border as separation is handled by grid lines and padding */
-  /* border-bottom: none; */
-}
-/* Ensure the last group doesn't have extra padding visually affecting scroll height */
-.gantt-resource-group:last-child {
-    padding-bottom: 0;
+/* --- Main Content Row MODIFIED --- */
+.gantt-main-content-row {
+  display: flex;
+  /* REMOVED flex: 1; */ /* Allow height to be determined by content */
+  /* REMOVED overflow: hidden; */
+  position: relative; /* Keep for positioning children */
 }
 
+
+/* --- Resource List Wrapper MODIFIED --- */
+.gantt-resource-list-wrapper {
+  min-width: var(--gantt-resource-col-width);
+  width: var(--gantt-resource-col-width);
+  /* REMOVED height: 100%; */
+  /* REMOVED overflow: hidden; */
+  position: relative; /* Keep for positioning content */
+  background-color: var(--gantt-resource-bg);
+  border-right: 1px solid var(--gantt-border-color);
+  z-index: 20;
+  flex-shrink: 0;
+}
+
+/* --- Resource List Content MODIFIED --- */
+.gantt-resource-list-content {
+  /* position: absolute; NO LONGER absolute, let it flow */
+  width: 100%;
+  /* top: 0; */
+  /* left: 0; */
+  /* REMOVED will-change: transform; */
+  /* Height set inline to match grid height */
+}
+
+.gantt-resource-group { padding-bottom: var(--gantt-resource-group-padding); }
+.gantt-resource-group:last-child { padding-bottom: 0; }
 .gantt-resource-name { height: var(--gantt-resource-header-height); display: flex; align-items: center; padding: 0 10px; font-weight: 500; background-color: rgba(0, 0, 0, 0.1); }
 .gantt-resource-machine { height: var(--gantt-machine-row-height); display: flex; align-items: center; padding: 0 10px 0 20px; font-size: 0.8rem; color: var(--gantt-text-color-muted); }
 
 
-/* --- Grid --- */
-.gantt-grid-scroll-container { flex: 1; overflow: auto; position: relative; background-color: var(--gantt-grid-bg); scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.3) transparent; }
+/* --- Grid Scroll Container MODIFIED --- */
+.gantt-grid-scroll-container {
+  flex: 1; /* Takes remaining horizontal space */
+  overflow-x: auto; /* Allow HORIZONTAL scrolling */
+  overflow-y: hidden; /* PREVENT vertical scrolling here */
+  position: relative;
+  background-color: var(--gantt-grid-bg);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+/* Keep webkit scrollbar styles for horizontal scrollbar */
 .gantt-grid-scroll-container::-webkit-scrollbar { width: 8px; height: 8px; }
 .gantt-grid-scroll-container::-webkit-scrollbar-track { background: transparent; }
 .gantt-grid-scroll-container::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.3); border-radius: 4px; }
 .gantt-grid-scroll-container::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.5); }
-.gantt-grid-content { position: relative; /* Width/Height set inline */ }
+
+/* --- Grid Content MODIFIED --- */
+.gantt-grid-content {
+  position: relative;
+  /* Width and Height set inline */
+  /* Ensure it doesn't shrink below its content */
+  min-height: 100%;
+}
 
 
 /* --- Grid Background Layer --- */
 .gantt-grid-background { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: hidden; }
 .gantt-grid-vline { position: absolute; top: 0; bottom: 0; width: 1px; background-color: var(--gantt-border-color-light); /* Left set inline */ }
 .gantt-grid-hline { position: absolute; left: 0; right: 0; height: 1px; background-color: var(--gantt-border-color-light); /* Top set inline */ }
-
-/* --- Group Separator Line MODIFIED --- */
-.gantt-grid-hline.group-separator {
-   background-color: var(--gantt-border-color); /* Slightly darker/more prominent */
-   height: 2px; /* Make the line thicker */
-}
-
+.gantt-grid-hline.group-separator { background-color: var(--gantt-border-color); height: 2px; }
 .gantt-grid-weekend-bg { position: absolute; top: 0; bottom: 0; background-color: var(--gantt-weekend-bg); z-index: 0; /* Left/Width set inline */ }
 
 
 /* --- Total Engagement Layer --- */
 .gantt-total-engagement-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
-.gantt-total-engagement-bar { position: absolute; /* background-color set inline */ border: 1px solid var(--gantt-total-bar-border); border-radius: 4px; overflow: visible; display: flex; align-items: center; justify-content: space-between; /* top, left, width, height, backgroundColor set inline */ }
+.gantt-total-engagement-bar { position: absolute; border: 1px solid var(--gantt-total-bar-border); border-radius: 4px; overflow: visible; display: flex; align-items: center; justify-content: space-between; /* top, left, width, height, backgroundColor set inline */ }
 .gantt-travel-icon { position: absolute; top: 50%; transform: translateY(-50%); color: var(--gantt-travel-icon-color); display: flex; align-items: center; justify-content: center; pointer-events: auto; }
 .gantt-travel-icon.start { left: 4px; }
 .gantt-travel-icon.end { right: 4px; }
