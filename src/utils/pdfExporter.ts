@@ -1,8 +1,7 @@
-
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { ScheduledTaskSegment } from './types';
-import { supabase } from "@/integrations/supabase/client";
+import { ScheduledTaskSegment } from './types'; // Assuming this type exists in './types'
+import { supabase } from "@/integrations/supabase/client"; // Assuming supabase client setup
 import { format } from "date-fns";
 
 // Common interface for plan cost data
@@ -18,8 +17,8 @@ export interface PlanResourceData {
   resourceId: number;
   resourceName: string;
   resourceIcon: string | null;
-  hourlyRate: number;
-  totalHours: number;
+  hourlyRate: number; // Added based on gantt data usage, adjust if needed
+  totalHours: number;  // Added based on gantt data usage, adjust if needed
   trainingDaysCount: number;
   businessTripDays: number;
   trainingCost: number;
@@ -29,6 +28,10 @@ export interface PlanResourceData {
     pocketMoney: number;
     total: number;
   };
+  // Added based on gantt data usage, adjust if needed
+  resource_category?: string;
+  machine_name?: string;
+  segment_hours?: number;
 }
 
 // Extended interface for plan details data
@@ -36,8 +39,21 @@ export interface PlanDetailsData extends PlanCostData {
   resources: PlanResourceData[];
   totalTrainingCost: number;
   totalTripCost: number;
-  scheduledTasks?: ScheduledTaskSegment[];
+  scheduledTasks?: ScheduledTaskSegment[]; // Assuming ScheduledTaskSegment includes necessary fields
 }
+
+// Assuming ScheduledTaskSegment structure like this (adjust as needed based on './types')
+export interface ScheduledTaskSegment {
+    resource_id: number;
+    resource_name: string;
+    start_day: number;
+    duration_days: number;
+    resource_category: string; // e.g., 'Machine', 'Software', 'Person'
+    machine_name?: string;     // Optional, relevant for machine tasks
+    segment_hours: number;
+    // Add other relevant fields from your actual type
+}
+
 
 /**
  * Generate a PDF quote document based on the checkout data
@@ -48,151 +64,193 @@ export const generateQuotePDF = async (
   clientName: string | undefined,
   planCosts: PlanCostData[],
   planDetails: PlanDetailsData[] = [],
-  logoUrl: string = '/placeholder.svg'
+  logoUrl: string = '/placeholder.svg' // Default placeholder logo path
 ): Promise<boolean> => {
   // Try to get the logo from Supabase storage
   let logoSrc = logoUrl;
+  let logoObjectUrl: string | null = null; // To keep track for revocation
   try {
     const { data, error } = await supabase.storage
-      .from('identityimages')
-      .download('System_Logo.png');
-    
+      .from('identityimages') // Make sure this bucket name is correct
+      .download('System_Logo.png'); // Make sure this file name is correct
+
     if (data && !error) {
-      logoSrc = URL.createObjectURL(data);
+      logoObjectUrl = URL.createObjectURL(data);
+      logoSrc = logoObjectUrl;
     } else {
-      console.warn('Could not load logo from storage:', error);
+      console.warn('Could not load logo from storage:', error?.message || 'Unknown error');
     }
   } catch (err) {
     console.error('Error loading logo from storage:', err);
   }
 
   // Create a PDF with multiple pages
+  // 'p' for portrait, 'pt' for points, 'a4' for page size
   const pdf = new jsPDF('p', 'pt', 'a4');
-  const pdfWidth = pdf.internal.pageSize.getWidth();
-  const pdfHeight = pdf.internal.pageSize.getHeight();
+  const pdfWidth = pdf.internal.pageSize.getWidth(); // Approx 595.28 points for A4
+  const pdfHeight = pdf.internal.pageSize.getHeight(); // Approx 841.89 points for A4
 
   try {
-    // Generate the first page (Cover page with cards)
+    // --- Generate the first page (Cover page with cards) ---
     const coverHtml = generateCoverPageHtml(quoteId, userName, clientName, planCosts, logoSrc);
-    
+
     // Create a temporary container for the cover page
     const coverContainer = document.createElement('div');
     coverContainer.style.position = 'absolute';
-    coverContainer.style.left = '-9999px';
+    coverContainer.style.left = '-9999px'; // Position off-screen
     coverContainer.style.top = '-9999px';
+    // Set a defined width for the cover page container (A4 width in mm)
+    coverContainer.style.width = '210mm';
+    coverContainer.style.height = 'auto'; // Let height be determined by content
     document.body.appendChild(coverContainer);
     coverContainer.innerHTML = coverHtml;
-    
-    // Convert cover page HTML to canvas
+
+    // Convert cover page HTML to canvas using html2canvas
     const coverCanvas = await html2canvas(coverContainer, {
-      scale: 2, // Better quality
-      useCORS: true, // Allow loading cross-origin images
-      allowTaint: true,
-      backgroundColor: '#ffffff'
+      scale: 2, // Increase scale for better resolution
+      useCORS: true, // Important if logo is from a different origin (like Supabase storage)
+      allowTaint: true, // May be needed depending on image source and CORS setup
+      backgroundColor: '#ffffff', // Ensure solid background
+      windowWidth: coverContainer.scrollWidth, // Use element's width
+      windowHeight: coverContainer.scrollHeight // Use element's height
     });
-    
-    // Add cover page to PDF
-    const imgData = coverCanvas.toDataURL('image/png');
-    const imgWidth = coverCanvas.width;
-    const imgHeight = coverCanvas.height;
-    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-    const imgX = (pdfWidth - imgWidth * ratio) / 2;
-    const imgY = 30;
-    
+
+    // Add cover page image to PDF
+    const coverImgData = coverCanvas.toDataURL('image/png');
+    const coverImgWidth = coverCanvas.width;
+    const coverImgHeight = coverCanvas.height;
+
+    // Calculate scaling to fit PDF page width
+    const coverRatio = pdfWidth / coverImgWidth;
+    const finalCoverImgHeight = coverImgHeight * coverRatio;
+    const coverImgX = 0; // Align to left edge
+    const coverImgY = 0; // Align to top edge (or add margin if needed)
+
+    // Add the image, scaling to fit the width
     pdf.addImage(
-      imgData, 
-      'PNG', 
-      imgX, 
-      imgY, 
-      imgWidth * ratio, 
-      imgHeight * ratio
+      coverImgData,
+      'PNG',
+      coverImgX,
+      coverImgY,
+      pdfWidth, // Fit to page width
+      finalCoverImgHeight // Scaled height
     );
-    
-    // Clean up cover page container
+
+    // Clean up cover page container from DOM
     document.body.removeChild(coverContainer);
-    
-    // If plan details are provided, add a detail page for each plan
+
+    // --- Generate detail pages if plan details are provided ---
     if (planDetails.length > 0) {
-      // For each plan, create a new page with details
       for (let i = 0; i < planDetails.length; i++) {
         const plan = planDetails[i];
-        
-        // Add a new page
+
+        // Add a new page for each plan's details
         pdf.addPage();
-        
-        // Generate HTML for plan details
+
+        // Generate HTML for the plan details page
         const detailsHtml = generatePlanDetailsPageHtml(plan, quoteId, logoSrc);
-        
+
         // Create a temporary container for the details page
         const detailsContainer = document.createElement('div');
         detailsContainer.style.position = 'absolute';
-        detailsContainer.style.left = '-9999px';
+        detailsContainer.style.left = '-9999px'; // Position off-screen
         detailsContainer.style.top = '-9999px';
+
+        // *** FIX APPLIED HERE: Set container width explicitly ***
+        detailsContainer.style.width = '210mm'; // A4 width
+        detailsContainer.style.height = 'auto'; // Auto height based on content
+
         document.body.appendChild(detailsContainer);
         detailsContainer.innerHTML = detailsHtml;
-        
+
         // Convert details page HTML to canvas
         const detailsCanvas = await html2canvas(detailsContainer, {
-          scale: 2,
+          scale: 2, // Use scale for better quality
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
-          width: 840, // Larger width to ensure full page content
-          height: 1200 // Larger height to ensure full content
+          // *** FIX APPLIED HERE: Removed fixed width/height, use element's scroll dimensions ***
+          windowWidth: detailsContainer.scrollWidth,
+          windowHeight: detailsContainer.scrollHeight
         });
-        
-        // Add details page to PDF
+
+        // Get image data and dimensions from canvas
         const detailsImgData = detailsCanvas.toDataURL('image/png');
-        const detailsImgWidth = detailsCanvas.width;
-        const detailsImgHeight = detailsCanvas.height;
-        const detailsRatio = Math.min(pdfWidth / detailsImgWidth, pdfHeight / detailsImgHeight);
-        const detailsImgX = (pdfWidth - detailsImgWidth * detailsRatio) / 2;
-        const detailsImgY = 30;
-        
-        pdf.addImage(
-          detailsImgData, 
-          'PNG', 
-          detailsImgX, 
-          detailsImgY, 
-          detailsImgWidth * detailsRatio, 
-          detailsImgHeight * detailsRatio
-        );
-        
-        // Clean up details container
+        const detailsImgWidth = detailsCanvas.width; // Width based on 210mm at scale=2
+        const detailsImgHeight = detailsCanvas.height; // Height based on content at scale=2
+
+        // *** FIX APPLIED HERE: Calculate scaling to fit PDF width ***
+        const finalDetailsImgWidth = pdfWidth; // Target full PDF width
+        const finalDetailsImgHeight = (detailsImgHeight * finalDetailsImgWidth) / detailsImgWidth; // Calculate proportional height
+
+        // Define available content height on the page (PDF height minus top/bottom margins)
+        const pageContentHeight = pdfHeight - 60; // Example: 30pt margin top and bottom
+
+        const detailsImgX = 0; // Position at left edge
+        const detailsImgY = 30; // Apply a top margin (e.g., 30pt)
+
+        if (finalDetailsImgHeight <= pageContentHeight) {
+             // Image fits on one page within the margins
+             pdf.addImage(
+               detailsImgData,
+               'PNG',
+               detailsImgX,
+               detailsImgY,
+               finalDetailsImgWidth,
+               finalDetailsImgHeight
+             );
+        } else {
+            // Content is too tall for one page - Add the image anyway, it will be cut off.
+            // TODO: Implement image splitting for true multi-page support if needed.
+            console.warn(`Plan details (${plan.planName}) content is taller than one page and may be cut off.`);
+            pdf.addImage(
+               detailsImgData,
+               'PNG',
+               detailsImgX,
+               detailsImgY,
+               finalDetailsImgWidth,
+               finalDetailsImgHeight // This will likely extend beyond the page bottom
+             );
+             // Note: A proper solution would involve slicing the canvas image data
+             // and adding sections to multiple pages. This is complex with html2canvas.
+        }
+
+        // Clean up details container from DOM
         document.body.removeChild(detailsContainer);
       }
     }
-    
-    // Clean up - revoke the object URL for the logo if we created one
-    if (logoSrc !== logoUrl) {
-      URL.revokeObjectURL(logoSrc);
-    }
-    
-    // Format the PDF filename as requested
+
+    // Format the PDF filename
     const shortenedQuoteId = quoteId.substring(0, 8);
     const customerName = clientName?.replace(/\s+/g, '_') || 'Customer';
     const fileDate = format(new Date(), 'dd_MM_yyyy');
     const filename = `${customerName}_${fileDate}_${shortenedQuoteId}.pdf`;
-    
-    // Save the PDF with the formatted name
+
+    // Save the PDF
     pdf.save(filename);
-    
-    return true;
+
+    // Clean up the logo object URL if it was created
+    if (logoObjectUrl) {
+      URL.revokeObjectURL(logoObjectUrl);
+    }
+
+    return true; // Indicate success
+
   } catch (error) {
     console.error('Error generating PDF:', error);
-    
-    // Clean up - revoke the object URL for the logo if we created one
-    if (logoSrc !== logoUrl) {
-      URL.revokeObjectURL(logoSrc);
+
+    // Clean up the logo object URL if it was created, even on error
+    if (logoObjectUrl) {
+      URL.revokeObjectURL(logoObjectUrl);
     }
-    
-    return false;
+
+    return false; // Indicate failure
   }
 };
 
-/**
- * Generate HTML for the cover page
- */
+// ===========================================================================
+// Helper Function: Generate HTML for the Cover Page
+// ===========================================================================
 const generateCoverPageHtml = (
   quoteId: string,
   userName: string | undefined,
@@ -200,14 +258,12 @@ const generateCoverPageHtml = (
   planCosts: PlanCostData[],
   logoSrc: string
 ): string => {
-  // Get the current date in the desired format
   const currentDate = new Date().toLocaleDateString('en-US', {
     month: 'long',
-    day: 'numeric', 
+    day: 'numeric',
     year: 'numeric'
   });
 
-  // Array of colors for the cards
   const cardColors = [
     { bg: '#F2FCE2', border: '#C9E29E', text: '#3F5713', accent: '#6B8E23', description: "A comprehensive training covering essential concepts and hands-on practical exercises tailored to your team's skill level." }, // Green
     { bg: '#FEF7CD', border: '#F0D861', text: '#6B5D10', accent: '#D4AC16', description: "An extended program that dives deeper into advanced techniques with real-world scenarios and problem-solving workshops." }, // Yellow
@@ -215,708 +271,172 @@ const generateCoverPageHtml = (
     { bg: '#D3E4FD', border: '#92BBF3', text: '#2C4C7A', accent: '#3B82F6', description: "Experience hands-on learning alongside our experts with this shadowing program designed for complete knowledge transfer." }  // Blue
   ];
 
+  // NOTE: Ensure styles here are compatible with html2canvas rendering.
+  // Avoid overly complex CSS features if possible. Use inline styles or simple CSS.
   return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Training Plan Quote - A4</title>
+        <title>Training Plan Quote</title>
         <style>
-            /* Basic Reset & Body Styling */
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                margin: 0;
-                padding: 0;
-                background-color: #f4f7f6;
-            }
-
-            /* Page Container */
-            .container {
-                margin: 0 auto;
-                padding: 0;
-                background-color: #ffffff;
-                border: 1px solid #e0e0e0;
-            }
-
-            .content-padding {
-                padding: 15mm;
-            }
-
-            /* Header Section */
-            .quote-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                margin-bottom: 40px;
-            }
-
-            .logo-container img {
-                max-height: 120px;
-                width: auto;
-            }
-
-            .quote-details {
-                text-align: right;
-            }
-
-            .quote-details h2 {
-                margin: 0 0 10px 0;
-                color: #007bff;
-                font-size: 1.8em;
-                font-weight: 600;
-            }
-
-            .quote-details p {
-                margin: 4px 0;
-                font-size: 0.9em;
-                color: #555;
-            }
-
-            .quote-details strong {
-                display: inline-block;
-                min-width: 90px;
-                text-align: left;
-                color: #333;
-                font-weight: 600;
-            }
-
-            /* Main Content Area */
-            main {
-                margin-bottom: 30px;
-            }
-
-            main > h3 {
-                color: #333;
-                margin: 0 0 30px 0;
-                font-size: 1.4em;
-                font-weight: 600;
-                text-align: center;
-            }
-
-            /* Card Container */
-            .plans-container {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                grid-template-rows: auto auto;
-                gap: 20px;
-                height: calc(100% - 180px);
-                min-height: 850px;
-            }
-
-            /* --- UPDATED CARD STYLES --- */
-            .card {
-                height: 100%;
-                min-height: 220px;
-                position: relative;
-                border-radius: 8px;
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-                box-sizing: border-box;
-                padding: 0;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }
-
-            .quote {
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                z-index: 0;
-                opacity: 0.5;
-            }
-            
-            .quote svg {
-                height: 40px;
-                width: 40px;
-            }
-            
-            .card-name {
-                text-transform: uppercase;
-                font-weight: 700;
-                padding: 20px 20px 5px 20px;
-                line-height: 1.3;
-                font-size: 1.1em;
-                z-index: 1;
-            }
-
-            .body-text {
-                font-size: 0.95em;
-                font-weight: 500;
-                padding: 10px 20px 15px 20px;
-                line-height: 1.5;
-                flex-grow: 1;
-                z-index: 1;
-            }
-
-            .price {
-                font-weight: 700;
-                padding: 15px 20px 15px 20px;
-                text-align: right;
-                font-size: 1.2em;
-                margin-top: auto;
-                border-top-width: 2px;
-                border-top-style: solid;
-                z-index: 1;
-            }
-
+            /* Reset and base styles */
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.5; color: #333; margin: 0; padding: 0; background-color: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            * { box-sizing: border-box; }
+            /* Container to control overall layout */
+            .cover-container { width: 100%; /* Take full width of parent */ padding: 40pt; background-color: #ffffff; }
+            /* Header */
+            .quote-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 50pt; }
+            .logo-container img { max-height: 70pt; width: auto; } /* Adjust logo size */
+            .quote-details { text-align: right; }
+            .quote-details h2 { margin: 0 0 10pt 0; color: #005a9e; font-size: 18pt; font-weight: 600; }
+            .quote-details p { margin: 5pt 0; font-size: 10pt; color: #444; }
+            .quote-details strong { display: inline-block; min-width: 80pt; text-align: left; color: #111; font-weight: 600; margin-right: 5pt;}
+            /* Main content title */
+            main > h3 { color: #333; margin: 0 0 30pt 0; font-size: 16pt; font-weight: 600; text-align: center; }
+            /* Grid for plan cards */
+            .plans-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20pt; }
+            /* Card styles */
+            .card { border-radius: 6pt; display: flex; flex-direction: column; overflow: hidden; position: relative; padding: 15pt; min-height: 200pt; border-width: 1px; border-style: solid; }
+            .quote-icon { position: absolute; top: 10pt; right: 10pt; opacity: 0.4; z-index: 0; }
+            .quote-icon svg { height: 35pt; width: 35pt; }
+            .card-name { text-transform: uppercase; font-weight: 700; font-size: 11pt; margin-bottom: 10pt; z-index: 1; }
+            .body-text { font-size: 9.5pt; font-weight: 400; line-height: 1.4; flex-grow: 1; margin-bottom: 15pt; z-index: 1; }
+            .price { font-weight: 700; font-size: 13pt; text-align: right; margin-top: auto; padding-top: 10pt; border-top-width: 2px; border-top-style: solid; z-index: 1; }
             /* Footer */
-            .quote-footer {
-                margin-top: 40px;
-                padding-top: 15px;
-                border-top: 1px solid #eee;
-                font-size: 0.85em;
-                color: #888;
-                text-align: center;
-            }
-
-            .quote-footer p {
-                margin: 4px 0;
-            }
-
-            /* Print-specific styles */
-            @page {
-                size: A4;
-                margin: 15mm;
-            }
-
-            @media print {
-                body {
-                    margin: 0;
-                    padding: 0;
-                    background-color: #fff;
-                    font-size: 10pt;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                
-                .container {
-                    width: 100%;
-                    margin: 0;
-                    padding: 0;
-                    border: none;
-                    box-shadow: none;
-                    border-radius: 0;
-                }
-                
-                .content-padding {
-                    padding: 0;
-                }
-                
-                .plans-container {
-                    gap: 15px;
-                    height: 850px;
-                }
-                
-                .card {
-                    box-shadow: none;
-                    border-width: 1px;
-                    border-style: solid;
-                    page-break-inside: avoid;
-                }
-
-                .quote-header {
-                    page-break-after: avoid;
-                }
-                
-                .quote-footer {
-                    font-size: 8pt;
-                    color: #aaa;
-                    margin-top: 30px;
-                    padding-top: 10px;
-                }
-            }
+            .quote-footer { margin-top: 50pt; padding-top: 15pt; border-top: 1px solid #eee; font-size: 9pt; color: #777; text-align: center; }
+            .quote-footer p { margin: 4pt 0; }
         </style>
     </head>
     <body>
-        <div class="container">
-           <div class="content-padding"> 
-                <header class="quote-header">
-                    <div class="logo-container">
-                        <img src="${logoSrc}" alt="Company Logo">
-                    </div>
-                    <div class="quote-details">
-                        <h2>Training Quote</h2>
-                        <p><strong>Quote To:</strong> ${clientName || 'Customer'}</p>
-                        <p><strong>Quote Date:</strong> ${currentDate}</p>
-                        <p><strong>Prepared By:</strong> ${userName || 'Training Specialist'}</p>
-                    </div>
-                </header>
+        <div class="cover-container">
+            <header class="quote-header">
+                <div class="logo-container">
+                    <img src="${logoSrc}" alt="Company Logo">
+                </div>
+                <div class="quote-details">
+                    <h2>Training Quote</h2>
+                    <p><strong>Quote To:</strong> ${clientName || 'Valued Customer'}</p>
+                    <p><strong>Quote Date:</strong> ${currentDate}</p>
+                    <p><strong>Prepared By:</strong> ${userName || 'System Logistics Specialist'}</p>
+                    <p><strong>Quote ID:</strong> ${quoteId}</p>
+                </div>
+            </header>
 
-                <main>
-                    <h3>Training Plan Options</h3>
-                    <div class="plans-container">
-                        ${planCosts.map((plan, index) => {
-                          const colorScheme = cardColors[index % cardColors.length];
-                          return `
-                            <div class="card" style="background: ${colorScheme.bg}; border: 1px solid ${colorScheme.border};">
-                                <div class="quote" style="color: ${colorScheme.accent};">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 330 307">
-                                        <path fill="currentColor" d="M302.258 176.221C320.678 176.221 329.889 185.432 329.889 203.853V278.764C329.889 297.185 320.678 306.395 302.258 306.395H231.031C212.61 306.395 203.399 297.185 203.399 278.764V203.853C203.399 160.871 207.902 123.415 216.908 91.4858C226.323 59.1472 244.539 30.902 271.556 6.75027C280.562 -1.02739 288.135 -2.05076 294.275 3.68014L321.906 29.4692C328.047 35.2001 326.614 42.1591 317.608 50.3461C303.69 62.6266 292.228 80.4334 283.223 103.766C274.626 126.69 270.328 150.842 270.328 176.221H302.258ZM99.629 176.221C118.05 176.221 127.26 185.432 127.26 203.853V278.764C127.26 297.185 118.05 306.395 99.629 306.395H28.402C9.98126 306.395 0.770874 297.185 0.770874 278.764V203.853C0.770874 160.871 5.27373 123.415 14.2794 91.4858C23.6945 59.1472 41.9106 30.902 68.9277 6.75027C77.9335 -1.02739 85.5064 -2.05076 91.6467 3.68014L119.278 29.4692C125.418 35.2001 123.985 42.1591 114.98 50.3461C101.062 62.6266 89.6 80.4334 80.5942 103.766C71.9979 126.69 67.6997 150.842 67.6997 176.221H99.629Z"></path>
-                                    </svg>
-                                </div>
-                                <div class="card-name" style="color: ${colorScheme.accent};">${plan.planName}</div>
-                                <div class="body-text" style="color: ${colorScheme.text};">${colorScheme.description}</div>
-                                <div class="price" style="color: ${colorScheme.accent}; border-top-color: ${colorScheme.border};"> 
-                                    €${plan.totalCost.toFixed(2)}
-                                </div>
+            <main>
+                <h3>Training Plan Options</h3>
+                <div class="plans-container">
+                    ${planCosts.map((plan, index) => {
+                      const colorScheme = cardColors[index % cardColors.length];
+                      return `
+                        <div class="card" style="background-color: ${colorScheme.bg}; border-color: ${colorScheme.border};">
+                            <div class="quote-icon" style="color: ${colorScheme.accent};">
+                                <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
                             </div>
-                          `;
-                        }).join('')}
-                    </div>
-                </main>
+                            <div class="card-name" style="color: ${colorScheme.accent};">${plan.planName}</div>
+                            <div class="body-text" style="color: ${colorScheme.text};">${colorScheme.description}</div>
+                            <div class="price" style="color: ${colorScheme.accent}; border-top-color: ${colorScheme.border};">
+                                € ${plan.totalCost.toFixed(2)}
+                            </div>
+                        </div>
+                      `;
+                    }).join('')}
+                </div>
+            </main>
 
-                <footer class="quote-footer">
-                    <p>Thank you for considering our training programs!</p>
-                    <p>Quote ID: ${quoteId}</p>
-                </footer>
-            </div> 
+            <footer class="quote-footer">
+                <p>Thank you for considering System Logistics training programs.</p>
+                <p>Quote valid for 30 days. Prices are exclusive of applicable taxes.</p>
+            </footer>
         </div>
     </body>
     </html>
   `;
 };
 
-/**
- * Generate HTML for a plan details page
- */
+
+// ===========================================================================
+// Helper Function: Generate HTML for a Plan Details Page
+// ===========================================================================
 const generatePlanDetailsPageHtml = (
   plan: PlanDetailsData,
   quoteId: string,
   logoSrc: string
 ): string => {
-  // Get the total costs
   const totalTrainingCost = plan.totalTrainingCost;
   const totalTripCost = plan.totalTripCost;
   const grandTotal = totalTrainingCost + totalTripCost;
 
-  // Generate a visual Gantt chart if schedule data is available
-  const ganttChartHTML = generateGanttChartHTML(plan.scheduledTasks || []);
+  // Generate the Gantt chart HTML if data exists
+  const ganttChartHTML = plan.scheduledTasks && plan.scheduledTasks.length > 0
+      ? generateGanttChartHTML(plan.scheduledTasks)
+      : `<div style="padding: 20px; text-align: center; color: #888; font-style: italic;">No schedule data available for this plan.</div>`;
 
+  // Use the CSS provided in the previous response (with page break controls and 100% width)
+  // Make sure units are appropriate for print/PDF (pt, mm, etc.) rather than just px where possible.
   return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Training Plan Details - A4</title>
+        <title>Training Plan Details - ${plan.planName}</title>
         <style>
-/* Print-specific styles */
-
-/* Basic Reset & Body Styling */
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    line-height: 1.6;
-    color: #333;
-    margin: 0;
-    padding: 0;
-    background-color: #ffffff;
-    /* Ensure background colors are printed/exported */
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-}
-
-/* Apply box-sizing globally for easier width calculations */
-* {
-    box-sizing: border-box;
-}
-
-@page {
-    size: A4;
-    margin: 0; /* Remove printer margins */
-}
-
-/* Page Container */
-.container {
-    /* margin: 0 auto; */ /* REMOVED: No longer needed for centering if we want full width */
-    width: 100%; /* ADDED: Make container use full page width */
-    padding: 5mm; /* ADJUSTED: Slightly larger padding for better margins inside the page */
-    background-color: #ffffff;
-    overflow: hidden; /* ADDED: Helps contain floated/complex elements, though might interfere with breaks if misused */
-}
-
-/* Header Section */
-.details-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    page-break-after: avoid; /* Avoid breaking page right after header */
-}
-
-.logo-container img {
-    height: 50px; /* Slightly reduced for potentially less vertical space */
-    width: auto;
-    /* ADDED: Ensure image doesn't cause overflow issues */
-    max-width: 100%;
-}
-
-.plan-title {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.plan-title h2 {
-    margin: 0;
-    font-size: 1.8em;
-    font-weight: 600;
-    color: #2d3748;
-}
-
-.plan-icon {
-    background: #E5E7EB;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    /* ADDED: Ensure icon content fits */
-    font-size: 1.2em;
-    flex-shrink: 0;
-}
-
-/* Resource Cards */
-.resources-container {
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* Reduced gap slightly */
-    margin-bottom: 25px;
-}
-
-.resources-title {
-    font-size: 1.4em;
-    font-weight: 600;
-    color: #2d3748;
-    margin-bottom: 15px;
-    page-break-after: avoid; /* Avoid breaking page right after this title */
-}
-
-.resource-card {
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    overflow: hidden;
-    background-color: #f8fafc;
-    page-break-inside: avoid; /* *** IMPORTANT: Try not to break a card across pages *** */
-    break-inside: avoid-page; /* Modern equivalent */
-}
-
-.resource-header {
-    background-color: #f1f5f9;
-    padding: 10px 14px; /* Slightly adjusted padding */
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-bottom: 1px solid #e2e8f0;
-    /* page-break-after: avoid; */ /* Might be too strict, avoid inside card is better */
-}
-
-.resource-name {
-    font-weight: 600;
-    font-size: 1.1em;
-    color: #334155;
-}
-
-.resource-icon {
-    width: 20px;
-    height: 20px;
-    background: #cbd5e1;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.resource-details {
-    padding: 14px; /* Slightly adjusted padding */
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-gap: 12px; /* Slightly adjusted gap */
-}
-
-.detail-box {
-    background-color: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 10px; /* Slightly adjusted padding */
-    page-break-inside: avoid; /* Avoid breaking inside a detail box */
-    break-inside: avoid-page;
-}
-
-.detail-box-header {
-    font-size: 0.8em;
-    color: #64748b;
-    margin-bottom: 5px;
-}
-
-.detail-box-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap; /* Allow wrapping if space is tight */
-    gap: 5px;
-}
-
-.detail-box-value {
-    font-weight: 600;
-    color: #334155;
-}
-
-.detail-box-price {
-    color: #10b981;
-    font-weight: 600;
-}
-
-.subdetails {
-    margin-top: 8px;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 8px;
-    font-size: 0.85em;
-    page-break-inside: avoid; /* Avoid breaking within subdetails */
-    break-inside: avoid-page;
-}
-
-.subdetail-row {
-    display: flex;
-    justify-content: space-between;
-    color: #64748b;
-    margin-bottom: 4px;
-}
-
-/* Gantt Chart Container */
-.gantt-container {
-    margin-top: 30px; /* Adjusted margin */
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    overflow: hidden; /* Keep overflow hidden for the container border-radius */
-    width: 100%;
-    /* ADDED: Control breaking before this section if possible */
-    page-break-before: auto;
-    break-before: auto;
-}
-
-.gantt-header {
-    background-color: #f1f5f9;
-    padding: 12px 16px;
-    border-bottom: 1px solid #e2e8f0;
-    page-break-after: avoid; /* Keep header with the chart */
-}
-
-.gantt-title {
-    font-weight: 600;
-    font-size: 1.1em;
-    color: #334155;
-}
-
-.gantt-chart {
-    background-color: #ffffff;
-    padding: 0; /* Remove padding here, handle inside grid */
-    position: relative; /* Keep for absolute positioned tasks */
-    width: 100%;
-    /* REMOVED: overflow: auto; - This prevents content flow in print */
-    /* REMOVED: min-height: 300px; - Let content dictate height */
-}
-
-/* Gantt chart styles */
-/* IMPORTANT: The Gantt chart breaking naturally across pages is tricky.
-   CSS page breaks work best *between* block elements.
-   Breaking inside a complex grid/flex structure across pages often fails.
-   The best bet is to ensure rows don't break internally and hope the
-   renderer breaks *between* rows. If the chart is *wider* than the page,
-   it *will* be cut off horizontally unless scaled down. */
-
-.gantt-grid {
-    display: grid; /* Keep using grid */
-    width: 100%;
-    border: none; /* Remove outer border, container has one */
-    /* ADDED: Tell the grid it's okay to break between rows */
-    page-break-inside: auto;
-    break-inside: auto;
-}
-
-.gantt-days {
-    display: flex; /* Use flex for the header row */
-    border-bottom: 1px solid #e2e8f0;
-    background-color: #f8fafc;
-    /* ADDED: Keep header together */
-    page-break-inside: avoid;
-    break-inside: avoid-page;
-}
-
-.gantt-day {
-    flex: 1;
-    text-align: center;
-    padding: 8px 0;
-    font-size: 0.8em;
-    font-weight: 600;
-    color: #64748b;
-    border-right: 1px solid #e2e8f0;
-}
-
-.gantt-day:last-child {
-    border-right: none;
-}
-
-/* This represents one entire resource row in the Gantt */
-.gantt-resource-row {
-    display: flex; /* Use flex for layout */
-    border-bottom: 1px solid #e2e8f0;
-    position: relative; /* Keep for absolute positioned tasks */
-    min-height: 40px; /* Use min-height instead of height */
-    /* ADDED: CRITICAL - Avoid breaking *inside* a single resource's row */
-    page-break-inside: avoid;
-    break-inside: avoid-page;
-}
-
-.gantt-resource-row:last-child {
-    border-bottom: none;
-}
-
-.gantt-resource-name {
-    width: 150px; /* Keep fixed width */
-    padding: 10px;
-    background-color: #f8fafc;
-    border-right: 1px solid #e2e8f0;
-    font-weight: 500;
-    color: #334155;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    /* REMOVED: position: sticky; left: 0; z-index: 1; - Sticky position doesn't work well in print/PDF */
-    /* ADDED: Ensure it stays vertically aligned */
-    display: flex;
-    align-items: center;
-    flex-shrink: 0; /* Prevent shrinking */
-}
-
-.gantt-days-container {
-    flex: 1; /* Takes remaining space */
-    display: flex;
-    position: relative; /* Keep for absolute tasks */
-}
-
-.gantt-day-cell {
-    flex: 1;
-    border-right: 1px solid #e2e8f0;
-    min-height: 40px; /* Match row min-height */
-}
-
-.gantt-day-cell:last-child {
-    border-right: none;
-}
-
-.gantt-task {
-    position: absolute;
-    height: 24px;
-    top: 8px; /* Adjust as needed */
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 0.8em;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding: 0 5px;
-    z-index: 2; /* Keep on top */
-}
-
-/* Task colors by resource type */
-.task-machine { background-color: #3b82f6; }
-.task-software { background-color: #10b981; }
-.task-default { background-color: #6366f1; }
-
-
-/* Summary Section */
-.cost-summary {
-    margin-top: 30px;
-    padding: 20px;
-    background-color: #f8fafc;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    /* ADDED: Control breaking */
-    page-break-inside: avoid;
-    break-inside: avoid-page;
-    page-break-before: auto; /* Allow break before if needed */
-    break-before: auto;
-}
-
-.summary-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    color: #475569;
-}
-
-.summary-row.total {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid #e2e8f0;
-    font-weight: 600;
-    font-size: 1.1em;
-    color: #10b981;
-}
-
-/* Footer */
-.page-footer {
-    margin-top: 30px; /* Reduced margin */
-    text-align: center;
-    color: #94a3b8;
-    font-size: 0.85em;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 10px; /* Reduced padding */
-    /* ADDED: Try to keep footer on the same page as the summary if possible */
-    page-break-before: auto;
-    break-before: auto;
-    /* Or force to bottom if using running footers (more advanced) */
-}
-
-/* Add media print rules specifically (optional but good practice) */
-@media print {
-    body {
-        /* Already set globally, but ensuring */
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-    .container {
-       /* Ensure no box-shadows etc. that might interfere */
-       box-shadow: none;
-       border: none; /* If container border is not desired in print */
-    }
-    /* Add any other print-specific overrides */
-
-    /* Re-iterate break rules for clarity if needed, though they work outside @media print too */
-    .resource-card,
-    .detail-box,
-    .subdetails,
-    .gantt-resource-row,
-    .cost-summary {
-        page-break-inside: avoid;
-        break-inside: avoid-page;
-    }
-
-    .details-header,
-    .resources-title,
-    .gantt-header {
-         page-break-after: avoid;
-         break-after: avoid-page;
-    }
-
-    .gantt-container,
-    .cost-summary,
-    .page-footer {
-        page-break-before: auto;
-        break-before: auto;
-    }
-}
-
-/* Removed the extra closing brace */
-/* } */ /* This brace was extra */
+            /* Basic Reset & Body Styling */
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.4; color: #333; margin: 0; padding: 0; background-color: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 10pt; }
+            * { box-sizing: border-box; }
+            /* Page Container */
+            .container { width: 100%; /* CRITICAL: Use full width of the parent div (210mm) */ padding: 30pt 30pt 40pt 30pt; /* Internal padding */ background-color: #ffffff; }
+            /* Header Section */
+            .details-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25pt; page-break-after: avoid; }
+            .logo-container img { height: 40pt; width: auto; max-width: 150pt; }
+            .plan-title { display: flex; align-items: center; gap: 10pt; }
+            .plan-title h2 { margin: 0; font-size: 16pt; font-weight: 600; color: #2d3748; }
+            .plan-icon { background: #E5E7EB; width: 30pt; height: 30pt; display: flex; align-items: center; justify-content: center; border-radius: 6pt; font-size: 1.5em; flex-shrink: 0; }
+            /* Resource Allocation Section */
+            .resources-container { margin-bottom: 25pt; }
+            .resources-title { font-size: 14pt; font-weight: 600; color: #2d3748; margin-bottom: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 5pt; page-break-after: avoid; }
+            .resource-card { border: 1px solid #e2e8f0; border-radius: 6pt; overflow: hidden; background-color: #f8fafc; margin-bottom: 12pt; page-break-inside: avoid; break-inside: avoid-page; }
+            .resource-header { background-color: #f1f5f9; padding: 8pt 12pt; display: flex; align-items: center; gap: 8pt; border-bottom: 1px solid #e2e8f0; }
+            .resource-name { font-weight: 600; font-size: 10.5pt; color: #334155; }
+            .resource-icon { font-size: 1.2em; /* Using emoji directly */ flex-shrink: 0; }
+            .resource-details { padding: 12pt; display: grid; grid-template-columns: 1fr 1fr; grid-gap: 10pt; }
+            .detail-box { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4pt; padding: 8pt 10pt; page-break-inside: avoid; break-inside: avoid-page; }
+            .detail-box-header { font-size: 8pt; color: #64748b; margin-bottom: 4pt; text-transform: uppercase; }
+            .detail-box-content { display: flex; justify-content: space-between; align-items: center; gap: 5pt; flex-wrap: wrap; }
+            .detail-box-value { font-weight: 600; color: #334155; font-size: 10pt; display: flex; align-items: center; gap: 4pt; }
+            .detail-box-price { color: #10b981; font-weight: 600; font-size: 10pt; white-space: nowrap; }
+            .subdetails { margin-top: 6pt; border-top: 1px solid #e2e8f0; padding-top: 6pt; font-size: 8.5pt; page-break-inside: avoid; break-inside: avoid-page; }
+            .subdetail-row { display: flex; justify-content: space-between; color: #64748b; margin-bottom: 3pt; }
+            .subdetail-row span:first-child { padding-right: 10pt; }
+            /* Gantt Chart Section */
+            .gantt-container { margin-top: 25pt; border: 1px solid #e2e8f0; border-radius: 6pt; overflow: hidden; width: 100%; page-break-before: auto; break-before: auto; }
+            .gantt-header { background-color: #f1f5f9; padding: 10pt 12pt; border-bottom: 1px solid #e2e8f0; page-break-after: avoid; }
+            .gantt-title { font-weight: 600; font-size: 11pt; color: #334155; }
+            .gantt-chart { background-color: #ffffff; width: 100%; padding: 0; /* Padding managed by grid */ }
+            .gantt-grid { display: grid; width: 100%; border: none; }
+            .gantt-days-header { display: flex; border-bottom: 1px solid #e2e8f0; background-color: #f8fafc; page-break-inside: avoid; break-inside: avoid-page; }
+            .gantt-resource-label-header { width: 120pt; /* Fixed width for resource names column header */ padding: 6pt 8pt; font-size: 8pt; font-weight: 600; color: #64748b; border-right: 1px solid #e2e8f0; background-color: #f8fafc; box-sizing: border-box; }
+            .gantt-days-cells-header { flex: 1; display: flex; }
+            .gantt-day-header { flex: 1; text-align: center; padding: 6pt 0; font-size: 8pt; font-weight: 600; color: #64748b; border-right: 1px solid #e2e8f0; white-space: nowrap; }
+            .gantt-day-header:last-child { border-right: none; }
+            .gantt-resource-row { display: flex; border-bottom: 1px solid #e2e8f0; position: relative; min-height: 30pt; page-break-inside: avoid; break-inside: avoid-page; }
+            .gantt-resource-row:last-child { border-bottom: none; }
+            .gantt-resource-name { width: 120pt; /* Fixed width for resource names */ padding: 8pt; background-color: #f8fafc; border-right: 1px solid #e2e8f0; font-weight: 500; color: #334155; font-size: 9pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; flex-shrink: 0; box-sizing: border-box; }
+            .gantt-days-container { flex: 1; display: flex; position: relative; }
+            .gantt-day-cell { flex: 1; border-right: 1px solid #e2e8f0; min-height: 30pt; }
+            .gantt-day-cell:last-child { border-right: none; }
+            .gantt-task { position: absolute; height: 18pt; top: 6pt; border-radius: 3pt; display: flex; align-items: center; justify-content: center; color: white; font-size: 8pt; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 4pt; z-index: 2; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+            .task-machine { background-color: #3b82f6; } /* Blue */
+            .task-software { background-color: #10b981; } /* Green */
+            .task-default { background-color: #8b5cf6; } /* Violet */
+            /* Summary Section */
+            .cost-summary { margin-top: 25pt; padding: 15pt; background-color: #f8fafc; border-radius: 6pt; border: 1px solid #e2e8f0; page-break-inside: avoid; break-inside: avoid-page; page-break-before: auto; break-before: auto; }
+            .summary-row { display: flex; justify-content: space-between; margin-bottom: 6pt; color: #475569; font-size: 10pt; }
+            .summary-row span:first-child { padding-right: 15pt; }
+            .summary-row.total { margin-top: 8pt; padding-top: 8pt; border-top: 1px solid #e2e8f0; font-weight: 600; font-size: 11pt; color: #10b981; }
+            /* Footer */
+            .page-footer { margin-top: 30pt; text-align: center; color: #94a3b8; font-size: 8pt; border-top: 1px solid #e2e8f0; padding-top: 10pt; page-break-before: auto; break-before: auto; }
+            .page-footer p { margin: 0; }
         </style>
     </head>
     <body>
@@ -933,7 +453,6 @@ body {
 
             <section class="resources-container">
                 <div class="resources-title">Resource Allocation</div>
-                
                 ${plan.resources.map(resource => `
                     <div class="resource-card">
                         <div class="resource-header">
@@ -944,14 +463,14 @@ body {
                             <div class="detail-box">
                                 <div class="detail-box-header">Training Days</div>
                                 <div class="detail-box-content">
-                                    <div class="detail-box-value">📅 ${resource.trainingDaysCount}</div>
+                                    <div class="detail-box-value"><span>📅</span> ${resource.trainingDaysCount}</div>
                                     <div class="detail-box-price">€ ${resource.trainingCost.toFixed(2)}</div>
                                 </div>
                             </div>
                             <div class="detail-box">
-                                <div class="detail-box-header">Business Trip Days</div>
+                                <div class="detail-box-header">Business Trip Costs</div>
                                 <div class="detail-box-content">
-                                    <div class="detail-box-value">🧳 ${resource.businessTripDays}</div>
+                                    <div class="detail-box-value"><span>✈️</span> ${resource.businessTripDays} Days</div>
                                     <div class="detail-box-price">€ ${resource.tripCosts.total.toFixed(2)}</div>
                                 </div>
                                 <div class="subdetails">
@@ -985,15 +504,15 @@ body {
 
             <section class="cost-summary">
                 <div class="summary-row">
-                    <span>Training Cost:</span>
+                    <span>Total Training Cost:</span>
                     <span>€ ${totalTrainingCost.toFixed(2)}</span>
                 </div>
                 <div class="summary-row">
-                    <span>Business Trip Cost:</span>
+                    <span>Total Business Trip Cost:</span>
                     <span>€ ${totalTripCost.toFixed(2)}</span>
                 </div>
                 <div class="summary-row total">
-                    <span>Total:</span>
+                    <span>Total Plan Cost:</span>
                     <span>€ ${grandTotal.toFixed(2)}</span>
                 </div>
             </section>
@@ -1007,54 +526,77 @@ body {
   `;
 };
 
-/**
- * Generate the HTML for the Gantt chart visualization
- */
+
+// ===========================================================================
+// Helper Function: Generate HTML for the Gantt Chart Visualization
+// ===========================================================================
 function generateGanttChartHTML(tasks: ScheduledTaskSegment[]): string {
   if (!tasks || tasks.length === 0) {
-    return `<div class="gantt-placeholder">No schedule data available for this plan</div>`;
+    // Return placeholder styled similarly to other elements
+    return `<div style="padding: 20pt; text-align: center; color: #888; font-style: italic; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">No schedule data available.</div>`;
   }
 
-  // Find the maximum day to determine chart width
-  const maxDay = Math.max(...tasks.map(task => task.start_day + task.duration_days));
-  // Add buffer days to make the chart look better
-  const totalDays = maxDay + 2;
-  
-  // Group tasks by resource for better visualization
-  const resourceMap = new Map<number, ScheduledTaskSegment[]>();
-  
+  // Find the maximum day span
+  let maxDay = 0;
+  tasks.forEach(task => {
+    const endDay = task.start_day + task.duration_days;
+    if (endDay > maxDay) {
+      maxDay = endDay;
+    }
+  });
+  // Add a small buffer (e.g., 1 day) for visual spacing
+  const totalDays = maxDay + 1;
+
+  // Group tasks by resource
+  const resourceMap = new Map<number, { name: string; tasks: ScheduledTaskSegment[] }>();
   tasks.forEach(task => {
     if (!resourceMap.has(task.resource_id)) {
-      resourceMap.set(task.resource_id, []);
+      resourceMap.set(task.resource_id, { name: task.resource_name, tasks: [] });
     }
-    resourceMap.get(task.resource_id)!.push(task);
+    resourceMap.get(task.resource_id)!.tasks.push(task);
   });
 
   // Generate day headers
-  const daysHeader = Array.from({ length: totalDays }, (_, i) => `<div class="gantt-day">Day ${i + 1}</div>`).join('');
-  
+  const daysHeaderCells = Array.from({ length: totalDays }, (_, i) =>
+      `<div class="gantt-day-header">Day ${i + 1}</div>`
+  ).join('');
+  const ganttDaysHeader = `
+    <div class="gantt-days-header">
+      <div class="gantt-resource-label-header">Resource</div>
+      <div class="gantt-days-cells-header">${daysHeaderCells}</div>
+    </div>`;
+
   // Generate resource rows with tasks
-  const resourceRows = Array.from(resourceMap.entries()).map(([resourceId, resourceTasks]) => {
-    const firstTask = resourceTasks[0];
-    const resourceName = firstTask.resource_name;
-    
-    // Generate task bars
-    const taskBars = resourceTasks.map(task => {
-      const left = (task.start_day / totalDays) * 100;
-      const width = (task.duration_days / totalDays) * 100;
-      const taskClass = task.resource_category === 'Machine' ? 'task-machine' : 
-                       task.resource_category === 'Software' ? 'task-software' : 'task-default';
-      
-      return `<div class="gantt-task ${taskClass}" 
-                  style="left: ${left}%; width: ${width}%;" 
-                  title="${task.machine_name}: ${task.segment_hours} hours">
-                ${task.segment_hours}h
+  const resourceRows = Array.from(resourceMap.values()).map(resourceData => {
+    const resourceName = resourceData.name;
+
+    // Task bars for this resource
+    const taskBars = resourceData.tasks.map(task => {
+      // Calculate position and width based on days (0-indexed start_day)
+      // Ensure duration is at least a small visual element even if 0 days
+      const duration = Math.max(task.duration_days, 0.1); // Prevent zero width
+      const start = Math.max(task.start_day, 0); // Ensure start is not negative
+
+      const leftPercent = (start / totalDays) * 100;
+      const widthPercent = (duration / totalDays) * 100;
+
+      // Determine color based on category
+      let taskClass = 'task-default';
+      if (task.resource_category === 'Machine') taskClass = 'task-machine';
+      else if (task.resource_category === 'Software') taskClass = 'task-software';
+
+      const titleText = `${task.machine_name || resourceName}: Day ${task.start_day + 1} - Day ${task.start_day + task.duration_days} (${task.segment_hours} hours)`;
+
+      return `<div class="gantt-task ${taskClass}"
+                   style="left: ${leftPercent}%; width: ${widthPercent}%;"
+                   title="${titleText}">
+                 ${task.segment_hours}h
               </div>`;
     }).join('');
-    
-    // Generate empty day cells for the grid
+
+    // Grid cells for this row
     const dayCells = Array.from({ length: totalDays }, () => `<div class="gantt-day-cell"></div>`).join('');
-    
+
     return `
       <div class="gantt-resource-row">
         <div class="gantt-resource-name">${resourceName}</div>
@@ -1065,13 +607,10 @@ function generateGanttChartHTML(tasks: ScheduledTaskSegment[]): string {
       </div>
     `;
   }).join('');
-  
+
   return `
     <div class="gantt-grid">
-      <div class="gantt-days">
-        <div style="width: 150px; border-right: 1px solid #e2e8f0; background-color: #f8fafc;"></div>
-        <div style="flex: 1; display: flex;">${daysHeader}</div>
-      </div>
+      ${ganttDaysHeader}
       ${resourceRows}
     </div>
   `;
