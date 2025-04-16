@@ -2,15 +2,16 @@
 
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import "./GanttChart.css"; // Ensure CSS is imported
-import { Loader2, PlaneTakeoff, PlaneLanding, ZoomIn, ZoomOut } from "lucide-react"; // Added Zoom Icons
-import { Button } from "@/components/ui/button"; // Make sure you have this Button component
+import { Loader2, PlaneTakeoff, PlaneLanding, ZoomIn, ZoomOut } from "lucide-react"; // Keep Zoom Icons
+// Button might still be needed for Retry, so keep it if used there
+import { Button } from "@/components/ui/button";
 import { ScheduledTaskSegment } from '@/utils/types';
 
 // --- Constants ---
-const INITIAL_DAY_WIDTH = 60; // px - Default zoom level (Increased from 30)
-const MIN_DAY_WIDTH = 15;    // px - Minimum zoom out level
-const MAX_DAY_WIDTH = 150;   // px - Maximum zoom in level
-const ZOOM_STEP = 10;        // px - How much to change width per zoom click
+const INITIAL_DAY_WIDTH = 80; // px - FURTHER INCREASED Default zoom level
+const MIN_DAY_WIDTH = 20;    // px - Adjusted minimum if needed
+const MAX_DAY_WIDTH = 200;   // px - Adjusted maximum if needed
+const ZOOM_STEP = 15;        // px - How much to change width per zoom click
 
 const RESOURCE_HEADER_HEIGHT = 40; // px - For resource name row
 const MACHINE_ROW_HEIGHT = 30; // px - For machine name and task row
@@ -199,11 +200,9 @@ const GanttChart: React.FC<GanttChartProps> = ({
       if (resourceMinMax[resourceId]) {
         const earliestTaskStart = resourceMinMax[resourceId].min;
         const latestTaskEnd = resourceMinMax[resourceId].max;
-        // Travel days are assumed to be one day before the first task and one day after the last
         const travelStartDay = earliestTaskStart - 1;
         const travelEndDay = latestTaskEnd + 1;
-        const safeTravelStartDay = Math.max(1, travelStartDay); // Ensure start day is not less than 1
-        // Total duration includes the travel days
+        const safeTravelStartDay = Math.max(1, travelStartDay);
         const totalDuration = Math.max(1, travelEndDay - safeTravelStartDay + 1);
         engagements.push({
             resourceId,
@@ -211,48 +210,42 @@ const GanttChart: React.FC<GanttChartProps> = ({
             travelStartDay: safeTravelStartDay,
             travelEndDay,
             totalDuration,
-            top: resourceTop // Position the bar at the top of the resource group
+            top: resourceTop
         });
       }
 
-      currentTop += RESOURCE_HEADER_HEIGHT; // Move top down past the resource header
+      currentTop += RESOURCE_HEADER_HEIGHT;
 
       // Calculate individual task segment positions (NOW USES dayWidth)
       group.machines.forEach(machine => {
         machine.requirements.forEach(seg => {
-           // Safety checks for required data
            if (seg.start_day == null || seg.resource_id == null || seg.start_hour_offset == null || seg.segment_hours == null) {
                 console.warn("Skipping segment render due to missing data:", seg);
                 return;
            }
           const { month, dayOfMonth } = getDayPosition(seg.start_day);
 
-          // Calculate base left position for the start day (USES dayWidth)
           const baseLeft = (Math.max(1, seg.start_day) - 1) * dayWidth;
-          // Calculate offset within the day based on hours *before* this segment (USES dayWidth)
           const hourOffsetPixels = (seg.start_hour_offset / DAILY_HOUR_LIMIT) * dayWidth;
-          const left = baseLeft + hourOffsetPixels; // Final left position
+          const left = baseLeft + hourOffsetPixels;
 
-          // Calculate width based on hours worked in *this* segment (USES dayWidth)
           let width = (seg.segment_hours / DAILY_HOUR_LIMIT) * dayWidth;
-          // Apply a minimum width for visibility, especially when zoomed out
-          width = Math.max(width, 4); // Minimum width of 4px
+          width = Math.max(width, 4);
 
           tasks.push({
             ...seg,
-            top: currentTop, // Position task within its machine row
-            left: left,      // Use the calculated position with hour offset
-            width: width,    // Use the calculated width based on segment hours
+            top: currentTop,
+            left: left,
+            width: width,
             month: month,
             dayOfMonth: dayOfMonth,
           });
         });
-        currentTop += MACHINE_ROW_HEIGHT; // Move top down past this machine row
+        currentTop += MACHINE_ROW_HEIGHT;
       });
     });
     return { tasksToRender: tasks, totalEngagementBars: engagements };
-    // **** ADD dayWidth to dependency array ****
-  }, [resourceGroups, requirements, getDayPosition, daysPerMonth, dayWidth]);
+  }, [resourceGroups, requirements, getDayPosition, daysPerMonth, dayWidth]); // Ensure dayWidth is dependency
 
   // --- Zoom Handlers ---
   const handleZoomIn = useCallback(() => {
@@ -268,33 +261,45 @@ const GanttChart: React.FC<GanttChartProps> = ({
   if (!loading && requirements.length === 0 && !error) { return <div className="gantt-empty"><p>No training assignments scheduled for the selected plan.</p></div>; }
   if (error) { return <div className="gantt-error"><p>Error: {error}</p>{onRetry && <Button onClick={onRetry}>Retry</Button>}</div>; }
 
-
   // --- Render ---
+  const isZoomOutDisabled = dayWidth <= MIN_DAY_WIDTH;
+  const isZoomInDisabled = dayWidth >= MAX_DAY_WIDTH;
+
   return (
     <div className="gantt-container">
-      {/* --- Zoom Controls --- */}
-      {/* Placed above the header row for easy access */}
-      <div className="gantt-controls p-2 flex justify-end items-center gap-2 border-b border-[--gantt-border-color] bg-[--gantt-header-bg]">
-          <Button variant="outline" size="sm" onClick={handleZoomOut} disabled={dayWidth <= MIN_DAY_WIDTH} title="Zoom Out">
-              <ZoomOut className="h-4 w-4" />
-          </Button>
-          {/* Display current zoom level percentage relative to initial */}
-          <span className="text-xs text-[--gantt-text-color-muted] w-16 text-center">
-              {Math.round(dayWidth / INITIAL_DAY_WIDTH * 100)}%
-          </span>
-          <Button variant="outline" size="sm" onClick={handleZoomIn} disabled={dayWidth >= MAX_DAY_WIDTH} title="Zoom In">
-              <ZoomIn className="h-4 w-4" />
-          </Button>
+      {/* --- Zoom Controls --- Icons Only */}
+      <div className="gantt-controls"> {/* Outer container for border */}
+        <div className="gantt-controls-inner"> {/* Inner container for flex layout */}
+            {/* Zoom Out Icon */}
+            <ZoomOut
+                className={`gantt-zoom-icon ${isZoomOutDisabled ? 'disabled' : ''}`}
+                size={18} // Icon size
+                onClick={!isZoomOutDisabled ? handleZoomOut : undefined} // Prevent click if disabled
+                aria-disabled={isZoomOutDisabled}
+                title="Zoom Out"
+            />
+
+            {/* Zoom Level Text */}
+            <span className="gantt-zoom-level">
+                {Math.round(dayWidth / INITIAL_DAY_WIDTH * 100)}%
+            </span>
+
+            {/* Zoom In Icon */}
+            <ZoomIn
+                className={`gantt-zoom-icon ${isZoomInDisabled ? 'disabled' : ''}`}
+                size={18} // Icon size
+                onClick={!isZoomInDisabled ? handleZoomIn : undefined} // Prevent click if disabled
+                aria-disabled={isZoomInDisabled}
+                title="Zoom In"
+            />
+        </div>
       </div>
 
       {/* Fixed Header Row */}
       <div className="gantt-header-row">
         <div className="gantt-resource-header-cell">Resources & Machines/Software</div>
         <div className="gantt-timeline-header-wrapper">
-          {/* **** Header Content width now uses totalTimelineWidth state **** */}
-          {/* This content scrolls horizontally */}
           <div className="gantt-timeline-header-content" ref={timelineHeaderRef} style={{ width: `${totalTimelineWidth}px` }}>
-            {/* **** Month width uses dayWidth state **** */}
             <div className="gantt-months">
               {months.map(month => (
                 <div key={`month-${month}`} className="gantt-month" style={{ minWidth: `${daysPerMonth * dayWidth}px`, width: `${daysPerMonth * dayWidth}px` }}>
@@ -302,7 +307,6 @@ const GanttChart: React.FC<GanttChartProps> = ({
                 </div>
               ))}
             </div>
-            {/* **** Day width uses dayWidth state **** */}
             <div className="gantt-days">
               {months.map(month => days.map(day => (
                 <div key={`day-${month}-${day}`} className={`gantt-day ${isWeekend(month, day) ? 'weekend' : ''}`} style={{ minWidth: `${dayWidth}px`, width: `${dayWidth}px` }}>
@@ -318,13 +322,10 @@ const GanttChart: React.FC<GanttChartProps> = ({
       <div className="gantt-main-content-row">
         {/* Resource List (Fixed Width, Scrolls Vertically) */}
          <div className="gantt-resource-list-wrapper">
-           {/* This content scrolls vertically */}
-           <div className="gantt-resource-list-content" ref={resourceListRef} style={{ height: `${totalGridHeight}px` }}> {/* Set height for proper scroll calculation */}
+           <div className="gantt-resource-list-content" ref={resourceListRef} style={{ height: `${totalGridHeight}px` }}>
               {resourceGroups.map(group => (
                 <div key={`resource-group-${group.resourceId}`} className="gantt-resource-group">
-                  {/* Resource Name Header */}
                   <div className="gantt-resource-name" style={{ height: `${RESOURCE_HEADER_HEIGHT}px` }}>{group.resourceName}</div>
-                  {/* Machine/Software List for this Resource */}
                   {group.machines.map((machine) => (
                     <div
                       key={`machine-label-${group.resourceId}-${machine.machineName}`}
@@ -332,11 +333,9 @@ const GanttChart: React.FC<GanttChartProps> = ({
                       style={{ height: `${MACHINE_ROW_HEIGHT}px` }}
                     >
                       <div className="flex items-center">
-                        {/* Optional indicator for Software */}
                         {machine.resourceCategory === 'Software' ? (
                           <span className="mr-1 text-xs px-1 bg-indigo-700/50 rounded">SW</span>
                         ) : null}
-                        {/* Machine Name and Total Hours */}
                         {machine.machineName} ({machine.displayHours || 0}h)
                       </div>
                     </div>
@@ -348,12 +347,11 @@ const GanttChart: React.FC<GanttChartProps> = ({
 
         {/* Scrollable Grid Container (Scrolls Horizontally and Vertically) */}
         <div className="gantt-grid-scroll-container" ref={scrollContainerRef} onScroll={handleScroll}>
-          {/* **** Grid Content dimensions use totalTimelineWidth (dynamic) and totalGridHeight (fixed per data) **** */}
           <div className="gantt-grid-content" style={{ width: `${totalTimelineWidth}px`, height: `${totalGridHeight}px` }}>
 
             {/* Grid Background Layer (Lines and Weekend Shading) */}
             <div className="gantt-grid-background">
-                {/* **** Vertical lines use dayWidth **** */}
+                {/* Vertical lines use dayWidth */}
                 {Array.from({ length: totalDays + 1 }).map((_, index) => (
                   <div key={`vline-${index}`} className="gantt-grid-vline" style={{ left: `${index * dayWidth}px` }} />
                 ))}
@@ -362,22 +360,16 @@ const GanttChart: React.FC<GanttChartProps> = ({
                     let currentTop = 0;
                     const rows: React.ReactNode[] = [];
                     resourceGroups.forEach(group => {
-                        // Line below Resource Header
                         rows.push(<div key={`hr-res-${group.resourceId}`} className="gantt-grid-hline group-separator" style={{ top: `${currentTop + RESOURCE_HEADER_HEIGHT -1}px` }} />);
                         currentTop += RESOURCE_HEADER_HEIGHT;
-                        // Lines between machines
                         group.machines.forEach((machine, index) => {
-                            if (index < group.machines.length ) { // Add line below each machine row
-                                rows.push(<div key={`hr-mac-${group.resourceId}-${machine.machineName}`} className="gantt-grid-hline" style={{ top: `${currentTop + MACHINE_ROW_HEIGHT - 1}px` }} />);
-                            }
+                            rows.push(<div key={`hr-mac-${group.resourceId}-${machine.machineName}`} className="gantt-grid-hline" style={{ top: `${currentTop + MACHINE_ROW_HEIGHT - 1}px` }} />);
                             currentTop += MACHINE_ROW_HEIGHT;
                         });
-                        // // Optional: Add a thicker separator line after the whole group (if desired)
-                        // rows.push(<div key={`hr-group-end-${group.resourceId}`} className="gantt-grid-hline group-separator" style={{ top: `${currentTop - 1}px` }} />);
                     });
                     return rows;
                 })()}
-                {/* **** Weekend background uses dayWidth **** */}
+                {/* Weekend background uses dayWidth */}
                 {months.map(month => days.map(day => {
                     const dayNum = (month - 1) * daysPerMonth + day;
                     return isWeekend(month, day) && (
@@ -388,13 +380,12 @@ const GanttChart: React.FC<GanttChartProps> = ({
 
             {/* Total Engagement Layer (Resource Booking including Travel) */}
             <div className="gantt-total-engagement-layer">
-                {/* **** Total Engagement bars use dayWidth for left/width **** */}
+                {/* Total Engagement bars use dayWidth for left/width */}
                 {totalEngagementBars.map(bar => {
-                    const left = (bar.travelStartDay - 1) * dayWidth; // Uses dayWidth
-                    const width = bar.totalDuration * dayWidth;       // Uses dayWidth
-                    // Position the bar vertically within the resource header row area
-                    const barTop = bar.top + 5; // Add some padding from the top of the resource row
-                    const barHeight = RESOURCE_HEADER_HEIGHT - 10; // Make it slightly smaller than the row height
+                    const left = (bar.travelStartDay - 1) * dayWidth;
+                    const width = bar.totalDuration * dayWidth;
+                    const barTop = bar.top + 5;
+                    const barHeight = RESOURCE_HEADER_HEIGHT - 10;
                     return (
                         <div
                             key={`total-${bar.resourceId}`}
@@ -407,15 +398,10 @@ const GanttChart: React.FC<GanttChartProps> = ({
                             }}
                             title={`Total Engagement for ${bar.resourceName}: Day ${bar.travelStartDay} to ${bar.travelEndDay} (Includes Travel)`}
                         >
-                            {/* Show travel icons only if the bar is wide enough */}
-                            {width > dayWidth * 1.5 && ( // Example condition: wide enough for icons
+                            {width > dayWidth * 1.5 && (
                                 <>
-                                    <span className="gantt-travel-icon start" title="Travel Start">
-                                        <PlaneTakeoff size={14} />
-                                    </span>
-                                    <span className="gantt-travel-icon end" title="Travel End">
-                                        <PlaneLanding size={14} />
-                                    </span>
+                                    <span className="gantt-travel-icon start" title="Travel Start"><PlaneTakeoff size={14} /></span>
+                                    <span className="gantt-travel-icon end" title="Travel End"><PlaneLanding size={14} /></span>
                                 </>
                             )}
                         </div>
@@ -425,24 +411,23 @@ const GanttChart: React.FC<GanttChartProps> = ({
 
             {/* Task Layer (Individual Training Segments) */}
             <div className="gantt-task-layer">
-              {/* **** Tasks use calculated left/width which depend on dayWidth **** */}
+              {/* Tasks use calculated left/width which depend on dayWidth */}
               {tasksToRender.map((seg) => (
                 <div
-                  key={seg.id} // Using id from ScheduledTaskSegment
+                  key={seg.id}
                   className={`gantt-task ${seg.resource_category === 'Software' ? 'software-task' : ''}`}
                   style={{
-                    top: `${seg.top + 3}px`, // Position within machine row with padding
-                    left: `${seg.left}px`,    // Already calculated using dayWidth
-                    width: `${seg.width}px`,  // Already calculated using dayWidth
-                    height: `${MACHINE_ROW_HEIGHT - 6}px`, // Slightly smaller than row height
+                    top: `${seg.top + 3}px`,
+                    left: `${seg.left}px`,
+                    width: `${seg.width}px`,
+                    height: `${MACHINE_ROW_HEIGHT - 6}px`,
                     backgroundColor: getResourceColor(seg.resource_id),
                     opacity: seg.resource_category === 'Software' ? 0.85 : 1,
                     borderStyle: seg.resource_category === 'Software' ? 'dashed' : 'solid'
                   }}
                   title={`${seg.machine_name}: ${seg.segment_hours}h this block (Total ${seg.total_training_hours}h). Start: M${seg.month} D${seg.dayOfMonth} Offset: ${seg.start_hour_offset.toFixed(1)}h. Logical Duration: ${seg.duration_days} day(s).`}
                 >
-                  {/* Show only segment hours. Only display if width allows. */}
-                  {seg.width > 20 && ( // Example: only show text if width is > 20px
+                  {seg.width > 25 && ( // Only show label if width is sufficient
                      <span className="gantt-task-label">
                         {seg.segment_hours % 1 === 0 ? seg.segment_hours : seg.segment_hours.toFixed(1)}h
                      </span>
