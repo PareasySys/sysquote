@@ -209,7 +209,7 @@ export const Logo = () => {
       onClick={(e) => e.preventDefault()}
     >
       <img 
-        src="/lovable-uploads/75a8fdbc-01ed-4d63-a2a7-dfd2a6b794dd.png" 
+        src="/lovable-uploads/4ae70efa-d7c2-4c56-b454-cee99d4017ad.png" 
         alt="SysQuote Logo" 
         className="h-7 w-7"
       />
@@ -228,7 +228,7 @@ export const LogoIcon = () => {
       onClick={(e) => e.preventDefault()}
     >
       <img 
-        src="/lovable-uploads/75a8fdbc-01ed-4d63-a2a7-dfd2a6b794dd.png" 
+        src="/lovable-uploads/4ae70efa-d7c2-4c56-b454-cee99d4017ad.png" 
         alt="SysQuote Logo" 
         className="h-7 w-7"
       />
