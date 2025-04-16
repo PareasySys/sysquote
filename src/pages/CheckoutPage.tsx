@@ -8,7 +8,7 @@ import {
   Logo,
   LogoIcon
 } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, MapPin, Euro, ChevronDown, FileText } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, MapPin, Euro, ChevronDown, FileText, Briefcase, CalendarDays, Wallet, Coffee, Gift, DollarSign, BadgeCheck, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -23,6 +23,8 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RainbowButton } from "@/components/ui/rainbow-button";
+import { useResourceIcons } from "@/hooks/useResourceIcons";
+import { useTrainingIcons } from "@/hooks/useTrainingIcons";
 
 const CheckoutPage: React.FC = () => {
   const { quoteId } = useParams<{ quoteId: string }>();
@@ -39,6 +41,9 @@ const CheckoutPage: React.FC = () => {
     area_name?: string;
   }>({});
   const [loadingQuote, setLoadingQuote] = useState(true);
+
+  const { icons: resourceIcons } = useResourceIcons();
+  const { icons: trainingIcons } = useTrainingIcons();
 
   useEffect(() => {
     if (quoteId) {
@@ -216,6 +221,8 @@ const CheckoutPage: React.FC = () => {
                     areaId={quoteData.area_id || null}
                     resources={resources}
                     areaCosts={areaCosts}
+                    resourceIcons={resourceIcons}
+                    trainingIcons={trainingIcons}
                   />
                 ))}
               </div>
@@ -257,9 +264,27 @@ interface TrainingPlanCardProps {
     daily_pocket_money: number;
     icon_name?: string | null;
   }>;
+  resourceIcons?: Array<{
+    name: string;
+    url: string;
+    source: string;
+  }>;
+  trainingIcons?: Array<{
+    name: string;
+    url: string;
+    source: string;
+  }>;
 }
 
-const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, areaId, resources, areaCosts }) => {
+const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ 
+  plan, 
+  quoteId, 
+  areaId, 
+  resources, 
+  areaCosts,
+  resourceIcons,
+  trainingIcons
+}) => {
   const { scheduledTasks, loading } = useTrainingRequirements(
     quoteId, 
     plan.plan_id, 
@@ -270,6 +295,18 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
   const selectedArea = React.useMemo(() => {
     return areaCosts.find(area => area.area_id === areaId) || null;
   }, [areaCosts, areaId]);
+  
+  const planIconUrl = React.useMemo(() => {
+    if (!plan.icon_name || !trainingIcons) return null;
+    const icon = trainingIcons.find(icon => icon.name === plan.icon_name);
+    return icon?.url || null;
+  }, [plan.icon_name, trainingIcons]);
+
+  const getResourceIcon = (resourceIconName: string | undefined) => {
+    if (!resourceIconName || !resourceIcons) return null;
+    const icon = resourceIcons.find(icon => icon.name === resourceIconName);
+    return icon?.url || null;
+  };
   
   const resourceMap = React.useMemo(() => {
     const map = new Map();
@@ -356,9 +393,9 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
       <CardHeader className="bg-slate-700/50 flex flex-row items-center justify-between pb-4">
         <div className="flex items-center gap-3">
           <div className="bg-slate-600/50 p-2 rounded-md">
-            {plan.icon_name ? (
+            {planIconUrl ? (
               <img
-                src={`/lovable-uploads/${plan.icon_name}.png`}
+                src={planIconUrl}
                 alt={plan.name}
                 className="h-6 w-6"
                 onError={(e) => {
@@ -367,9 +404,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                 }}
               />
             ) : (
-              <div className="h-6 w-6 bg-gray-400/20 rounded flex items-center justify-center">
-                <span className="text-xs text-gray-300">{plan.name.charAt(0)}</span>
-              </div>
+              <Briefcase className="h-6 w-6 text-gray-300" />
             )}
           </div>
           <CardTitle className="text-lg font-semibold text-gray-100">{plan.name}</CardTitle>
@@ -400,9 +435,9 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                 className="bg-slate-700/30 border border-white/5 rounded-md p-3"
               >
                 <div className="flex items-center gap-2 font-medium text-gray-200 mb-2">
-                  {resource.resourceIcon ? (
+                  {getResourceIcon(resource.resourceIcon) ? (
                     <img
-                      src={`/lovable-uploads/${resource.resourceIcon}.png`}
+                      src={getResourceIcon(resource.resourceIcon)}
                       alt={resource.resourceName}
                       className="h-5 w-5"
                       onError={(e) => {
@@ -410,9 +445,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                       }}
                     />
                   ) : (
-                    <div className="h-5 w-5 bg-gray-500/20 rounded flex items-center justify-center">
-                      <span className="text-xs">{resource.resourceName.charAt(0)}</span>
-                    </div>
+                    <User className="h-5 w-5 text-gray-300" />
                   )}
                   <span>{resource.resourceName}</span>
                 </div>
@@ -421,7 +454,10 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Training Days</div>
                     <div className="text-gray-200 font-medium flex justify-between items-center">
-                      <span>{resource.trainingDaysCount}</span>
+                      <span className="flex items-center">
+                        <CalendarDays className="h-3 w-3 mr-1 text-gray-400" />
+                        {resource.trainingDaysCount}
+                      </span>
                       <span className="text-emerald-300 text-xs flex items-center">
                         <Euro className="h-3 w-3 mr-1" />
                         {resource.trainingCost.toFixed(2)}
@@ -432,7 +468,10 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                   <div className="bg-slate-700/40 p-2 rounded border border-white/5">
                     <div className="text-gray-400 text-xs">Business Trip Days</div>
                     <div className="text-gray-200 font-medium flex justify-between items-center">
-                      <span>{resource.businessTripDays}</span>
+                      <span className="flex items-center">
+                        <Briefcase className="h-3 w-3 mr-1 text-gray-400" />
+                        {resource.businessTripDays}
+                      </span>
                       <span className="text-emerald-300 text-xs flex items-center">
                         <Euro className="h-3 w-3 mr-1" />
                         {resource.tripCosts.total.toFixed(2)}
@@ -442,15 +481,24 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
                     {selectedArea && (
                       <div className="mt-2 text-xs text-gray-400 space-y-1 border-t border-white/5 pt-2">
                         <div className="flex justify-between">
-                          <span>Accommodation & Food:</span>
+                          <span className="flex items-center">
+                            <Coffee className="h-3 w-3 mr-1" />
+                            Accommodation & Food:
+                          </span>
                           <span>€{resource.tripCosts.accommodationFood.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Daily Allowance:</span>
+                          <span className="flex items-center">
+                            <DollarSign className="h-3 w-3 mr-1" />
+                            Daily Allowance:
+                          </span>
                           <span>€{resource.tripCosts.allowance.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Pocket Money:</span>
+                          <span className="flex items-center">
+                            <Gift className="h-3 w-3 mr-1" />
+                            Pocket Money:
+                          </span>
                           <span>€{resource.tripCosts.pocketMoney.toFixed(2)}</span>
                         </div>
                       </div>
@@ -468,16 +516,25 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({ plan, quoteId, area
           <Separator className="mb-3 bg-white/10" />
           <div className="w-full text-sm">
             <div className="flex justify-between text-gray-300">
-              <span>Training Cost:</span>
+              <span className="flex items-center">
+                <BadgeCheck className="h-4 w-4 mr-1" />
+                Training Cost:
+              </span>
               <span className="font-medium">€{totalCosts.trainingTotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-gray-300">
-              <span>Business Trip Cost:</span>
+              <span className="flex items-center">
+                <Briefcase className="h-4 w-4 mr-1" />
+                Business Trip Cost:
+              </span>
               <span className="font-medium">€{totalCosts.businessTripTotal.toFixed(2)}</span>
             </div>
             <Separator className="my-2 bg-white/10" />
             <div className="flex justify-between text-emerald-300 font-medium">
-              <span>Total:</span>
+              <span className="flex items-center">
+                <Wallet className="h-4 w-4 mr-1" />
+                Total:
+              </span>
               <span>€{totalCosts.grandTotal.toFixed(2)}</span>
             </div>
           </div>
