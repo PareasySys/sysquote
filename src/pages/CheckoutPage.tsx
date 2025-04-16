@@ -193,9 +193,46 @@ const CheckoutPage: React.FC = () => {
             .eq('plan_id', planId);
           
           if (error) throw error;
-          scheduledTasks = data || [];
+          
+          scheduledTasks = (data || []).map(item => {
+            const resource = resources.find(r => r.resource_id === item.resource_id);
+            const resourceName = resource?.name || `Resource ${item.resource_id}`;
+            
+            let machineName = '';
+            if (item.machine_types_id) {
+              const machine = resources.find(r => r.resource_id === item.machine_types_id);
+              machineName = machine?.name || `Machine ${item.machine_types_id}`;
+            } else if (item.software_types_id) {
+              const software = resources.find(r => r.resource_id === item.software_types_id);
+              machineName = software?.name || `Software ${item.software_types_id}`;
+            }
+            
+            return {
+              id: item.id,
+              originalRequirementId: item.id,
+              resource_id: item.resource_id || 0,
+              resource_name: resourceName,
+              machine_name: machineName,
+              segment_hours: item.allocated_hours || 0,
+              total_training_hours: item.allocated_hours || 0,
+              start_day: item.start_day || 1,
+              duration_days: item.duration_days || 1,
+              start_hour_offset: 0,
+              
+              allocated_hours: item.allocated_hours,
+              created_at: item.created_at,
+              quote_id: item.quote_id,
+              plan_id: item.plan_id,
+              machine_types_id: item.machine_types_id,
+              software_types_id: item.software_types_id,
+              updated_at: item.updated_at,
+              work_on_saturday: item.work_on_saturday,
+              work_on_sunday: item.work_on_sunday
+            };
+          });
         } catch (err) {
           console.error(`Error fetching scheduled tasks for plan ${planId}:`, err);
+          scheduledTasks = [];
         }
         
         const resourceMap = new Map<number, PlanResourceData>();
@@ -254,6 +291,8 @@ const CheckoutPage: React.FC = () => {
             
             resourceData.trainingCost = resource.hourly_rate * resourceData.totalHours;
             
+            const selectedArea = areaCosts.find(area => area.area_id === quoteData.area_id);
+            
             resourceData.tripCosts = {
               accommodationFood: selectedArea ? selectedArea.daily_accommodation_food_cost * resourceData.businessTripDays : 0,
               allowance: selectedArea ? selectedArea.daily_allowance * resourceData.businessTripDays : 0,
@@ -289,13 +328,26 @@ const CheckoutPage: React.FC = () => {
         });
       }
       
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2, '0');
+      const mm = String(today.getMonth() + 1).padStart(2, '0'); // January is 0!
+      const yyyy = today.getFullYear();
+      const quoteIdShort = quoteId ? quoteId.substring(0, 8) : 'unknown';
+      
+      const cleanCustomerName = (quoteData.client_name || 'Customer')
+        .replace(/[^\w\s]/gi, '')
+        .replace(/\s+/g, '_');
+      
+      const filename = `${cleanCustomerName}_${dd}_${mm}_${yyyy}_${quoteIdShort}`;
+      
       const success = await generateQuotePDF(
         quoteId || 'unknown',
         profileData.firstName ? `${profileData.firstName} ${profileData.lastName || ''}` : user?.email,
         quoteData.client_name,
         planCostData,
         planDetailsData,
-        '/placeholder.svg'
+        '/placeholder.svg',
+        filename
       );
       
       if (success) {
@@ -481,16 +533,19 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
   const selectedArea = React.useMemo(() => {
     return areaCosts.find(area => area.area_id === areaId) || null;
   }, [areaCosts, areaId]);
+  
   const planIconUrl = React.useMemo(() => {
     if (!plan.icon_name || !trainingIcons) return null;
     const icon = trainingIcons.find(icon => icon.name === plan.icon_name);
     return icon?.url || null;
   }, [plan.icon_name, trainingIcons]);
+  
   const getResourceIcon = (resourceIconName: string | undefined) => {
     if (!resourceIconName || !resourceIcons) return null;
     const icon = resourceIcons.find(icon => icon.name === resourceIconName);
     return icon?.url || null;
   };
+  
   const resourceMap = React.useMemo(() => {
     const map = new Map();
     scheduledTasks.forEach(task => {
@@ -544,6 +599,7 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
       };
     });
   }, [scheduledTasks, resources, selectedArea]);
+  
   const totalCosts = React.useMemo(() => {
     let trainingTotal = 0;
     let businessTripTotal = 0;
