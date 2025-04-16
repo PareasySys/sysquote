@@ -6,7 +6,7 @@ import { useGeographicAreas } from "@/hooks/useGeographicAreas";
 import { Button } from "@/components/ui/button";
 import QuoteCard from "@/components/shared/QuoteCard";
 import { Card } from "@/components/ui/card";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -34,9 +34,9 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { 
-  Sidebar, 
-  SidebarBody, 
+import {
+  Sidebar,
+  SidebarBody,
   SidebarLink,
   Logo,
   LogoIcon
@@ -56,10 +56,13 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+// Function to get sidebar state (no changes needed)
 const getSidebarState = () => {
   const savedState = localStorage.getItem('sidebar-state');
-  return savedState === 'true';
+  // Default to true (open) if no state is saved or if saved state is invalid
+  return savedState ? savedState === 'true' : true;
 };
+
 
 const HomePage = () => {
   const { user, signOut } = useAuth();
@@ -73,35 +76,28 @@ const HomePage = () => {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      quote_name: "",
-      client_name: "",
-      geographic_area: "",
-    },
+    defaultValues: { quote_name: "", client_name: "", geographic_area: "" },
   });
 
+  // Effect to redirect if not logged in
   useEffect(() => {
     if (!user) {
       navigate("/");
-    } else {
-      console.log("User is authenticated, displaying quotes", quotes.length);
     }
-  }, [user, navigate, quotes.length]);
+  }, [user, navigate]);
 
-  useEffect(() => {
-    if (!areasLoading && areas.length > 0) {
-      console.log("Geographic areas loaded:", areas);
-    }
-  }, [areasLoading, areas]);
-
+  // Effect to save sidebar state
   useEffect(() => {
     localStorage.setItem('sidebar-state', sidebarOpen.toString());
   }, [sidebarOpen]);
 
+
+  // --- MODIFIED handleLogoClick ---
+  // Only opens the popover, doesn't toggle it off. Closing is handled by onOpenChange.
   const handleLogoClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setLogoPopoverOpen((prev) => !prev);
+    e.preventDefault(); // Prevent potential default link behavior
+    e.stopPropagation(); // Prevent triggering other click listeners
+    setLogoPopoverOpen(true); // Always try to open on click
   };
 
   const handleSignOut = async () => {
@@ -110,7 +106,7 @@ const HomePage = () => {
   };
 
   const handleOpenDialog = () => {
-    form.reset();
+    form.reset(); // Reset form fields when opening
     setDialogOpen(true);
   };
 
@@ -119,326 +115,144 @@ const HomePage = () => {
   };
 
   const onSubmit = async (data: FormValues) => {
-    if (!user) return;
-    
+    if (!user) return; // Should not happen if useEffect guard works
+
     try {
-      const { data: newQuote, error } = await supabase
+      const { data: newQuote, error: insertError } = await supabase
         .from("quotes")
         .insert({
           quote_name: data.quote_name,
           client_name: data.client_name || null,
           created_by_user_id: user.id,
-          area_id: parseInt(data.geographic_area, 10)
+          area_id: parseInt(data.geographic_area, 10) // Ensure area_id is integer
         })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
+        .select() // Select the newly inserted row
+        .single(); // Expect only one row back
+
+      if (insertError) throw insertError;
+
       toast.success("Quote created successfully!");
-      setDialogOpen(false);
-      
+      setDialogOpen(false); // Close dialog on success
+
       console.log("Created new quote:", newQuote);
-      
-      navigate(`/quote/${newQuote.quote_id}/config`);
+
+      // Navigate to the config page of the new quote
+      if (newQuote?.quote_id) {
+        navigate(`/quote/${newQuote.quote_id}/config`);
+      } else {
+        console.warn("New quote created but quote_id is missing, refreshing quotes list.");
+        fetchQuotes(); // Refresh list as fallback
+      }
+
     } catch (error: any) {
       console.error("Error creating quote:", error);
       toast.error(error.message || "Failed to create quote");
+      // Optionally keep the dialog open on error, or display error within dialog
+      // setDialogOpen(false);
     }
   };
 
+  // Callback for when a quote is deleted in QuoteCard
   const handleQuoteDeleted = () => {
-    fetchQuotes();
+    fetchQuotes(); // Re-fetch quotes to update the list
   };
 
+  // If user is not yet determined (e.g., during initial load), don't render anything
   if (!user) return null;
 
+  // Sidebar links configuration
   const sidebarLinks = [
-    {
-      label: "Dashboard",
-      href: "/home",
-      icon: (
-        <LayoutDashboard className="text-gray-300 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Profile",
-      href: "/profile",
-      icon: (
-        <UserCog className="text-gray-300 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Settings",
-      href: "/settings",
-      icon: (
-        <Settings className="text-gray-300 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Sign Out",
-      href: "#",
-      icon: (
-        <LogOut className="text-gray-300 h-5 w-5 flex-shrink-0" />
-      ),
-      onClick: handleSignOut
-    },
+    { label: "Dashboard", href: "/home", icon: <LayoutDashboard className="text-gray-300 h-5 w-5 flex-shrink-0" /> },
+    { label: "Profile", href: "/profile", icon: <UserCog className="text-gray-300 h-5 w-5 flex-shrink-0" /> },
+    { label: "Settings", href: "/settings", icon: <Settings className="text-gray-300 h-5 w-5 flex-shrink-0" /> },
+    { label: "Sign Out", href: "#", icon: <LogOut className="text-gray-300 h-5 w-5 flex-shrink-0" />, onClick: handleSignOut },
   ];
 
   return (
     <div className="flex h-screen bg-slate-950 text-gray-200">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
         <SidebarBody className="flex flex-col h-full justify-between">
+          {/* Sidebar Top */}
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+            {/* Popover wraps the trigger div */}
             <Popover open={logoPopoverOpen} onOpenChange={setLogoPopoverOpen}>
               <PopoverTrigger asChild>
+                 {/* Trigger div with the modified onClick */}
                 <div className="py-2 cursor-pointer" onClick={handleLogoClick}>
                   {sidebarOpen ? <Logo /> : <LogoIcon />}
                 </div>
               </PopoverTrigger>
-              <PopoverContent className="w-80 bg-slate-800 border border-slate-700 text-white p-4">
+              <PopoverContent className="w-80 bg-slate-800 border border-slate-700 text-white p-4 ml-2"> {/* Added ml-2 for slight offset */}
+                {/* Popover Content */}
                 <div className="flex flex-col items-center space-y-4">
-                  <div className="flex items-center justify-center w-full">
-                    <img 
-                      src="https://egbpjvbrqtvxtlpqkszr.supabase.co/storage/v1/object/public/identityimages//System_Logo.png" 
-                      alt="System Logo" 
-                      className="h-16 w-auto object-contain" 
-                    />
-                  </div>
-                  <div className="text-center">
-                    <h3 className="font-medium text-gray-200">SysQuote</h3>
-                    <p className="text-sm text-gray-400">Version: {APP_VERSION}</p>
-                  </div>
+                  <div className="flex items-center justify-center w-full"> <img src="https://egbpjvbrqtvxtlpqkszr.supabase.co/storage/v1/object/public/identityimages//System_Logo.png" alt="System Logo" className="h-16 w-auto object-contain" /> </div>
+                  <div className="text-center"> <h3 className="font-medium text-gray-200">SysQuote</h3> <p className="text-sm text-gray-400">Version: {APP_VERSION}</p> </div>
                   <div className="border-t border-slate-700 w-full my-2"></div>
-                  <div className="flex flex-col items-center text-xs text-gray-400">
-                    <p>Powered by:</p>
-                    <p className="font-medium text-gray-300">Andrea Parisi</p>
-                    <div className="flex items-center mt-1 space-x-1">
-                      <span>and</span>
-                      <a href="https://lovable.ai" target="_blank" rel="noopener noreferrer" className="flex items-center">
-                        <span className="font-medium text-blue-400">Lovable</span>
-                        <img 
-                          src="https://lovable.ai/images/lovable-icon.svg" 
-                          alt="Lovable Logo" 
-                          className="h-4 w-4 ml-1" 
-                        />
-                      </a>
-                    </div>
-                  </div>
+                  <div className="flex flex-col items-center text-xs text-gray-400"> <p>Powered by:</p> <p className="font-medium text-gray-300">Andrea Parisi</p> <div className="flex items-center mt-1 space-x-1"> <span>and</span> <a href="https://lovable.ai" target="_blank" rel="noopener noreferrer" className="flex items-center"> <span className="font-medium text-blue-400">Lovable</span> <img src="https://lovable.ai/images/lovable-icon.svg" alt="Lovable Logo" className="h-4 w-4 ml-1" /> </a> </div> </div>
                 </div>
               </PopoverContent>
             </Popover>
+            {/* Sidebar Links */}
             <div className="mt-8 flex flex-col gap-2">
-              {sidebarLinks.map((link, idx) => (
-                <SidebarLink key={idx} link={link} />
-              ))}
+              {sidebarLinks.map((link, idx) => (<SidebarLink key={idx} link={link} />))}
             </div>
           </div>
+          {/* Sidebar Bottom (User Profile) */}
           <div className="py-4 flex items-center">
-            {sidebarOpen ? (
-              <div className="flex items-center gap-3 px-2">
-                <Avatar className="w-8 h-8 border-2 border-gray-700">
-                  <AvatarImage src={profileData.avatarUrl || ""} />
-                  <AvatarFallback className="bg-gray-600 text-gray-200 text-xs">
-                    {profileData.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <div className="text-sm text-gray-200 font-semibold truncate max-w-[140px]">
-                    {(profileData.firstName && profileData.lastName) 
-                      ? `${profileData.firstName} ${profileData.lastName}`
-                      : user.email?.split('@')[0]}
-                  </div>
-                  <div className="text-xs text-gray-400 truncate max-w-[140px]">
-                    {user.email}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="mx-auto">
-                <Avatar className="w-8 h-8 border-2 border-gray-700">
-                  <AvatarImage src={profileData.avatarUrl || ""} />
-                  <AvatarFallback className="bg-gray-600 text-gray-200 text-xs">
-                    {profileData.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-            )}
+             {sidebarOpen ? (<div className="flex items-center gap-3 px-2"><Avatar className="w-8 h-8 border-2 border-gray-700"><AvatarImage src={profileData.avatarUrl || ""} /><AvatarFallback className="bg-gray-600 text-gray-200 text-xs">{profileData.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || "U"}</AvatarFallback></Avatar><div className="flex flex-col"><div className="text-sm text-gray-200 font-semibold truncate max-w-[140px]">{(profileData.firstName && profileData.lastName) ? `${profileData.firstName} ${profileData.lastName}`: user.email?.split('@')[0]}</div><div className="text-xs text-gray-400 truncate max-w-[140px]">{user.email}</div></div></div>) : (<div className="mx-auto"><Avatar className="w-8 h-8 border-2 border-gray-700"><AvatarImage src={profileData.avatarUrl || ""} /><AvatarFallback className="bg-gray-600 text-gray-200 text-xs">{profileData.firstName?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || "U"}</AvatarFallback></Avatar></div>)}
           </div>
         </SidebarBody>
       </Sidebar>
 
+      {/* Main Content Area */}
       <main className={`fixed inset-0 transition-all duration-300 bg-slate-950 overflow-auto ${sidebarOpen ? 'md:left-[300px]' : 'md:left-[60px]'}`}>
         <div className="p-6 min-h-screen">
+          {/* Page Header */}
           <div className="mb-6 flex items-center">
             <h1 className="text-2xl font-bold text-gray-100">Dashboard</h1>
-            {loading && (
-              <div className="pl-4 flex items-center">
-                <TextShimmerWave
-                  className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg"
-                  duration={1}
-                  spread={1}
-                  zDistance={1}
-                  scaleDistance={1.1}
-                  rotateYDistance={10}
-                >
-                  Loading Quotes
-                </TextShimmerWave>
-              </div>
-            )}
+            {loading && ( <div className="pl-4 flex items-center"> <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff] text-lg" duration={1} spread={1} zDistance={1} scaleDistance={1.1} rotateYDistance={10}> Loading Quotes </TextShimmerWave> </div> )}
           </div>
-          
+
+          {/* Error Display */}
           {error ? (
             <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
               <p className="text-red-300">{error}</p>
-              <Button 
-                onClick={() => {
-                  console.log("Manual retry of fetchQuotes");
-                  fetchQuotes();
-                }} 
-                variant="outline" 
-                className="mt-2 text-blue-300 border-blue-800 hover:bg-blue-900/50"
-              >
-                Try Again
-              </Button>
+              <Button onClick={() => { console.log("Manual retry of fetchQuotes"); fetchQuotes(); }} variant="outline" className="mt-2 text-blue-300 border-blue-800 hover:bg-blue-900/50"> Try Again </Button>
             </div>
           ) : (
+            // Quotes Grid
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card 
-                className="bg-slate-800/80 p-6 rounded-lg border border-white/5 shadow-sm hover:shadow-md hover:bg-slate-700/80 transition-all cursor-pointer h-[220px] flex flex-col items-center justify-center"
-                onClick={handleOpenDialog}
-              >
-                <div className="flex flex-col items-center justify-center gap-4 text-center">
-                  <div className="w-16 h-16 rounded-full bg-slate-700/80 flex items-center justify-center">
-                    <Plus className="h-8 w-8 text-gray-300" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-200">Create New Quote</h3>
-                  <p className="text-gray-400 text-center">Start a new training quote for your client</p>
-                </div>
+              {/* Create New Quote Card */}
+              <Card className="bg-slate-800/80 p-6 rounded-lg border border-white/5 shadow-sm hover:shadow-md hover:bg-slate-700/80 transition-all cursor-pointer h-[220px] flex flex-col items-center justify-center" onClick={handleOpenDialog}>
+                <div className="flex flex-col items-center justify-center gap-4 text-center"> <div className="w-16 h-16 rounded-full bg-slate-700/80 flex items-center justify-center"> <Plus className="h-8 w-8 text-gray-300" /> </div> <h3 className="text-xl font-semibold text-gray-200">Create New Quote</h3> <p className="text-gray-400 text-center">Start a new training quote for your client</p> </div>
               </Card>
-              
+
+              {/* Existing Quote Cards */}
               {quotes.length > 0 && quotes.map((quote) => (
-                <QuoteCard
-                  key={quote.quote_id}
-                  quote_id={quote.quote_id}
-                  quote_name={quote.quote_name}
-                  client_name={quote.client_name}
-                  area_name={quote.area_name}
-                  created_at={quote.created_at}
-                  onDelete={handleQuoteDeleted}
-                />
+                <QuoteCard key={quote.quote_id} quote_id={quote.quote_id} quote_name={quote.quote_name} client_name={quote.client_name} area_name={quote.area_name} created_at={quote.created_at} onDelete={handleQuoteDeleted} />
               ))}
-              
+
+              {/* Empty State */}
               {quotes.length === 0 && !loading && (
-                <div className="col-span-full text-center py-10">
-                  <FileText className="h-12 w-12 mx-auto text-gray-500 mb-3" />
-                  <h3 className="text-lg font-medium text-gray-300 mb-1">No quotes yet</h3>
-                  <p className="text-gray-400 mb-6">Create your first quote to get started</p>
-                </div>
+                <div className="col-span-full text-center py-10"> <FileText className="h-12 w-12 mx-auto text-gray-500 mb-3" /> <h3 className="text-lg font-medium text-gray-300 mb-1">No quotes yet</h3> <p className="text-gray-400 mb-6">Create your first quote to get started</p> </div>
               )}
             </div>
           )}
         </div>
       </main>
 
+      {/* Create Quote Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="bg-slate-800 border-gray-700 text-gray-200 max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl text-gray-100">Create New Quote</DialogTitle>
-          </DialogHeader>
-          
+          <DialogHeader> <DialogTitle className="text-xl text-gray-100">Create New Quote</DialogTitle> </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-              <FormField
-                control={form.control}
-                name="quote_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-gray-300">Quote Name</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter a name for this quote" 
-                        {...field}
-                        className="bg-slate-700 border-gray-600 text-gray-200 placeholder:text-gray-500"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-red-400" />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="client_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-gray-300">Customer Name</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter customer name" 
-                        {...field}
-                        className="bg-slate-700 border-gray-600 text-gray-200 placeholder:text-gray-500"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-red-400" />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="geographic_area"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-gray-300">Geographic Area</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="bg-slate-700 border-gray-600 text-gray-200">
-                          <SelectValue placeholder="Select an area" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="bg-slate-700 border-gray-600 text-gray-200 z-[200]">
-                        {areasLoading ? (
-                          <div className="p-2 text-gray-400">Loading areas...</div>
-                        ) : areas.length === 0 ? (
-                          <div className="p-2 text-gray-400">No areas available</div>
-                        ) : (
-                          areas.map((area) => (
-                            <SelectItem 
-                              key={area.area_id} 
-                              value={area.area_id.toString()}
-                              className="text-gray-200 focus:bg-slate-600 focus:text-white hover:bg-slate-600"
-                            >
-                              {area.area_name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-red-400" />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter className="pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleCloseDialog}
-                  className="border-gray-600 hover:bg-gray-700 text-gray-300"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  className="bg-blue-700 hover:bg-blue-800 text-white"
-                >
-                  Save Quote
-                </Button>
-              </DialogFooter>
+              {/* Form Fields */}
+              <FormField control={form.control} name="quote_name" render={({ field }) => ( <FormItem> <FormLabel className="text-gray-300">Quote Name</FormLabel> <FormControl> <Input placeholder="Enter a name for this quote" {...field} className="bg-slate-700 border-gray-600 text-gray-200 placeholder:text-gray-500" /> </FormControl> <FormMessage className="text-red-400" /> </FormItem> )} />
+              <FormField control={form.control} name="client_name" render={({ field }) => ( <FormItem> <FormLabel className="text-gray-300">Customer Name</FormLabel> <FormControl> <Input placeholder="Enter customer name" {...field} className="bg-slate-700 border-gray-600 text-gray-200 placeholder:text-gray-500" /> </FormControl> <FormMessage className="text-red-400" /> </FormItem> )} />
+              <FormField control={form.control} name="geographic_area" render={({ field }) => ( <FormItem> <FormLabel className="text-gray-300">Geographic Area</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value} > <FormControl> <SelectTrigger className="bg-slate-700 border-gray-600 text-gray-200"> <SelectValue placeholder="Select an area" /> </SelectTrigger> </FormControl> <SelectContent className="bg-slate-700 border-gray-600 text-gray-200 z-[200]"> {areasLoading ? (<div className="p-2 text-gray-400">Loading areas...</div>) : areas.length === 0 ? (<div className="p-2 text-gray-400">No areas available</div>) : ( areas.map((area) => ( <SelectItem key={area.area_id} value={area.area_id.toString()} className="text-gray-200 focus:bg-slate-600 focus:text-white hover:bg-slate-600" > {area.area_name} </SelectItem> )) )} </SelectContent> </Select> <FormMessage className="text-red-400" /> </FormItem> )} />
+              {/* Dialog Footer */}
+              <DialogFooter className="pt-4"> <Button type="button" variant="outline" onClick={handleCloseDialog} className="border-gray-600 hover:bg-gray-700 text-gray-300" > Cancel </Button> <Button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white" > Save Quote </Button> </DialogFooter>
             </form>
           </Form>
         </DialogContent>
