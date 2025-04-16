@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+// src/components/pages/QuotePlanningPage.tsx
+
+import React, { useState, useEffect, useCallback } from "react"; // Added useCallback
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { 
-  Sidebar, 
-  SidebarBody, 
+import {
+  Sidebar,
+  SidebarBody,
   SidebarLink,
   Logo,
   LogoIcon
@@ -13,14 +15,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// TextShimmerWave might not be needed here anymore if loading handled inside Gantt
+// import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
+// Tabs also removed from here
+// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
-import { useResources } from "@/hooks/useResources"; 
+// useResources might not be needed directly here anymore
+// import { useResources } from "@/hooks/useResources";
 import { supabase } from "@/integrations/supabase/client";
-import ResourceTrainingGantt from "@/components/gantt/ResourceTrainingGantt";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import ResourceTrainingGantt from "@/components/gantt/ResourceTrainingGantt"; // Correct path?
+// Switch and Label removed from here
+// import { Switch } from "@/components/ui/switch";
+// import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { RainbowButton } from "@/components/ui/rainbow-button";
 
@@ -29,17 +35,8 @@ interface WeekendSettings {
   workOnSunday: boolean;
 }
 
-interface QuoteWithWeekendSettings {
-  area_id?: number | null;
-  client_name?: string | null;
-  created_at: string;
-  created_by_user_id: string;
-  machine_type_ids?: number[] | null;
-  quote_id: string;
-  quote_name: string;
-  work_on_saturday?: boolean;
-  work_on_sunday?: boolean;
-}
+// QuoteWithWeekendSettings interface might not be needed if we fetch directly
+// interface QuoteWithWeekendSettings { ... }
 
 const QuotePlanningPage: React.FC = () => {
   const { quoteId } = useParams<{ quoteId: string }>();
@@ -47,274 +44,175 @@ const QuotePlanningPage: React.FC = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { profileData } = useUserProfile(user);
-  const { plans, loading: plansLoading } = useTrainingPlans();
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { plans, loading: plansLoading, error: plansError } = useTrainingPlans(); // Added error handling
+  const [quoteName, setQuoteName] = useState<string>(""); // State for quote name
+  const [settingsLoading, setSettingsLoading] = useState<boolean>(true); // Separate loading for settings
+  const [settingsError, setSettingsError] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [workOnWeekends, setWorkOnWeekends] = useState<WeekendSettings>({
     workOnSaturday: false,
     workOnSunday: false
   });
 
-  const { resources } = useResources();
+  // const { resources } = useResources(); // If not used elsewhere, remove
+
+  // Fetch Quote Name and Settings on load or quoteId change
+  const fetchQuoteData = useCallback(async () => {
+    if (!quoteId || !user) return;
+
+    setSettingsLoading(true);
+    setSettingsError(null);
+    try {
+      const { data, error: fetchError } = await supabase
+        .from("quotes")
+        .select("quote_name, work_on_saturday, work_on_sunday")
+        .eq("quote_id", quoteId)
+        .maybeSingle(); // Use maybeSingle to handle potential null
+
+      if (fetchError) throw fetchError;
+
+      if (data) {
+        setQuoteName(data.quote_name || `Quote ${quoteId.substring(0, 6)}...`);
+        setWorkOnWeekends({
+          workOnSaturday: data.work_on_saturday ?? false,
+          workOnSunday: data.work_on_sunday ?? false
+        });
+      } else {
+          throw new Error("Quote not found.");
+      }
+
+    } catch (err: any) {
+      console.error("Error fetching quote settings:", err);
+      setSettingsError(err.message || "Failed to load quote data");
+      setQuoteName(""); // Clear quote name on error
+      setWorkOnWeekends({ workOnSaturday: false, workOnSunday: false }); // Reset weekends
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, [quoteId, user]); // Add user dependency
 
   useEffect(() => {
-    if (!user) {
-      navigate("/");
-      return;
-    }
-    
-    if (plans && plans.length > 0) {
+    fetchQuoteData();
+  }, [fetchQuoteData]); // Depend on the memoized fetch function
+
+  // Set default plan when plans load
+  useEffect(() => {
+    if (!plansLoading && plans && plans.length > 0 && selectedPlanId === null) {
       const standardPlan = plans.find(plan => plan.name.toLowerCase() === 'standard');
       if (standardPlan) {
         setSelectedPlanId(standardPlan.plan_id);
       } else {
-        setSelectedPlanId(plans[0].plan_id);
+        setSelectedPlanId(plans[0].plan_id); // Fallback to first plan
       }
     }
-    
-    fetchQuoteSettings();
-  }, [user, quoteId, plans]);
+  }, [plansLoading, plans, selectedPlanId]); // Added selectedPlanId to prevent resetting
 
-  const fetchQuoteSettings = async () => {
-    if (!quoteId) return;
-    
-    try {
-      setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from("quotes")
-        .select("work_on_saturday, work_on_sunday")
-        .eq("quote_id", quoteId)
-        .single();
-      
-      if (fetchError) throw fetchError;
-      
-      setWorkOnWeekends({
-        workOnSaturday: data?.work_on_saturday ?? false,
-        workOnSunday: data?.work_on_sunday ?? false
-      });
-
-    } catch (err: any) {
-      console.error("Error fetching quote settings:", err);
-      setError(err.message || "Failed to load quote settings");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Handle Sign Out
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
 
-  const handleBackToQuote = () => {
-    navigate(`/quote/${quoteId}/config`);
-  };
+  // Navigation Handlers
+  const handleBackToQuote = () => navigate(`/quote/${quoteId}/config`);
+  const handleGoToCheckout = () => navigate(`/quote/${quoteId}/checkout`);
 
-  const handleGoToCheckout = () => {
-    navigate(`/quote/${quoteId}/checkout`);
-  };
-
-  const updateWeekendSettings = async (key: 'workOnSaturday' | 'workOnSunday', value: boolean) => {
+  // Update Weekend Settings (passed down to Gantt)
+  const handleWeekendChange = useCallback(async (key: 'workOnSaturday' | 'workOnSunday', value: boolean) => {
     if (!quoteId) return;
-    
+
+    const previousSettings = { ...workOnWeekends }; // Store previous state for rollback
     const newSettings = { ...workOnWeekends, [key]: value };
-    setWorkOnWeekends(newSettings);
-    
+    setWorkOnWeekends(newSettings); // Optimistic UI update
+
     const dbKey = key === 'workOnSaturday' ? 'work_on_saturday' : 'work_on_sunday';
-    
+
     try {
       const { error: updateError } = await supabase
         .from('quotes')
         .update({ [dbKey]: value })
         .eq('quote_id', quoteId);
-      
+
       if (updateError) throw updateError;
-      
+
       toast.success(`Weekend schedule updated`);
-      
-      // The ResourceTrainingGantt component will automatically update
-      // and save the planning data when the weekend settings change
+      // Re-fetching might happen inside ResourceTrainingGantt due to prop change triggering its own useEffects
+
     } catch (err: any) {
       console.error("Error updating weekend settings:", err);
       toast.error("Failed to update weekend settings");
-      
-      setWorkOnWeekends(workOnWeekends);
+      setWorkOnWeekends(previousSettings); // Rollback UI on error
     }
-  };
+  }, [quoteId, workOnWeekends]); // Include workOnWeekends for previous state access
 
+  // Sidebar Links Configuration
   const sidebarLinks = [
-    {
-      label: "Dashboard",
-      href: "/home",
-      icon: <LayoutDashboard className="text-gray-300 h-5 w-5 flex-shrink-0" />,
-    },
-    {
-      label: "Profile",
-      href: "/profile",
-      icon: <UserCog className="text-gray-300 h-5 w-5 flex-shrink-0" />,
-    },
-    {
-      label: "Settings",
-      href: "/settings",
-      icon: <Settings className="text-gray-300 h-5 w-5 flex-shrink-0" />,
-    },
-    {
-      label: "Sign Out",
-      href: "#",
-      icon: <LogOut className="text-gray-300 h-5 w-5 flex-shrink-0" />,
-      onClick: handleSignOut
-    },
+    // ... (keep existing sidebar links)
+    { label: "Dashboard", href: "/home", icon: <LayoutDashboard className="text-gray-300 h-5 w-5 flex-shrink-0" /> },
+    { label: "Profile", href: "/profile", icon: <UserCog className="text-gray-300 h-5 w-5 flex-shrink-0" /> },
+    { label: "Settings", href: "/settings", icon: <Settings className="text-gray-300 h-5 w-5 flex-shrink-0" /> },
+    { label: "Sign Out", href: "#", icon: <LogOut className="text-gray-300 h-5 w-5 flex-shrink-0" />, onClick: handleSignOut },
   ];
 
   return (
     <div className="flex h-screen bg-slate-950 text-gray-200">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
         <SidebarBody className="flex flex-col h-full justify-between">
+          {/* Sidebar Top */}
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="py-2">
-              {sidebarOpen ? <Logo /> : <LogoIcon />}
-            </div>
-            <div className="mt-8 flex flex-col gap-2">
-              {sidebarLinks.map((link, idx) => (
-                <SidebarLink key={idx} link={link} />
-              ))}
-            </div>
+            <div className="py-2">{sidebarOpen ? <Logo /> : <LogoIcon />}</div>
+            <div className="mt-8 flex flex-col gap-2">{sidebarLinks.map((link, idx) => (<SidebarLink key={idx} link={link} />))}</div>
           </div>
+          {/* Sidebar Bottom */}
           <div className="py-4 flex items-center">
-            {sidebarOpen ? (
-              <div className="flex items-center gap-3 px-2">
-                <Avatar className="w-8 h-8 border-2 border-gray-700">
-                  <AvatarImage src={profileData.avatarUrl || ""} />
-                  <AvatarFallback className="bg-gray-600 text-gray-200 text-xs">
-                    {profileData.firstName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <div className="text-sm text-gray-200 font-semibold truncate max-w-[140px]">
-                    {(profileData.firstName && profileData.lastName) 
-                      ? `${profileData.firstName} ${profileData.lastName}`
-                      : user?.email?.split('@')[0]}
-                  </div>
-                  <div className="text-xs text-gray-400 truncate max-w-[140px]">
-                    {user?.email}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="mx-auto">
-                <Avatar className="w-8 h-8 border-2 border-gray-700">
-                  <AvatarImage src={profileData.avatarUrl || ""} />
-                  <AvatarFallback className="bg-gray-600 text-gray-200 text-xs">
-                    {profileData.firstName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-            )}
+             {/* ... (keep existing user profile rendering) ... */}
+             {sidebarOpen ? (<div className="flex items-center gap-3 px-2"><Avatar className="w-8 h-8 border-2 border-gray-700"><AvatarImage src={profileData.avatarUrl || ""} /><AvatarFallback className="bg-gray-600 text-gray-200 text-xs">{profileData.firstName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}</AvatarFallback></Avatar><div className="flex flex-col"><div className="text-sm text-gray-200 font-semibold truncate max-w-[140px]">{(profileData.firstName && profileData.lastName) ? `${profileData.firstName} ${profileData.lastName}`: user?.email?.split('@')[0]}</div><div className="text-xs text-gray-400 truncate max-w-[140px]">{user?.email}</div></div></div>) : (<div className="mx-auto"><Avatar className="w-8 h-8 border-2 border-gray-700"><AvatarImage src={profileData.avatarUrl || ""} /><AvatarFallback className="bg-gray-600 text-gray-200 text-xs">{profileData.firstName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}</AvatarFallback></Avatar></div>)}
           </div>
         </SidebarBody>
       </Sidebar>
 
       <main className={`fixed inset-0 transition-all duration-300 bg-slate-950 overflow-auto ${sidebarOpen ? 'md:left-[300px]' : 'md:left-[60px]'}`}>
         <div className="p-6 min-h-screen">
+          {/* Page Header */}
           <div className="mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={handleBackToQuote}
-                  className="text-gray-400 hover:text-gray-200"
-                >
+                <Button variant="ghost" size="icon" onClick={handleBackToQuote} className="text-gray-400 hover:text-gray-200">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
-                
-                <h1 className="text-2xl font-bold text-gray-100">Planning</h1>
+                {/* Show Quote Name */}
+                <h1 className="text-2xl font-bold text-gray-100">
+                  {settingsLoading ? "Loading..." : (settingsError ? "Error" : `${quoteName} - Planning`)}
+                </h1>
               </div>
             </div>
           </div>
-          
-          {error ? (
+
+          {/* Error Display */}
+          {(settingsError || plansError) ? (
             <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg text-center">
-              <p className="text-red-300">{error}</p>
-              <Button 
-                onClick={fetchQuoteSettings} 
-                variant="outline" 
-                className="mt-2 text-blue-300 border-blue-800 hover:bg-blue-900/50"
-              >
-                Try Again
+              <p className="text-red-300">{settingsError || plansError || "An unexpected error occurred."}</p>
+              <Button onClick={fetchQuoteData} variant="outline" className="mt-2 text-blue-300 border-blue-800 hover:bg-blue-900/50">
+                Retry Loading Data
               </Button>
             </div>
           ) : (
+            // Main Content Area
             <div>
-              <Card className="bg-slate-800/80 border border-white/5 p-4 mb-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-200">Weekend Settings</h2>
-                  <div className="flex gap-6">
-                    <div className="flex items-center gap-2">
-                      <Switch 
-                        id="work-on-saturday" 
-                        checked={workOnWeekends.workOnSaturday}
-                        onCheckedChange={(checked) => updateWeekendSettings('workOnSaturday', checked)}
-                      />
-                      <Label htmlFor="work-on-saturday" className="text-gray-300">Work on Saturday</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch 
-                        id="work-on-sunday" 
-                        checked={workOnWeekends.workOnSunday}
-                        onCheckedChange={(checked) => updateWeekendSettings('workOnSunday', checked)}
-                      />
-                      <Label htmlFor="work-on-sunday" className="text-gray-300">Work on Sunday</Label>
-                    </div>
-                  </div>
-                </div>
+              {/* ResourceTrainingGantt takes over Tabs and Switches */}
+              <ResourceTrainingGantt
+                quoteId={quoteId}
+                planId={selectedPlanId}
+                workOnSaturday={workOnWeekends.workOnSaturday}
+                workOnSunday={workOnWeekends.workOnSunday}
+                plans={plans || []} // Pass empty array if plans are null/undefined
+                plansLoading={plansLoading}
+                onPlanChange={setSelectedPlanId} // Pass setter function
+                onWeekendChange={handleWeekendChange} // Pass update handler
+              />
 
-                <Tabs 
-                  defaultValue={selectedPlanId ? selectedPlanId.toString() : ""} 
-                  value={selectedPlanId ? selectedPlanId.toString() : ""}
-                  onValueChange={(value) => setSelectedPlanId(parseInt(value))}
-                >
-                  <TabsList className="bg-slate-700">
-                    {plansLoading ? (
-                      <div className="p-4">
-                        <TextShimmerWave className="[--base-color:#a1a1aa] [--base-gradient-color:#ffffff]">
-                          Loading Plans
-                        </TextShimmerWave>
-                      </div>
-                    ) : (
-                      plans.map((plan) => (
-                        <TabsTrigger 
-                          key={plan.plan_id} 
-                          value={plan.plan_id.toString()}
-                          className="data-[state=active]:bg-blue-600"
-                        >
-                          {plan.name}
-                        </TabsTrigger>
-                      ))
-                    )}
-                  </TabsList>
-                  
-                  {plans.map((plan) => (
-                    <TabsContent key={plan.plan_id} value={plan.plan_id.toString()}>
-                      <div className="mt-4">
-                        <div className="mb-4">
-                          <h3 className="text-xl font-semibold text-gray-200">{plan.name} Plan</h3>
-                        </div>
-
-                        <ResourceTrainingGantt
-                          quoteId={quoteId}
-                          planId={selectedPlanId}
-                          workOnSaturday={workOnWeekends.workOnSaturday}
-                          workOnSunday={workOnWeekends.workOnSunday}
-                        />
-                      </div>
-                    </TabsContent>
-                  ))}
-                </Tabs>
-              </Card>
-              
-              <div className="flex justify-center mb-6">
+              {/* Checkout Button */}
+              <div className="flex justify-center mt-6 mb-6"> {/* Added mt-6 */}
                 <RainbowButton onClick={handleGoToCheckout} className="flex items-center gap-2 text-white">
                   <CreditCard className="h-4 w-4" />
                   Checkout
