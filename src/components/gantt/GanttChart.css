@@ -18,8 +18,8 @@
   --gantt-text-color-muted: rgba(255, 255, 255, 0.7);
   --gantt-text-color-faint: rgba(255, 255, 255, 0.5);
 
-  --gantt-total-bar-bg: rgba(100, 116, 139, 0.4);
-  --gantt-total-bar-border: rgba(100, 116, 139, 0.6);
+  /* --gantt-total-bar-bg: rgba(100, 116, 139, 0.4); */ /* Background color removed, opacity handled inline */
+  --gantt-total-bar-border: rgba(100, 116, 139, 0.6); /* Keep border color */
   --gantt-travel-icon-color: rgba(203, 213, 225, 0.9);
 }
 
@@ -39,44 +39,27 @@
   color: var(--gantt-text-color);
 }
 
-/* --- Zoom Controls --- NEW/MODIFIED Styles */
+/* --- Zoom Controls --- */
 .gantt-controls {
     flex-shrink: 0;
     border-bottom: 1px solid var(--gantt-border-color);
     background-color: var(--gantt-header-bg);
 }
-
 .gantt-controls-inner {
     display: flex;
-    justify-content: flex-end; /* Align controls to the right */
+    justify-content: flex-end;
     align-items: center;
-    gap: 0.75rem; /* Space between icons and text (12px) */
-    padding: 0.5rem; /* Add some padding */
+    gap: 0.75rem;
+    padding: 0.5rem;
 }
-
 .gantt-zoom-icon {
-    color: var(--gantt-text-color); /* Use standard text color */
+    color: var(--gantt-text-color);
     cursor: pointer;
     transition: opacity 0.2s ease-in-out;
 }
-
-.gantt-zoom-icon:hover {
-    opacity: 0.8; /* Slight fade on hover */
-}
-
-.gantt-zoom-icon.disabled {
-    color: var(--gantt-text-color-faint); /* More muted color when disabled */
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.gantt-zoom-level {
-    font-size: 0.75rem; /* Small text for percentage */
-    color: var(--gantt-text-color-muted);
-    min-width: 40px; /* Ensure space for 100% */
-    text-align: center;
-    user-select: none; /* Prevent text selection */
-}
+.gantt-zoom-icon:hover { opacity: 0.8; }
+.gantt-zoom-icon.disabled { color: var(--gantt-text-color-faint); opacity: 0.5; cursor: not-allowed; }
+.gantt-zoom-level { font-size: 0.75rem; color: var(--gantt-text-color-muted); min-width: 40px; text-align: center; user-select: none; }
 
 
 /* --- Header Row --- */
@@ -84,12 +67,9 @@
   display: flex;
   flex-shrink: 0;
   height: var(--gantt-header-height);
-  /* background-color: var(--gantt-header-bg); */ /* Background now on controls too */
   z-index: 30;
   position: relative;
-  /* border-bottom: 1px solid var(--gantt-border-color); */ /* Border moved to controls */
 }
-
 .gantt-resource-header-cell {
   min-width: var(--gantt-resource-col-width);
   width: var(--gantt-resource-col-width);
@@ -101,257 +81,77 @@
   height: 100%;
   flex-shrink: 0;
 }
+.gantt-timeline-header-wrapper { flex: 1; overflow: hidden; position: relative; }
+.gantt-timeline-header-content { display: flex; flex-direction: column; position: absolute; top: 0; left: 0; height: 100%; will-change: transform; /* Width set inline */ }
+.gantt-months { display: flex; height: 50%; border-bottom: 1px solid var(--gantt-border-color); }
+.gantt-month { border-right: 1px solid var(--gantt-border-color); display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 0.85rem; flex-shrink: 0; /* Width/minWidth set inline */ }
+.gantt-days { display: flex; height: 50%; }
+.gantt-day { display: flex; align-items: center; justify-content: center; color: var(--gantt-text-color-muted); font-size: 0.75rem; border-right: 1px solid var(--gantt-border-color-light); flex-shrink: 0; /* Width/minWidth set inline */ }
+.gantt-day.weekend { color: var(--gantt-text-color-faint); }
 
-.gantt-timeline-header-wrapper {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
-
-.gantt-timeline-header-content {
-  display: flex;
-  flex-direction: column;
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  will-change: transform;
-  /* Width set inline */
-}
-
-.gantt-months {
-  display: flex;
-  height: 50%;
-  border-bottom: 1px solid var(--gantt-border-color);
-}
-
-.gantt-month {
-  border-right: 1px solid var(--gantt-border-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 500;
-  font-size: 0.85rem;
-  flex-shrink: 0;
-  /* Width/minWidth set inline */
-}
-
-.gantt-days {
-  display: flex;
-  height: 50%;
-}
-
-.gantt-day {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--gantt-text-color-muted);
-  font-size: 0.75rem;
-  border-right: 1px solid var(--gantt-border-color-light);
-  flex-shrink: 0;
-  /* Width/minWidth set inline */
-}
-
-.gantt-day.weekend {
-  color: var(--gantt-text-color-faint);
-  /* Background set by gantt-grid-weekend-bg */
-}
 
 /* --- Main Content Row --- */
-.gantt-main-content-row {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
+.gantt-main-content-row { display: flex; flex: 1; overflow: hidden; position: relative; }
+
 
 /* --- Resource List --- */
-.gantt-resource-list-wrapper {
-  min-width: var(--gantt-resource-col-width);
-  width: var(--gantt-resource-col-width);
-  height: 100%;
-  overflow: hidden;
-  position: relative;
-  background-color: var(--gantt-resource-bg);
-  border-right: 1px solid var(--gantt-border-color);
-  z-index: 20;
-  flex-shrink: 0;
-}
+.gantt-resource-list-wrapper { min-width: var(--gantt-resource-col-width); width: var(--gantt-resource-col-width); height: 100%; overflow: hidden; position: relative; background-color: var(--gantt-resource-bg); border-right: 1px solid var(--gantt-border-color); z-index: 20; flex-shrink: 0; }
+.gantt-resource-list-content { position: absolute; width: 100%; top: 0; left: 0; will-change: transform; /* Height set inline */ }
+.gantt-resource-group { /* Group borders handled by hlines */ }
+.gantt-resource-name { height: var(--gantt-resource-header-height); display: flex; align-items: center; padding: 0 10px; font-weight: 500; background-color: rgba(0, 0, 0, 0.1); }
+.gantt-resource-machine { height: var(--gantt-machine-row-height); display: flex; align-items: center; padding: 0 10px 0 20px; font-size: 0.8rem; color: var(--gantt-text-color-muted); }
 
-.gantt-resource-list-content {
-  position: absolute;
-  width: 100%;
-  top: 0;
-  left: 0;
-  will-change: transform;
-  /* Height set inline */
-}
-
-.gantt-resource-group {
-  /* Group borders handled by hlines */
-}
-
-.gantt-resource-name {
-  height: var(--gantt-resource-header-height);
-  display: flex;
-  align-items: center;
-  padding: 0 10px;
-  font-weight: 500;
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-.gantt-resource-machine {
-  height: var(--gantt-machine-row-height);
-  display: flex;
-  align-items: center;
-  padding: 0 10px 0 20px;
-  font-size: 0.8rem;
-  color: var(--gantt-text-color-muted);
-}
 
 /* --- Grid --- */
-.gantt-grid-scroll-container {
-  flex: 1;
-  overflow: auto;
-  position: relative;
-  background-color: var(--gantt-grid-bg);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-}
+.gantt-grid-scroll-container { flex: 1; overflow: auto; position: relative; background-color: var(--gantt-grid-bg); scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.3) transparent; }
 .gantt-grid-scroll-container::-webkit-scrollbar { width: 8px; height: 8px; }
 .gantt-grid-scroll-container::-webkit-scrollbar-track { background: transparent; }
 .gantt-grid-scroll-container::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.3); border-radius: 4px; }
 .gantt-grid-scroll-container::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.5); }
+.gantt-grid-content { position: relative; /* Width/Height set inline */ }
 
-.gantt-grid-content {
-  position: relative;
-  /* Width/Height set inline */
-}
 
 /* --- Grid Background Layer --- */
-.gantt-grid-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  overflow: hidden;
-}
+.gantt-grid-background { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: hidden; }
+.gantt-grid-vline { position: absolute; top: 0; bottom: 0; width: 1px; background-color: var(--gantt-border-color-light); /* Left set inline */ }
+.gantt-grid-hline { position: absolute; left: 0; right: 0; height: 1px; background-color: var(--gantt-border-color-light); /* Top set inline */ }
+.gantt-grid-hline.group-separator { background-color: var(--gantt-border-color); }
+.gantt-grid-weekend-bg { position: absolute; top: 0; bottom: 0; background-color: var(--gantt-weekend-bg); z-index: 0; /* Left/Width set inline */ }
 
-.gantt-grid-vline {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background-color: var(--gantt-border-color-light);
-  /* Left set inline */
-}
-
-.gantt-grid-hline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background-color: var(--gantt-border-color-light);
-  /* Top set inline */
-}
-.gantt-grid-hline.group-separator {
-   background-color: var(--gantt-border-color);
-}
-
-.gantt-grid-weekend-bg {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  background-color: var(--gantt-weekend-bg);
-  z-index: 0;
-  /* Left/Width set inline */
-}
 
 /* --- Total Engagement Layer --- */
-.gantt-total-engagement-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 5;
-  pointer-events: none;
-}
+.gantt-total-engagement-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
 
+/* --- Total Engagement Bar --- MODIFIED */
 .gantt-total-engagement-bar {
   position: absolute;
-  background-color: var(--gantt-total-bar-bg);
-  border: 1px solid var(--gantt-total-bar-border);
+  /* background-color: var(--gantt-total-bar-bg); */ /* REMOVED - Set inline now */
+  border: 1px solid var(--gantt-total-bar-border); /* Keep border */
   border-radius: 4px;
   overflow: visible;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  /* top, left, width, height set inline */
+  /* top, left, width, height, backgroundColor set inline */
 }
 
-.gantt-travel-icon {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--gantt-travel-icon-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-}
+.gantt-travel-icon { position: absolute; top: 50%; transform: translateY(-50%); color: var(--gantt-travel-icon-color); display: flex; align-items: center; justify-content: center; pointer-events: auto; }
 .gantt-travel-icon.start { left: 4px; }
 .gantt-travel-icon.end { right: 4px; }
 
+
 /* --- Task Layer --- */
-.gantt-task-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 10;
-}
+.gantt-task-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
+.gantt-task { position: absolute; border-radius: 4px; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 500; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); cursor: pointer; overflow: hidden; /* top, left, width, height, backgroundColor, borderStyle, opacity set inline */ }
+.gantt-task-label { padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.gantt-task {
-  position: absolute;
-  border-radius: 4px;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 500;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  cursor: pointer;
-  overflow: hidden;
-  /* top, left, width, height, backgroundColor, borderStyle, opacity set inline */
-}
-
-.gantt-task-label {
-  padding: 0 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 /* --- Loading/Error/Empty States --- */
-.gantt-loading,
-.gantt-error,
-.gantt-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  flex: 1;
-  padding: 1rem;
-  color: var(--gantt-text-color-muted);
-}
+.gantt-loading, .gantt-error, .gantt-empty { display: flex; align-items: center; justify-content: center; min-height: 200px; flex: 1; padding: 1rem; color: var(--gantt-text-color-muted); }
 .gantt-loading { /* Style as needed */ }
 .gantt-error { color: #EF4444; flex-direction: column; gap: 1rem; text-align: center; }
 .gantt-empty { font-style: italic; }
+
 
 /* --- Resource/Task Specific --- */
 .software-resource { color: #c4b5fd; font-style: italic; }
