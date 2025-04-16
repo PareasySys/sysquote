@@ -188,7 +188,7 @@ const CheckoutPage: React.FC = () => {
             const resourceName = resource?.name || `Resource ${item.resource_id}`;
             
             let machineName = '';
-            let resourceCategory: 'Machine' | 'Software' | undefined;
+            let resourceCategory: 'Machine' | 'Software' | 'Unknown' = 'Unknown';
             
             if (item.machine_types_id) {
               const machine = resources.find(r => r.resource_id === item.machine_types_id);
@@ -206,12 +206,21 @@ const CheckoutPage: React.FC = () => {
               resource_id: item.resource_id,
               resource_name: resourceName,
               machine_name: machineName || "Unknown Resource",
-              resource_category: resourceCategory || "Unknown",
+              resource_category: resourceCategory,
               segment_hours: item.allocated_hours || 0,
               total_training_hours: item.allocated_hours || 0,
               start_day: item.start_day || 1,
               duration_days: item.duration_days || 1,
-              start_hour_offset: 0
+              start_hour_offset: 0,
+              allocated_hours: item.allocated_hours,
+              created_at: item.created_at,
+              quote_id: item.quote_id,
+              plan_id: item.plan_id,
+              machine_types_id: item.machine_types_id,
+              software_types_id: item.software_types_id,
+              updated_at: item.updated_at,
+              work_on_saturday: item.work_on_saturday,
+              work_on_sunday: item.work_on_sunday
             };
           }) || [];
         } catch (err) {
@@ -219,7 +228,6 @@ const CheckoutPage: React.FC = () => {
           scheduledTasks = [];
         }
         
-        const resourceMap = new Map<number, PlanResourceData>();
         let totalTrainingCost = 0;
         let totalTripCost = 0;
         

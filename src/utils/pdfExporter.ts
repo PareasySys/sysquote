@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { ScheduledTaskSegment } from './types'; // Assuming this type exists in './types'
+import { ScheduledTaskSegment } from './types'; // Import from types.ts
 import { supabase } from "@/integrations/supabase/client"; // Assuming supabase client setup
 import { format } from "date-fns";
 
@@ -39,21 +39,8 @@ export interface PlanDetailsData extends PlanCostData {
   resources: PlanResourceData[];
   totalTrainingCost: number;
   totalTripCost: number;
-  scheduledTasks?: ScheduledTaskSegment[]; // Assuming ScheduledTaskSegment includes necessary fields
+  scheduledTasks?: ScheduledTaskSegment[]; // Using imported ScheduledTaskSegment
 }
-
-// Assuming ScheduledTaskSegment structure like this (adjust as needed based on './types')
-export interface ScheduledTaskSegment {
-    resource_id: number;
-    resource_name: string;
-    start_day: number;
-    duration_days: number;
-    resource_category: string; // e.g., 'Machine', 'Software', 'Person'
-    machine_name?: string;     // Optional, relevant for machine tasks
-    segment_hours: number;
-    // Add other relevant fields from your actual type
-}
-
 
 /**
  * Generate a PDF quote document based on the checkout data
