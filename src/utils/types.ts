@@ -9,7 +9,7 @@ export interface ScheduledTaskSegment {
   resource_id: number;
   resource_name: string;
   machine_name: string; // Used for both machine and software names
-  resource_category?: 'Machine' | 'Software' | 'Unknown';
+  resource_category?: 'Machine' | 'Software';
   segment_hours: number;
   total_training_hours: number;
   start_day: number;

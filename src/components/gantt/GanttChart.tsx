@@ -18,42 +18,7 @@ const TOTAL_BAR_OPACITY = 0.4;
 const RESOURCE_GROUP_PADDING_BOTTOM = 10;
 
 // --- Interfaces ---
-interface GanttChartProps {
-  requirements: ScheduledTaskSegment[];
-  loading: boolean;
-  error: string | null;
-  workOnSaturday: boolean;
-  workOnSunday: boolean;
-  onRetry?: () => void;
-}
-
-interface ResourceGroup {
-  resourceId: number;
-  resourceName: string;
-  machines: {
-    machineName: string;
-    displayHours: number;
-    requirements: ScheduledTaskSegment[];
-    resourceCategory?: 'Machine' | 'Software' | null;
-  }[];
-}
-
-interface TotalEngagementBar {
-  resourceId: number;
-  resourceName: string;
-  travelStartDay: number;
-  travelEndDay: number;
-  totalDuration: number;
-  top: number;
-}
-
-interface TaskRenderInfo extends ScheduledTaskSegment {
-  top: number;
-  left: number;
-  width: number;
-  month: number;
-  dayOfMonth: number;
-}
+// ... (keep existing interfaces: GanttChartProps, ResourceGroup, TotalEngagementBar, TaskRenderInfo)
 
 // --- Helper Function for Colors ---
 function getResourceColor(id: number): string {
@@ -96,6 +61,7 @@ const GanttChart: React.FC<GanttChartProps> = ({
 
   // --- Group Segments by Resource ---
   const resourceGroups = useMemo(() => {
+     // ... (keep existing logic)
      const groups = new Map<number, ResourceGroup>();
      requirements.forEach(seg => { if (seg.resource_id == null) return; if (!groups.has(seg.resource_id)) { groups.set(seg.resource_id, { resourceId: seg.resource_id, resourceName: seg.resource_name || `Resource ${seg.resource_id}`, machines: [] }); } const resourceGroup = groups.get(seg.resource_id)!; const machineName = seg.machine_name || "Unknown Machine"; let machineGroup = resourceGroup.machines.find(m => m.machineName === machineName); if (!machineGroup) { machineGroup = { machineName, displayHours: 0, requirements: [], resourceCategory: seg.resource_category }; resourceGroup.machines.push(machineGroup); } machineGroup.requirements.push(seg); });
      groups.forEach(group => { group.machines.forEach(machine => { const uniqueTasks = new Map<string | number, number>(); machine.requirements.forEach(seg => { if (seg.originalRequirementId != null && !uniqueTasks.has(seg.originalRequirementId)) uniqueTasks.set(seg.originalRequirementId, seg.total_training_hours); }); machine.displayHours = Array.from(uniqueTasks.values()).reduce((sum, h) => sum + (h || 0), 0); }); group.machines.sort((a, b) => { if ((a.resourceCategory || 'Machine') !== (b.resourceCategory || 'Machine')) { return (a.resourceCategory || 'Machine') === 'Machine' ? -1 : 1; } return a.machineName.localeCompare(b.machineName); }); });
@@ -146,6 +112,7 @@ const GanttChart: React.FC<GanttChartProps> = ({
 
   // --- Calculate Task Rendering Info & Total Engagement Bars ---
   const { tasksToRender, totalEngagementBars } = useMemo(() => {
+     // ... (keep existing logic, including padding calculation for currentTop)
      const tasks: TaskRenderInfo[] = [];
      const engagements: TotalEngagementBar[] = [];
      const resourceMinMax: { [key: number]: { min: number; max: number } } = {};
@@ -193,19 +160,9 @@ const GanttChart: React.FC<GanttChartProps> = ({
       {/* --- Zoom Controls --- */}
       <div className="gantt-controls">
         <div className="gantt-controls-inner">
-            <ZoomOut 
-                className={`gantt-zoom-icon ${isZoomOutDisabled ? 'disabled' : ''}`} 
-                size={18} 
-                onClick={!isZoomOutDisabled ? handleZoomOut : undefined} 
-                aria-disabled={isZoomOutDisabled} 
-            />
+            <ZoomOut className={`gantt-zoom-icon ${isZoomOutDisabled ? 'disabled' : ''}`} size={18} onClick={!isZoomOutDisabled ? handleZoomOut : undefined} aria-disabled={isZoomOutDisabled} title="Zoom Out" />
             <span className="gantt-zoom-level">{Math.round(dayWidth / INITIAL_DAY_WIDTH * 100)}%</span>
-            <ZoomIn 
-                className={`gantt-zoom-icon ${isZoomInDisabled ? 'disabled' : ''}`} 
-                size={18} 
-                onClick={!isZoomInDisabled ? handleZoomIn : undefined} 
-                aria-disabled={isZoomInDisabled} 
-            />
+            <ZoomIn className={`gantt-zoom-icon ${isZoomInDisabled ? 'disabled' : ''}`} size={18} onClick={!isZoomInDisabled ? handleZoomIn : undefined} aria-disabled={isZoomInDisabled} title="Zoom In" />
         </div>
       </div>
 
