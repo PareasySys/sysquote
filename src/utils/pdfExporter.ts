@@ -519,6 +519,7 @@ const generatePlanDetailsPageHtml = (
                 margin: 0;
                 padding: 0;
                 background-color: #ffffff;
+                width: 210mm;
             }
 
             /* Page Container */
@@ -526,7 +527,7 @@ const generatePlanDetailsPageHtml = (
                 margin: 0 auto;
                 padding: 1mm;
                 background-color: #ffffff;
-                width: 100vw;
+                
             }
 
             /* Header Section */
