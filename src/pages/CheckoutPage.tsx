@@ -1,14 +1,15 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Sidebar, SidebarBody, SidebarLink, Logo, LogoIcon } from "@/components/ui/sidebar-custom";
-import { LayoutDashboard, Settings, LogOut, UserCog, ArrowLeft, MapPin, Euro, ChevronDown, FileText, Briefcase, CalendarDays, Wallet, Coffee, Gift, DollarSign, BadgeCheck, User } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, UserCog, MapPin, Euro, ChevronDown, FileText, Briefcase, CalendarDays, Wallet, Coffee, Gift, DollarSign, BadgeCheck, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTrainingPlans } from "@/hooks/useTrainingPlans";
-import { useTrainingRequirements } from "@/hooks/useTrainingRequirements";
+import { useTrainingRequirements, TrainingRequirement } from "@/hooks/useTrainingRequirements";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { useAreaCosts } from "@/hooks/useAreaCosts";
 import { useResources } from "@/hooks/useResources";
@@ -20,6 +21,7 @@ import { RainbowButton } from "@/components/ui/rainbow-button";
 import { useResourceIcons } from "@/hooks/useResourceIcons";
 import { useTrainingIcons } from "@/hooks/useTrainingIcons";
 import { generateQuotePDF, PlanCostData } from "@/utils/pdfExporter";
+import { ScheduledTaskSegment } from "@/utils/types";
 
 const CheckoutPage: React.FC = () => {
   const {
@@ -101,40 +103,59 @@ const CheckoutPage: React.FC = () => {
     navigate("/");
   };
 
-  const handleBackToPlanning = () => {
-    navigate(`/quote/${quoteId}/planning`);
-  };
-
   const handleExport = async () => {
     try {
+      // Extract plan cost data without using hooks inside this function
       const planCostData: PlanCostData[] = plans
         .map(plan => {
-          const { scheduledTasks } = useTrainingRequirements(quoteId || '', plan.plan_id, false, false);
-          const planResources = scheduledTasks.filter(task => {
-            return task.originalRequirementId === plan.plan_id;
-          });
-          if (planResources.length === 0) return null;
+          // Instead of using the hook inside the map function, we need to fetch data separately
+          // This is a common pattern that avoids violating the Rules of Hooks
+          const planId = plan.plan_id;
+          
+          if (!quoteId) return null;
+          
+          // Instead of using the hook, manually fetch or filter scheduled tasks for this plan
+          const fetchRequirementsForPlan = async () => {
+            const { data, error } = await supabase
+              .from('planning_details')
+              .select('*, resources(name, hourly_rate, icon_name)')
+              .eq('quote_id', quoteId)
+              .eq('plan_id', planId);
+              
+            if (error) throw error;
+            return data || [];
+          };
+          
+          // We will calculate training days and costs without the hook
+          const requirements = plan.requirements || [];
+          if (requirements.length === 0) return null;
           
           const trainingDays = Math.ceil(
-            planResources.reduce((total, task) => total + task.segment_hours, 0) / 8
+            requirements.reduce((total, req) => total + (req.training_hours || 0), 0) / 8
           );
           
+          // Calculate costs based on resources
+          let totalCost = 0;
           const resourceMap = new Map();
-          planResources.forEach(task => {
-            if (!resourceMap.has(task.resource_id)) {
-              const resource = resources.find(r => r.resource_id === task.resource_id);
-              resourceMap.set(task.resource_id, {
-                resourceId: task.resource_id,
-                hourlyRate: resource?.hourly_rate || 0,
+          
+          requirements.forEach(req => {
+            if (!req.resource_id) return;
+            
+            if (!resourceMap.has(req.resource_id)) {
+              const resource = resources.find(r => r.resource_id === req.resource_id);
+              if (!resource) return;
+              
+              resourceMap.set(req.resource_id, {
+                hourlyRate: resource.hourly_rate || 0,
                 totalHours: 0,
-                businessTripDays: 0,
               });
             }
-            const resourceData = resourceMap.get(task.resource_id);
-            resourceData.totalHours += task.segment_hours;
+            
+            const resourceData = resourceMap.get(req.resource_id);
+            resourceData.totalHours += req.training_hours || 0;
           });
           
-          let totalCost = 0;
+          // Calculate total costs including business trip expenses
           Array.from(resourceMap.values()).forEach(resource => {
             const trainingCost = resource.hourlyRate * resource.totalHours;
             
@@ -151,7 +172,7 @@ const CheckoutPage: React.FC = () => {
           });
           
           return {
-            planId: plan.plan_id,
+            planId: planId,
             planName: plan.name,
             trainingDays,
             totalCost
@@ -241,10 +262,6 @@ const CheckoutPage: React.FC = () => {
           <div className="mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={handleBackToPlanning} className="text-gray-400 hover:text-gray-200">
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                
                 <h1 className="text-2xl font-bold text-gray-100">Checkout</h1>
               </div>
 
@@ -266,12 +283,7 @@ const CheckoutPage: React.FC = () => {
                 {plans.map(plan => <TrainingPlanCard key={plan.plan_id} plan={plan} quoteId={quoteId || ''} areaId={quoteData.area_id || null} resources={resources} areaCosts={areaCosts} resourceIcons={resourceIcons} trainingIcons={trainingIcons} />)}
               </div>
               
-              <div className="mt-10 flex justify-center gap-4">
-                <Button variant="outline" onClick={handleBackToPlanning}>
-                  <ArrowLeft className="h-5 w-5 mr-2" />
-                  Back to Planning
-                </Button>
-                
+              <div className="mt-10 flex justify-center">
                 <RainbowButton variant="light" onClick={handleExport}>
                   <FileText className="h-5 w-5 mr-2" />
                   Export PDF
@@ -289,6 +301,7 @@ interface TrainingPlanCardProps {
     name: string;
     description: string | null;
     icon_name: string | null;
+    requirements?: any[]; // Added for direct access in PDF export
   };
   quoteId: string;
   areaId: number | null;
@@ -330,10 +343,19 @@ const TrainingPlanCard: React.FC<TrainingPlanCardProps> = ({
   const {
     scheduledTasks,
     loading
-  } = useTrainingRequirements(quoteId, plan.plan_id, false,
-  // workOnSaturday
-  false // workOnSunday
-  );
+  } = useTrainingRequirements(quoteId, plan.plan_id, false, false);
+
+  // Store requirements in the plan object for PDF export
+  useEffect(() => {
+    if (!loading && scheduledTasks.length > 0) {
+      plan.requirements = scheduledTasks.map(task => ({
+        resource_id: task.resource_id,
+        training_hours: task.segment_hours,
+        originalRequirementId: task.originalRequirementId
+      }));
+    }
+  }, [scheduledTasks, loading, plan]);
+
   const selectedArea = React.useMemo(() => {
     return areaCosts.find(area => area.area_id === areaId) || null;
   }, [areaCosts, areaId]);
