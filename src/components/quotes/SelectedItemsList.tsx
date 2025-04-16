@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { QuoteMachine } from "@/hooks/useQuoteMachines";
 import { QuoteSoftware } from "@/hooks/useQuoteSoftware";
 import { Card } from "@/components/ui/card";
@@ -56,18 +57,44 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
   const [totalsByPlan, setTotalsByPlan] = useState<Record<number, number>>({});
   const [calculatingHours, setCalculatingHours] = useState<boolean>(false);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
-  const [calculationKey, setCalculationKey] = useState<string>('');
+  
+  // Use a ref to store previous state for comparison without triggering re-renders
+  const prevDataRef = useRef({
+    machineIds: '',
+    softwareIds: '',
+    planIds: ''
+  });
 
+  // First effect: track selection changes without causing re-renders
   useEffect(() => {
-    console.log("[SelectedItemsList] Plans State Update:", { plans, plansLoading });
-    
+    if (plansLoading || !plans) return;
+
     const machineIds = machines.map(m => m.machine_type_id).sort().join(',');
     const softwareIds = software.map(s => s.software_type_id).sort().join(',');
-    const planIds = plans?.map(p => p.plan_id).sort().join(',') || '';
-    const newKey = `${machineIds}|${softwareIds}|${planIds}`;
+    const planIds = plans.map(p => p.plan_id).sort().join(',');
     
-    if (newKey !== calculationKey) {
-      setCalculationKey(newKey);
+    const current = {
+      machineIds,
+      softwareIds,
+      planIds
+    };
+    
+    const prev = prevDataRef.current;
+    
+    // Only fetch if data has actually changed
+    if (prev.machineIds !== current.machineIds || 
+        prev.softwareIds !== current.softwareIds ||
+        prev.planIds !== current.planIds) {
+      
+      console.log("[SelectedItemsList] Data changed, triggering fetch");
+      
+      // Update ref with current values
+      prevDataRef.current = current;
+      
+      // Only start a fetch if we're not already fetching
+      if (!calculatingHours) {
+        fetchTrainingOffersAndCalculate();
+      }
     }
   }, [machines, software, plans, plansLoading]);
 
@@ -206,13 +233,6 @@ const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
       console.log("[SelectedItemsList] Setting calculatingHours = false (end of calculation)");
     }
   }, [machines, software, plans, plansLoading, calculatingHours]);
-
-  useEffect(() => {
-    console.log("[SelectedItemsList] Calculation key changed:", calculationKey);
-    if (calculationKey && !calculatingHours && !plansLoading && plans?.length > 0) {
-      fetchTrainingOffersAndCalculate();
-    }
-  }, [calculationKey, fetchTrainingOffersAndCalculate, calculatingHours, plansLoading, plans]);
 
   const calculatePlanTotals = (hours: TrainingHours[]) => {
     const totals: Record<number, number> = {};
