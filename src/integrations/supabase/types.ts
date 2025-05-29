@@ -627,7 +627,8 @@ export type Database = {
               p_quote_id: string
               p_plan_id: number
               p_resource_category: string
-              p_type_id: number
+              p_machine_types_id: number
+              p_software_types_id: number
               p_resource_id: number
               p_allocated_hours: number
               p_start_day?: number
@@ -639,8 +640,7 @@ export type Database = {
               p_quote_id: string
               p_plan_id: number
               p_resource_category: string
-              p_machine_types_id: number
-              p_software_types_id: number
+              p_type_id: number
               p_resource_id: number
               p_allocated_hours: number
               p_start_day?: number

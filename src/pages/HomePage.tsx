@@ -22,6 +22,7 @@ import { useUserProfile } from "@/hooks/use-user-profile";
 import { TextShimmerWave } from "@/components/ui/text-shimmer-wave";
 import { APP_VERSION } from "@/utils/types";
 import { APP_NAME } from "@/utils/constants";
+
 const formSchema = z.object({
   quote_name: z.string().min(1, {
     message: "Quote name is required"
@@ -212,19 +213,95 @@ const HomePage = () => {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="bg-slate-800 border-gray-700 text-gray-200 max-w-md">
-          <DialogHeader> <DialogTitle className="text-xl text-gray-100">Create New Quote</DialogTitle> </DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl text-gray-100">Create New Quote</DialogTitle>
+          </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-              <FormField control={form.control} name="quote_name" render={({
-              field
-            }) => <FormItem> <FormLabel className="text-gray-300">Quote Name</FormLabel> <FormControl> <Input placeholder="Enter a name for this quote" {...field} className="bg-slate-700 border-gray-600 text-gray-200 placeholder:text-gray-500" /> </FormControl> <FormMessage className="text-red-400" /> </FormItem>} />
-              <FormField control={form.control} name="client_name" render={({
-              field
-            }) => <FormItem> <FormLabel className="text-gray-300">Customer Name</FormLabel> <FormControl> <Input placeholder="Enter customer name" {...field} className="bg-slate-700 border-gray-600 text-gray-200 placeholder:text-gray-500" /> </FormControl> <FormMessage className="text-red-400" /> </FormItem>} />
-              <FormField control={form.control} name="geographic_area" render={({
-              field
-            }) => <FormItem> <FormLabel className="text-gray-300">Geographic Area</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl> <SelectTrigger className="bg-slate-700 border-gray-600 text-gray-200"> <SelectValue placeholder="Select an area" /> </SelectTrigger> </FormControl> <SelectContent className="bg-slate-700 border-gray-600 text-gray-200 z-[200]"> {areasLoading ? <div className="p-2 text-gray-400">Loading areas...</div> : areas.length === 0 ? <div className="p-2 text-gray-400">No areas available</div> : areas.map(area => <SelectItem key={area.area_id} value={area.area_id.toString()} className="text-gray-200 focus:bg-slate-600 focus:text-white hover:bg-slate-600"> {area.area_name} </SelectItem>)} </SelectContent> </Select> <FormMessage className="text-red-400" /> </FormItem>} />
-              <DialogFooter className="pt-4"> <Button type="button" variant="outline" onClick={handleCloseDialog} className="border-gray-600 hover:bg-gray-700 text-gray-300"> Cancel </Button> <Button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white"> Save Quote </Button> </DialogFooter>
+              <FormField 
+                control={form.control} 
+                name="quote_name" 
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-300">Quote Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter a name for this quote" 
+                        {...field} 
+                        className="bg-slate-700 border-gray-600 text-gray-200 placeholder:text-gray-500" 
+                      />
+                    </FormControl>
+                    <FormMessage className="text-red-400" />
+                  </FormItem>
+                )}
+              />
+              <FormField 
+                control={form.control} 
+                name="client_name" 
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-300">Customer Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter customer name" 
+                        {...field} 
+                        className="bg-slate-700 border-gray-600 text-gray-200 placeholder:text-gray-500" 
+                      />
+                    </FormControl>
+                    <FormMessage className="text-red-400" />
+                  </FormItem>
+                )}
+              />
+              <FormField 
+                control={form.control} 
+                name="geographic_area" 
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-300">Geographic Area</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-slate-700 border-gray-600 text-gray-200">
+                          <SelectValue placeholder="Select an area" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-slate-700 border-gray-600 text-gray-200 z-[200]">
+                        {areasLoading ? (
+                          <div className="p-2 text-gray-400">Loading areas...</div>
+                        ) : areas.length === 0 ? (
+                          <div className="p-2 text-gray-400">No areas available</div>
+                        ) : (
+                          areas.map(area => (
+                            <SelectItem 
+                              key={area.area_id} 
+                              value={area.area_id.toString()} 
+                              className="text-gray-200 focus:bg-slate-600 focus:text-white hover:bg-slate-600"
+                            >
+                              {area.area_name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-red-400" />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter className="pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleCloseDialog} 
+                  className="border-gray-600 hover:bg-gray-700 text-gray-300"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="bg-blue-700 hover:bg-blue-800 text-white"
+                >
+                  Save Quote
+                </Button>
+              </DialogFooter>
             </form>
           </Form>
         </DialogContent>
