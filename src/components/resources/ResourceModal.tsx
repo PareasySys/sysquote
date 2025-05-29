@@ -14,9 +14,8 @@ import { Resource } from "@/hooks/useResources";
 import { useResourceIcons } from "@/hooks/useResourceIcons";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ResourceModalProps {
   open: boolean;
@@ -36,8 +35,6 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
   const [iconName, setIconName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isCheckingUsage, setIsCheckingUsage] = useState(false);
-  const [usageCount, setUsageCount] = useState<number>(0);
   const { icons, loading: loadingIcons } = useResourceIcons();
   
   useEffect(() => {
@@ -45,32 +42,12 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
       setName(resource.name || "");
       setHourlyRate(resource.hourly_rate || 0);
       setIconName(resource.icon_name || "");
-      checkResourceUsage(resource.resource_id);
     } else {
       setName("");
       setHourlyRate(0);
       setIconName("");
-      setUsageCount(0);
     }
   }, [resource]);
-
-  const checkResourceUsage = async (resourceId: number) => {
-    setIsCheckingUsage(true);
-    try {
-      const { count, error } = await supabase
-        .from("planning_details")
-        .select("*", { count: "exact", head: true })
-        .eq("resource_id", resourceId);
-
-      if (error) throw error;
-      setUsageCount(count || 0);
-    } catch (err) {
-      console.error("Error checking resource usage:", err);
-      setUsageCount(0);
-    } finally {
-      setIsCheckingUsage(false);
-    }
-  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -92,7 +69,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
           .update({
             name,
             hourly_rate: hourlyRate,
-            is_active: true,
+            is_active: true, // Always set to true since we're removing the switch
             icon_name: iconName,
           })
           .eq("resource_id", resource.resource_id);
@@ -106,7 +83,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
         const { error } = await supabase.from("resources").insert({
           name,
           hourly_rate: hourlyRate,
-          is_active: true,
+          is_active: true, // Always set to true since we're removing the switch
           icon_name: iconName,
         });
 
@@ -119,9 +96,9 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
 
       onSave();
       onClose();
-    } catch (err) {
-      console.error("Error saving resource:", err);
-      toast.error("Failed to save resource");
+    } catch (error: any) {
+      console.error("Error saving resource:", error);
+      toast.error(error.message || "Failed to save resource");
     } finally {
       setIsSaving(false);
     }
@@ -133,67 +110,19 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
     try {
       setIsDeleting(true);
 
-      // Delete references in planning_details
-      const planningResult = await supabase
-        .from("planning_details")
-        .delete()
-        .eq("resource_id", resource.resource_id);
-
-      if (planningResult.error) {
-        console.error("Error deleting planning details:", planningResult.error);
-        throw planningResult.error;
-      }
-
-      // Delete references in machine_training_requirements
-      const machineResult = await supabase
-        .from("machine_training_requirements")
-        .delete()
-        .eq("resource_id", resource.resource_id);
-
-      if (machineResult.error) {
-        console.error("Error deleting machine training requirements:", machineResult.error);
-        throw machineResult.error;
-      }
-
-      // Delete references in software_training_requirements
-      const softwareResult = await supabase
-        .from("software_training_requirements")
-        .delete()
-        .eq("resource_id", resource.resource_id);
-
-      if (softwareResult.error) {
-        console.error("Error deleting software training requirements:", softwareResult.error);
-        throw softwareResult.error;
-      }
-
-      // Delete references in quote_training_plan_hours
-      const quoteResult = await supabase
-        .from("quote_training_plan_hours")
-        .delete()
-        .eq("resource_id", resource.resource_id);
-
-      if (quoteResult.error) {
-        console.error("Error deleting quote training plan hours:", quoteResult.error);
-        throw quoteResult.error;
-      }
-
-      // Finally, delete the resource itself
-      const resourceResult = await supabase
+      const { error } = await supabase
         .from("resources")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (resourceResult.error) {
-        console.error("Error deleting resource:", resourceResult.error);
-        throw resourceResult.error;
-      }
+      if (error) throw error;
 
-      toast.success("Resource and all its references deleted successfully");
+      toast.success("Resource deleted successfully");
       onSave();
       onClose();
-    } catch (err) {
-      console.error("Error deleting resource:", err);
-      toast.error("Failed to delete resource");
+    } catch (error: any) {
+      console.error("Error deleting resource:", error);
+      toast.error(error.message || "Failed to delete resource");
     } finally {
       setIsDeleting(false);
     }
@@ -283,31 +212,6 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
               </div>
             )}
           </div>
-
-          {resource && (
-            <div className="grid gap-2">
-              {isCheckingUsage ? (
-                <div className="flex items-center gap-2 text-slate-400">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Checking resource usage...</span>
-                </div>
-              ) : usageCount > 0 ? (
-                <Alert className="bg-orange-900/20 border-orange-700">
-                  <AlertTriangle className="h-4 w-4 text-orange-600" />
-                  <AlertDescription className="text-orange-200">
-                    This resource is currently used in {usageCount} planning detail{usageCount > 1 ? 's' : ''}. 
-                    Deleting it will also remove all these references permanently.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <Alert className="bg-green-900/20 border-green-700">
-                  <AlertDescription className="text-green-200">
-                    This resource is not currently in use and can be safely deleted.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          )}
         </div>
 
         <DialogFooter>
