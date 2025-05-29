@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -135,58 +134,58 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
       setIsDeleting(true);
 
       // Delete references in planning_details
-      const { error: planningError } = await supabase
+      const planningResult = await supabase
         .from("planning_details")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (planningError) {
-        console.error("Error deleting planning details:", planningError);
-        throw planningError;
+      if (planningResult.error) {
+        console.error("Error deleting planning details:", planningResult.error);
+        throw planningResult.error;
       }
 
       // Delete references in machine_training_requirements
-      const { error: machineError } = await supabase
+      const machineResult = await supabase
         .from("machine_training_requirements")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (machineError) {
-        console.error("Error deleting machine training requirements:", machineError);
-        throw machineError;
+      if (machineResult.error) {
+        console.error("Error deleting machine training requirements:", machineResult.error);
+        throw machineResult.error;
       }
 
       // Delete references in software_training_requirements
-      const { error: softwareError } = await supabase
+      const softwareResult = await supabase
         .from("software_training_requirements")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (softwareError) {
-        console.error("Error deleting software training requirements:", softwareError);
-        throw softwareError;
+      if (softwareResult.error) {
+        console.error("Error deleting software training requirements:", softwareResult.error);
+        throw softwareResult.error;
       }
 
       // Delete references in quote_training_plan_hours
-      const { error: quoteError } = await supabase
+      const quoteResult = await supabase
         .from("quote_training_plan_hours")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (quoteError) {
-        console.error("Error deleting quote training plan hours:", quoteError);
-        throw quoteError;
+      if (quoteResult.error) {
+        console.error("Error deleting quote training plan hours:", quoteResult.error);
+        throw quoteResult.error;
       }
 
       // Finally, delete the resource itself
-      const { error: resourceError } = await supabase
+      const resourceResult = await supabase
         .from("resources")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (resourceError) {
-        console.error("Error deleting resource:", resourceError);
-        throw resourceError;
+      if (resourceResult.error) {
+        console.error("Error deleting resource:", resourceResult.error);
+        throw resourceResult.error;
       }
 
       toast.success("Resource and all its references deleted successfully");
@@ -357,4 +356,3 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
 };
 
 export default ResourceModal;
-
