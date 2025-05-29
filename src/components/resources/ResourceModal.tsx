@@ -130,29 +130,65 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
   const handleDelete = async () => {
     if (!resource) return;
 
-    if (usageCount > 0) {
-      toast.error(`Cannot delete resource. It is currently used in ${usageCount} planning detail${usageCount > 1 ? 's' : ''}. Please remove all references first.`);
-      return;
-    }
-
     try {
       setIsDeleting(true);
 
-      const { error } = await supabase
+      // First, delete all references in planning_details
+      const { error: planningError } = await supabase
+        .from("planning_details")
+        .delete()
+        .eq("resource_id", resource.resource_id);
+
+      if (planningError) {
+        console.error("Error deleting planning details:", planningError);
+        throw planningError;
+      }
+
+      // Delete references in machine_training_requirements
+      const { error: machineTrainingError } = await supabase
+        .from("machine_training_requirements")
+        .delete()
+        .eq("resource_id", resource.resource_id);
+
+      if (machineTrainingError) {
+        console.error("Error deleting machine training requirements:", machineTrainingError);
+        throw machineTrainingError;
+      }
+
+      // Delete references in software_training_requirements
+      const { error: softwareTrainingError } = await supabase
+        .from("software_training_requirements")
+        .delete()
+        .eq("resource_id", resource.resource_id);
+
+      if (softwareTrainingError) {
+        console.error("Error deleting software training requirements:", softwareTrainingError);
+        throw softwareTrainingError;
+      }
+
+      // Delete references in quote_training_plan_hours
+      const { error: quoteTrainingError } = await supabase
+        .from("quote_training_plan_hours")
+        .delete()
+        .eq("resource_id", resource.resource_id);
+
+      if (quoteTrainingError) {
+        console.error("Error deleting quote training plan hours:", quoteTrainingError);
+        throw quoteTrainingError;
+      }
+
+      // Finally, delete the resource itself
+      const { error: resourceError } = await supabase
         .from("resources")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (error) {
-        if (error.code === "23503") {
-          toast.error("Cannot delete resource. It is currently being used in quotes. Please remove all references first.");
-        } else {
-          throw error;
-        }
-        return;
+      if (resourceError) {
+        console.error("Error deleting resource:", resourceError);
+        throw resourceError;
       }
 
-      toast.success("Resource deleted successfully");
+      toast.success("Resource and all its references deleted successfully");
       onSave();
       onClose();
     } catch (error: any) {
@@ -256,11 +292,11 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
                   <span>Checking resource usage...</span>
                 </div>
               ) : usageCount > 0 ? (
-                <Alert className="bg-yellow-900/20 border-yellow-700">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  <AlertDescription className="text-yellow-200">
+                <Alert className="bg-orange-900/20 border-orange-700">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-200">
                     This resource is currently used in {usageCount} planning detail{usageCount > 1 ? 's' : ''}. 
-                    You cannot delete it until all references are removed.
+                    Deleting it will also remove all these references permanently.
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -279,7 +315,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
             <Button
               variant="destructive"
               onClick={handleDelete}
-              disabled={isDeleting || isSaving || usageCount > 0}
+              disabled={isDeleting || isSaving}
               className="mr-auto"
             >
               {isDeleting ? (
