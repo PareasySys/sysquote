@@ -14,8 +14,9 @@ import { Resource } from "@/hooks/useResources";
 import { useResourceIcons } from "@/hooks/useResourceIcons";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ResourceModalProps {
   open: boolean;
@@ -35,6 +36,8 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
   const [iconName, setIconName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCheckingUsage, setIsCheckingUsage] = useState(false);
+  const [usageCount, setUsageCount] = useState<number>(0);
   const { icons, loading: loadingIcons } = useResourceIcons();
   
   useEffect(() => {
@@ -42,12 +45,32 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
       setName(resource.name || "");
       setHourlyRate(resource.hourly_rate || 0);
       setIconName(resource.icon_name || "");
+      checkResourceUsage(resource.resource_id);
     } else {
       setName("");
       setHourlyRate(0);
       setIconName("");
+      setUsageCount(0);
     }
   }, [resource]);
+
+  const checkResourceUsage = async (resourceId: number) => {
+    setIsCheckingUsage(true);
+    try {
+      const { count, error } = await supabase
+        .from("planning_details")
+        .select("*", { count: "exact", head: true })
+        .eq("resource_id", resourceId);
+
+      if (error) throw error;
+      setUsageCount(count || 0);
+    } catch (error: any) {
+      console.error("Error checking resource usage:", error);
+      setUsageCount(0);
+    } finally {
+      setIsCheckingUsage(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -69,7 +92,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
           .update({
             name,
             hourly_rate: hourlyRate,
-            is_active: true, // Always set to true since we're removing the switch
+            is_active: true,
             icon_name: iconName,
           })
           .eq("resource_id", resource.resource_id);
@@ -83,7 +106,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
         const { error } = await supabase.from("resources").insert({
           name,
           hourly_rate: hourlyRate,
-          is_active: true, // Always set to true since we're removing the switch
+          is_active: true,
           icon_name: iconName,
         });
 
@@ -107,6 +130,11 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
   const handleDelete = async () => {
     if (!resource) return;
 
+    if (usageCount > 0) {
+      toast.error(`Cannot delete resource. It is currently used in ${usageCount} planning detail${usageCount > 1 ? 's' : ''}. Please remove all references first.`);
+      return;
+    }
+
     try {
       setIsDeleting(true);
 
@@ -115,7 +143,14 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === "23503") {
+          toast.error("Cannot delete resource. It is currently being used in quotes. Please remove all references first.");
+        } else {
+          throw error;
+        }
+        return;
+      }
 
       toast.success("Resource deleted successfully");
       onSave();
@@ -212,6 +247,31 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
               </div>
             )}
           </div>
+
+          {resource && (
+            <div className="grid gap-2">
+              {isCheckingUsage ? (
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Checking resource usage...</span>
+                </div>
+              ) : usageCount > 0 ? (
+                <Alert className="bg-yellow-900/20 border-yellow-700">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-200">
+                    This resource is currently used in {usageCount} planning detail{usageCount > 1 ? 's' : ''}. 
+                    You cannot delete it until all references are removed.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert className="bg-green-900/20 border-green-700">
+                  <AlertDescription className="text-green-200">
+                    This resource is not currently in use and can be safely deleted.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -219,7 +279,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
             <Button
               variant="destructive"
               onClick={handleDelete}
-              disabled={isDeleting || isSaving}
+              disabled={isDeleting || isSaving || usageCount > 0}
               className="mr-auto"
             >
               {isDeleting ? (
