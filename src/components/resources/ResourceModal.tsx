@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -64,7 +63,7 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
 
       if (error) throw error;
       setUsageCount(count || 0);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error checking resource usage:", error);
       setUsageCount(0);
     } finally {
@@ -119,9 +118,10 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
 
       onSave();
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error saving resource:", error);
-      toast.error(error.message || "Failed to save resource");
+      const errorMessage = error instanceof Error ? error.message : "Failed to save resource";
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -133,67 +133,68 @@ const ResourceModal: React.FC<ResourceModalProps> = ({
     try {
       setIsDeleting(true);
 
-      // First, delete all references in planning_details
-      const { error: planningError } = await supabase
+      // Delete references in planning_details
+      const planningResult = await supabase
         .from("planning_details")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (planningError) {
-        console.error("Error deleting planning details:", planningError);
-        throw planningError;
+      if (planningResult.error) {
+        console.error("Error deleting planning details:", planningResult.error);
+        throw planningResult.error;
       }
 
       // Delete references in machine_training_requirements
-      const { error: machineTrainingError } = await supabase
+      const machineTrainingResult = await supabase
         .from("machine_training_requirements")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (machineTrainingError) {
-        console.error("Error deleting machine training requirements:", machineTrainingError);
-        throw machineTrainingError;
+      if (machineTrainingResult.error) {
+        console.error("Error deleting machine training requirements:", machineTrainingResult.error);
+        throw machineTrainingResult.error;
       }
 
       // Delete references in software_training_requirements
-      const { error: softwareTrainingError } = await supabase
+      const softwareTrainingResult = await supabase
         .from("software_training_requirements")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (softwareTrainingError) {
-        console.error("Error deleting software training requirements:", softwareTrainingError);
-        throw softwareTrainingError;
+      if (softwareTrainingResult.error) {
+        console.error("Error deleting software training requirements:", softwareTrainingResult.error);
+        throw softwareTrainingResult.error;
       }
 
       // Delete references in quote_training_plan_hours
-      const { error: quoteTrainingError } = await supabase
+      const quoteTrainingResult = await supabase
         .from("quote_training_plan_hours")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (quoteTrainingError) {
-        console.error("Error deleting quote training plan hours:", quoteTrainingError);
-        throw quoteTrainingError;
+      if (quoteTrainingResult.error) {
+        console.error("Error deleting quote training plan hours:", quoteTrainingResult.error);
+        throw quoteTrainingResult.error;
       }
 
       // Finally, delete the resource itself
-      const { error: resourceError } = await supabase
+      const resourceResult = await supabase
         .from("resources")
         .delete()
         .eq("resource_id", resource.resource_id);
 
-      if (resourceError) {
-        console.error("Error deleting resource:", resourceError);
-        throw resourceError;
+      if (resourceResult.error) {
+        console.error("Error deleting resource:", resourceResult.error);
+        throw resourceResult.error;
       }
 
       toast.success("Resource and all its references deleted successfully");
       onSave();
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error deleting resource:", error);
-      toast.error(error.message || "Failed to delete resource");
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete resource";
+      toast.error(errorMessage);
     } finally {
       setIsDeleting(false);
     }
